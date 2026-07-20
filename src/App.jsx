@@ -3888,28 +3888,28 @@ const DashboardLayout = ({
               </div>
 
               <div className="rounded-lg p-4 bg-slate-800">
-                 <button onClick={() => setShowOnline(!showOnline)} className="w-full flex justify-between items-center text-sm font-bold text-green-400">
-                    <span className="flex items-center"><RadioReceiver size={16} className="mr-3"/> 🟢 Active Connections</span>
-                    <span className="bg-slate-900 px-2 py-2 rounded-full text-xs"></span>
-                 </button>
-                 {showOnline && (
-                   <div className="mt-4 space-y-2 border-t border-slate-700 pt-4">
-                      <div onClick={() => inspectActiveUser("AIP System MGR")} className="text-xs bg-slate-900 p-2 rounded hover:bg-slate-950 border border-transparent hover:border-green-50 cursor-pointer transition-all">
-                        <span className="font-bold text-white block">AIP System MGR</span>
-                        <span className="text-slate-400">KMP HEADQUARTERS</span>
-                      </div>
-                      <div onClick={() => inspectActiveUser("Standard Officer")} className="text-xs bg-slate-900 p-2 rounded hover:bg-slate-950 border border-transparent hover:border-green-500 cursor-pointer transition-all flex items-center justify-between">
-                        <div>
-                          <span className="font-bold text-white block">Standard Officer</span>
-                          <span className="text-slate-400">KAWEMPE</span>
-                        </div>
-                        {connectionUserProfiles["Standard Officer"].profile_photo_path && (
-                          <img src={connectionUserProfiles["Standard Officer"].profile_photo_path} alt="" className="w-6 h-6 rounded-full border border-green-400 object-cover" onError={(e) => { e.target.style.display='none'; }} />
-                        )}
-                      </div>
-                   </div>
-                 )}
-              </div>
+   <button type="button" onClick={() => setShowOnline(!showOnline)} className="w-full flex justify-between items-center text-sm font-bold text-green-400">
+      <span className="flex items-center"><RadioReceiver size={16} className="mr-3"/> 🟢 Active Connections (2)</span>
+      <span className="bg-slate-900 px-2 py-2 rounded-full text-xs"></span>
+   </button>
+   {showOnline && (
+     <div className="mt-4 space-y-2 border-t border-slate-700 pt-4">
+        <div onClick={() => inspectActiveUser("AIP System MGR")} className="text-xs bg-slate-900 p-2 rounded hover:bg-slate-950 border border-transparent hover:border-green-50 cursor-pointer transition-all">
+          <span className="font-bold text-white block">AIP System MGR</span>
+          <span className="text-slate-400">KMP HEADQUARTERS</span>
+        </div>
+        <div onClick={() => inspectActiveUser("Standard Officer")} className="text-xs bg-slate-900 p-2 rounded hover:bg-slate-950 border border-transparent hover:border-green-500 cursor-pointer transition-all flex items-center justify-between">
+          <div>
+            <span className="font-bold text-white block">Standard Officer</span>
+            <span className="text-slate-400">KAWEMPE</span>
+          </div>
+          {connectionUserProfiles["Standard Officer"]?.profile_photo_path && (
+            <img src={connectionUserProfiles["Standard Officer"].profile_photo_path} alt="" className="w-6 h-6 rounded-full border border-green-400 object-cover" onError={(e) => { e.target.style.display='none'; }} />
+          )}
+        </div>
+     </div>
+   )}
+</div>
 
               <div className="rounded-lg p-3 bg-slate-800 border border-slate-700">
                  <button onClick={() => setShowAllUsers(!showAllUsers)} className="w-full flex justify-between items-center text-sm font-bold text-blue-400">

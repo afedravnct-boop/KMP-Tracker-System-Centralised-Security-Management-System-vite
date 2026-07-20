@@ -3428,13 +3428,19 @@ const handlePhotoUpload = async (e) => {
     uploadData.append("narrative", "Profile Photo Upload");
 
     try {
-      const response = await authFetch("/api/v1/investigation/upload/", {
+      // ✅ Swapped authFetch for standard fetch + added API_URL
+      const response = await fetch(`${API_URL}/api/v1/investigation/upload/`, {
         method: "POST",
         body: uploadData,
-        signal: controller.signal // Attaches the timeout controller
+        signal: controller.signal 
       });
 
       clearTimeout(timeoutId); // Success: stop the timeout timer
+
+      // Safely handle the response without reloading the page
+      if (!response.ok) {
+        throw new Error("Upload requires authentication or backend is unavailable.");
+      }
 
       const data = await response.json();
       if (data.full_s3_url || data.cloud_storage_path) {
@@ -3785,7 +3791,7 @@ const DashboardLayout = ({
     });
   };
 
-  // ✅ PERFECT PLACEMENT: The Export Function sits safely inside the component
+// ✅ PERFECT PLACEMENT: The Export Function sits safely inside the component
   const handleExportLogs = async () => {
     try {
       const token = localStorage.getItem('kmp_authToken');
@@ -3797,10 +3803,19 @@ const DashboardLayout = ({
 
       const logs = await response.json();
       const headers = ["ID", "Force Number", "Action", "Module", "Details", "Timestamp (EAT)"];
-      const safeDetails = log.details ? log.details.replace(/"/g, '""') : "";
-      const csvRows = logs.map(log => [
-        log.id, log.fnum, log.action, log.module, `"${log.details}"`, log.created_at
-      ]);
+      
+      // ✅ MOVED: safeDetails is now correctly calculated inside the loop for each log
+      const csvRows = logs.map(log => {
+        const safeDetails = log.details ? log.details.replace(/"/g, '""') : "";
+        return [
+          log.id, 
+          log.fnum, 
+          log.action, 
+          log.module, 
+          `"${safeDetails}"`, 
+          log.created_at
+        ];
+      });
 
       const csvContent = [headers, ...csvRows].map(e => e.join(",")).join("\n");
       const blob = new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -3811,6 +3826,7 @@ const DashboardLayout = ({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
     } catch (error) {
       console.error("Download failed:", error);
       alert("Failed to download logs. You may not have Super Admin clearance.");

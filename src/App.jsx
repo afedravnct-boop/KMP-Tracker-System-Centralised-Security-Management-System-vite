@@ -349,6 +349,18 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
     }
   };
 
+ const populateUpdateForm = (caseData) => {
+    // Loads the existing case, but prepares the form for appending
+    setFormData({ 
+      ...caseData, 
+      sd_ref: caseData.sdRef || caseData.sd_ref, 
+      offence: caseData.offence || 'Other',
+      customOffence: '',
+      suspectDetails: caseData.suspectDetails || [], // Keeps previously arrested suspects
+      updateText: '' // Clears the update box ready for today's new entry
+    });
+  };
+
  const handleSmartExport = (scope, value) => {
     // Swap localhost for the dynamic API_URL
     let url = `${API_URL}/api/v1/reports/export?timeframe=all`;

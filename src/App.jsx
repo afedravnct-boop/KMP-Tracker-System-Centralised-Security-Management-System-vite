@@ -344,10 +344,9 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
 
   const handleOperationToggle = (mode) => {
     setOperation(mode);
-    setNotification(null); // Instantly clears any old success/error banners
+    setNotification(null);
     
     if (mode === 'new') {
-      // Wipes the form completely clean (Exact same logic as Disruptive OPS Statistics)
       setFormData({
         sn: null,
         sd_ref: '',
@@ -366,15 +365,15 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
     }
   };
 
-  const populateUpdateForm = (caseData) => {
-    // Loads the existing case, but prepares the form for appending
+  // ✅ Clean, uniquely named function for this specific form
+  const populateUpdateCrimeForm = (caseData) => {
     setFormData({ 
       ...caseData, 
       sd_ref: caseData.sdRef || caseData.sd_ref, 
       offence: caseData.offence || 'Other',
       customOffence: '',
-      suspectDetails: caseData.suspectDetails || [], // Keeps previously arrested suspects
-      updateText: '' // Clears the update box ready for today's new entry
+      suspectDetails: caseData.suspectDetails || [], 
+      updateText: '' 
     });
   };
 
@@ -547,7 +546,6 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
         return;
       }
 
-      // 🚨 This safely appends the update text without touching the original narrative
       let updatedNarrative = formData.updateText 
         ? `${formData.narrative}<br/><br/><strong>[UPDATE ${new Date().toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '')}]:</strong><br/>${formData.updateText}` 
         : formData.narrative;
@@ -731,7 +729,8 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
                       <div className="p-3 text-xs text-gray-500 text-center">No cases found matching your search.</div>
                     ) : (
                       availableUpdateCases.map(c => (
-                        <div key={c.sn} onClick={() => populateUpdateForm(c)} className={`p-2 text-xs border-b cursor-pointer transition-colors ${formData.sn === c.sn ? 'bg-blue-600 text-white font-bold' : 'hover:bg-blue-50 text-gray-700'}`}>
+                        // ✅ Replaced the broken function call here!
+                        <div key={c.sn} onClick={() => populateUpdateCrimeForm(c)} className={`p-2 text-xs border-b cursor-pointer transition-colors ${formData.sn === c.sn ? 'bg-blue-600 text-white font-bold' : 'hover:bg-blue-50 text-gray-700'}`}>
                           <span className={formData.sn === c.sn ? 'text-blue-200' : 'text-gray-400'}>SN: {c.sn}</span> | <span className={formData.sn === c.sn ? 'text-white' : 'font-bold text-blue-700'}>{c.sdRef || c.sd_ref}</span> | {c.station}
                         </div>
                       ))
@@ -743,7 +742,7 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 {operation === 'update' && formData.sn && (
                    <div className="bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded">
-                     Currently Editing: SN {formData.sn}
+                      Currently Editing: SN {formData.sn}
                    </div>
                 )}
                 
@@ -918,7 +917,8 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredReports.map((report) => (
-                    <tr key={report.sn} className="hover:bg-blue-50 transition-colors cursor-pointer" onClick={() => { if(operation === 'update') populateUpdateForm(report); }}>
+                    // ✅ Replaced the broken function call here!
+                    <tr key={report.sn} className="hover:bg-blue-50 transition-colors cursor-pointer" onClick={() => { if(operation === 'update') populateUpdateCrimeForm(report); }}>
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900 align-top">{report.sn}</td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-blue-700 align-top">{report.sdRef || report.sd_ref}</td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 align-top">{report.date}<br/><span className="text-xs text-gray-400">{report.time}</span></td>

@@ -327,7 +327,26 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
 
   const handleOperationToggle = (mode) => {
     setOperation(mode);
-    setUpdateSearch(''); // Clears the search bar automatically when you switch modes
+    setNotification(null); // Instantly clears any old success/error banners
+    
+    if (mode === 'new') {
+      // Wipes the form completely clean (Exact same logic as Disruptive OPS Statistics)
+      setFormData({
+        sn: null,
+        sd_ref: '',
+        region: currentUser.region,
+        station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
+        date: getTodayString(),
+        time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }).replace(':', '') + 'Hrs',
+        offence: '', 
+        customOffence: '',
+        narrative: '',
+        status: 'ACTIVE INVESTIGATION',
+        suspectDetails: [],
+        updateText: ''
+      });
+      setUpdateSearch(''); 
+    }
   };
 
  const handleSmartExport = (scope, value) => {

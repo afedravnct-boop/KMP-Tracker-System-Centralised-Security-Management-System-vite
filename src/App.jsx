@@ -325,6 +325,23 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
   const [showLockup, setShowLockup] = useState(false);
   const [newSuspect, setNewSuspect] = useState({ name: '', sex: 'MALE', age: '', tribe: '', residence: '', contact: '', mentalhealthstatus: '' });
 
+  const getTodayString = () => new Date().toLocaleDateString('en-CA').split(',')[0].replace(/\//g, '-');
+
+  const [formData, setFormData] = useState({
+    sn: null,
+    sd_ref: '',
+    region: currentUser.region,
+    station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
+    date: getTodayString(),
+    time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }).replace(':', '') + 'Hrs',
+    offence: '', 
+    customOffence: '',
+    narrative: '',
+    status: 'ACTIVE INVESTIGATION',
+    suspectDetails: [],
+    updateText: ''
+  });
+
   const handleOperationToggle = (mode) => {
     setOperation(mode);
     setNotification(null); // Instantly clears any old success/error banners
@@ -349,7 +366,7 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
     }
   };
 
- const populateUpdateForm = (caseData) => {
+  const populateUpdateForm = (caseData) => {
     // Loads the existing case, but prepares the form for appending
     setFormData({ 
       ...caseData, 
@@ -361,32 +378,13 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
     });
   };
 
- const handleSmartExport = (scope, value) => {
-    // Swap localhost for the dynamic API_URL
+  const handleSmartExport = (scope, value) => {
     let url = `${API_URL}/api/v1/reports/export?timeframe=all`;
-    
     if (scope && value) {
         url += `&scope=${scope}&value=${encodeURIComponent(value)}`;
     }
     window.open(url, '_blank');
-};
-
-  const getTodayString = () => new Date().toLocaleDateString('en-CA').split(',')[0].replace(/\//g, '-');
-
-  const [formData, setFormData] = useState({
-    sn: null,
-    sd_ref: '',
-    region: currentUser.region,
-    station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
-    date: getTodayString(),
-    time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }).replace(':', '') + 'Hrs',
-    offence: '', 
-    customOffence: '',
-    narrative: '',
-    status: 'ACTIVE INVESTIGATION',
-    suspectDetails: [],
-    updateText: ''
-  });
+  };
 
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
@@ -405,12 +403,9 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
         const diffDays = Math.ceil(Math.abs(today - repDate) / (1000 * 60 * 60 * 24));
         if (diffDays > 7) return false;
       } else if (dateFilter === 'CUSTOM') {
-        // 🚨 NEW: Checks the start and end dates
         if (customStartDate && r.date < customStartDate) return false;
         if (customEndDate && r.date > customEndDate) return false;
       }
-      
-        
       return true;
     });
   }, [reports, filterRegion, filterStation, searchQuery, dateFilter, customStartDate, customEndDate]);
@@ -437,7 +432,7 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
     };
   }, [filteredReports]);
 
-const handleInputChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value, type } = e.target;
     const autoCapitalize = (text) => {
       if (!text) return text;
@@ -456,17 +451,6 @@ const handleInputChange = (e) => {
     }
   };
 
-  const populateUpdateForm = (caseData) => {
-    setFormData({ 
-      ...caseData, 
-      sd_ref: caseData.sdRef || caseData.sd_ref, 
-      offence: caseData.offence || 'Other',
-      customOffence: '',
-      suspectDetails: [],
-      updateText: '' 
-    });
-  };
-
   const handleAddSuspect = () => {
     if (!newSuspect.name.trim()) return alert("Suspect name is required.");
     setFormData({
@@ -483,10 +467,9 @@ const handleInputChange = (e) => {
     });
   };
 
-const handleFormSubmit = async (e) => { // <-- Added 'async'
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
 
-    // 1. Grab the exact security token
     const token = localStorage.getItem('kmp_authToken');
     if (!token) {
         setNotification("Error: Security token missing. Please log out and log back in.");
@@ -522,8 +505,7 @@ const handleFormSubmit = async (e) => { // <-- Added 'async'
         suspectDetails: formData.suspectDetails
       };
       
-     try {
-        // 2. Direct fetch to ensure the token and data penetrate the backend perfectly
+      try {
         const response = await fetch(`${API_URL}/api/v1/reports`, {
           method: "POST",
           headers: { 
@@ -538,12 +520,10 @@ const handleFormSubmit = async (e) => { // <-- Added 'async'
             throw new Error(errData.detail || "Neon Database rejected the entry.");
         }
         
-        // 3. ONLY update the screen if the database confirms the save!
         const newReportLocal = { ...apiPayload };
         setReports([newReportLocal, ...reports]);
         setNotification(`Case SN ${newReportLocal.sn} (Ref: ${newReportLocal.sd_ref}) successfully registered!`);
 
-        // Smart Wipe
         setFormData({ 
           ...formData, 
           sd_ref: '', 
@@ -567,7 +547,8 @@ const handleFormSubmit = async (e) => { // <-- Added 'async'
         return;
       }
 
-     let updatedNarrative = formData.updateText 
+      // 🚨 This safely appends the update text without touching the original narrative
+      let updatedNarrative = formData.updateText 
         ? `${formData.narrative}<br/><br/><strong>[UPDATE ${new Date().toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '')}]:</strong><br/>${formData.updateText}` 
         : formData.narrative;
         
@@ -581,7 +562,7 @@ const handleFormSubmit = async (e) => { // <-- Added 'async'
       };
       delete updatedRecord.updateText;
       
-     try {
+      try {
         const response = await fetch(`${API_URL}/api/v1/reports/${formData.sn}`, {
           method: "PUT",
           headers: { 

@@ -3430,58 +3430,39 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
   };
 
   const handlePhotoUpload = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setAuthMessage("Uploading profile photo to secure S3 bucket...");
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+const handlePhotoUpload = async (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    // 1. Create instant local preview for UI
+    const localPreviewUrl = URL.createObjectURL(file);
+    setSignupData(prev => ({ ...prev, profile_photo_path: localPreviewUrl }));
+    setAuthMessage("Uploading profile photo to S3 bucket...");
 
-      const uploadData = new FormData();
-      uploadData.append("file", file);
-      uploadData.append("category", "user_profile"); 
-      uploadData.append("fnum", signupData.fnum || "PENDING_REGISTRATION");
-      uploadData.append("narrative", "Officer Profile Photo Signup");
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+    uploadData.append("fnum", signupData.fnum || "PENDING_REGISTRATION");
+    uploadData.append("category", "user_profile");
 
-      try {
-        // 🚨 Corrected endpoint: Points to user profile route without trailing slash
-        const response = await fetch(`${API_URL}/api/v1/users/upload-profile`, {
-          method: "POST",
-          body: uploadData,
-          signal: controller.signal 
-        });
+    try {
+      const response = await fetch(`${API_URL}/api/v1/users/upload-profile`, {
+        method: "POST",
+        body: uploadData,
+      });
 
-        clearTimeout(timeoutId);
+      if (!response.ok) throw new Error("Upload failed on server.");
 
-        if (!response.ok) {
-          throw new Error("Profile photo upload failed on the server.");
-        }
+      const data = await response.json();
+      const s3Url = data.full_s3_url || data.cloud_storage_path;
 
-        const data = await response.json();
-        if (data.full_s3_url || data.cloud_storage_path) {
-          setSignupData({ 
-            ...signupData, 
-            profile_photo_path: data.full_s3_url || `https://kmp-tracker-system-tu-16-06-26.s3.eu-central-1.amazonaws.com/${data.cloud_storage_path}` 
-          });
-          setAuthMessage("Photo uploaded to S3 successfully!");
-        } else {
-          throw new Error("Invalid response format from server");
-        }
-      } catch (error) {
-        clearTimeout(timeoutId);
-        
-        if (error.name === 'AbortError') {
-          setAuthMessage("❌ Upload timed out. Please check your connection and try a smaller file.");
-          console.error("Upload timeout");
-        } else {
-          console.warn("Backend profile endpoint unreachable, falling back to local Blob URL for UI testing.", error);
-          const localUrl = URL.createObjectURL(file);
-          setSignupData({ ...signupData, profile_photo_path: localUrl });
-          setAuthMessage("Note: API offline or error occurred. Using temporary local preview.");
-        }
-      }
+      // 2. Save the permanent S3 URL for registration submission
+      setSignupData(prev => ({ ...prev, profile_photo_path: s3Url }));
+      setAuthMessage("✅ Photo uploaded to S3 successfully!");
+    } catch (error) {
+      console.error("Upload error:", error);
+      setAuthMessage("⚠️ S3 upload error. Temporary preview active.");
     }
-  };
+  }
+};
 
   const handleSignupSubmit = (e) => {
     e.preventDefault();

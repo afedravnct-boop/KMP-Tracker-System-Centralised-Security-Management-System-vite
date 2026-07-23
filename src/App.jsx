@@ -4449,5 +4449,6 @@ return (
       
     </DashboardLayout>
   );
-}
-// Triggering Vercel Rebuild
+};
+
+export default App;

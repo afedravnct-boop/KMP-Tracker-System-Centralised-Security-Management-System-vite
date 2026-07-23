@@ -3975,25 +3975,63 @@ const DashboardLayout = ({
               </button>
             </div>
 
-            <div className="p-6">
+<div className="p-6">
+              {/* 1. Header & Photo */}
               <div className="flex items-center space-x-4 mb-6 pb-4 border-b border-gray-100">
-                <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-extrabold text-xl overflow-hidden">
+                <div className="w-16 h-16 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-extrabold text-2xl overflow-hidden shadow-sm border-2 border-blue-500">
                   {selectedUserDetail.profile_photo_path ? (
-                     <img src={selectedUserDetail.profile_photo_path} alt="" className="w-full h-full object-cover" />
+                     <img src={selectedUserDetail.profile_photo_path} alt="Profile" className="w-full h-full object-cover" />
                   ) : (selectedUserDetail.name?.charAt(0) || 'U')}
                 </div>
                 <div>
-                  <div className="font-extrabold text-slate-800 text-lg leading-tight">{selectedUserDetail.name}</div>
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <div className="font-extrabold text-slate-800 text-xl leading-tight">{selectedUserDetail.name}</div>
+                  <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mt-1">
                     {selectedUserDetail.fnum} • {selectedUserDetail.rank} • {selectedUserDetail.station}
                   </div>
                 </div>
               </div>
 
+              {/* 2. COMPREHENSIVE PROFILE GRID */}
+              <h4 className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider">Comprehensive Profile</h4>
+              <div className="grid grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200 shadow-inner">
+                <div>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">IPPS Number</label>
+                  <div className="text-xs font-bold text-slate-800">{selectedUserDetail.ipps || 'N/A'}</div>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">Official Title</label>
+                  <div className="text-xs font-bold text-slate-800">{selectedUserDetail.position || 'N/A'}</div>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">Command Chain (Region / Division)</label>
+                  <div className="text-xs font-bold text-slate-800">{selectedUserDetail.region || 'N/A'} / {selectedUserDetail.division || 'N/A'}</div>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">Email Contact</label>
+                  <div className="text-xs font-bold text-slate-800 break-words">{selectedUserDetail.email || 'N/A'}</div>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">Phone Number</label>
+                  <div className="text-xs font-bold text-slate-800">{selectedUserDetail.phone || 'N/A'}</div>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">Sex</label>
+                  <div className="text-xs font-bold text-slate-800">{selectedUserDetail.sex || 'N/A'}</div>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">System Role</label>
+                  <div className="text-xs font-extrabold text-blue-700">{selectedUserDetail.role || 'USER'}</div>
+                </div>
+              </div>
+
+              {/* 3. ACCESS CONTROLS (Only visible if managing a system user) */}
               {selectedUserDetail.isSystemUser && (
                 <>
-                  <h4 className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider">Component Admin Clearances</h4>
-                  <div className="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                  <h4 className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center">
+                    <Shield size={14} className="mr-2 text-red-500"/> Component Admin Clearances
+                  </h4>
+                  <div className="space-y-3 bg-white p-4 rounded-lg border border-red-100 shadow-sm">
+                    
                     <label className="flex items-center space-x-3 cursor-pointer group">
                       <input 
                         type="checkbox" 
@@ -4006,7 +4044,7 @@ const DashboardLayout = ({
                       />
                       <div className="flex-1">
                         <div className="text-sm font-bold text-slate-800 group-hover:text-blue-700 transition-colors">System Administrator</div>
-                        <div className="text-[10px] text-slate-500 font-medium">Grants access to Approvals, User Roster, and Audit_Logs.</div>
+                        <div className="text-[10px] text-slate-500 font-medium">Grants access to Approvals, User Roster, and Audit Logs.</div>
                       </div>
                     </label>
 
@@ -4045,6 +4083,7 @@ const DashboardLayout = ({
                         <div className="text-[10px] text-slate-500 font-medium">Allows downloading raw .xlsx database files to local device.</div>
                       </div>
                     </label>
+
                   </div>
                 </>
               )}

@@ -2894,6 +2894,25 @@ const AdminApprovals = ({ currentUser }) => {
   }
 };
 
+const handleReviewRequest = async (reqId, actionStatus) => {
+    try {
+      const response = await authFetch(`/api/v1/requests/${reqId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: actionStatus })
+      });
+      
+      if (!response.ok) throw new Error("Failed to process request");
+      
+      // Remove it from the UI queue
+      setModRequests(modRequests.filter(r => r.id !== reqId));
+      alert(`Request ${actionStatus.toLowerCase()} successfully!`);
+    } catch (err) {
+      console.error(err);
+      alert("Error processing the modification request.");
+    }
+  };
+
 return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6 relative z-10 animate-in fade-in duration-300">
       <div className="text-center mb-8 flex flex-col items-center">
@@ -3828,24 +3847,23 @@ const DashboardLayout = ({
                 )}
               </div>
 
-              <div className="rounded-lg p-4 bg-slate-800">
+<div className="rounded-lg p-4 bg-slate-800">
                 <button type="button" onClick={() => setShowOnline(!showOnline)} className="w-full flex justify-between items-center text-sm font-bold text-green-400">
-                  <span className="flex items-center"><RadioReceiver size={16} className="mr-3"/> 🟢 Active Connections (2)</span>
+                  <span className="flex items-center"><RadioReceiver size={16} className="mr-3"/> 🟢 Active Connections (1)</span>
                   <span className="bg-slate-900 px-2 py-2 rounded-full text-xs"></span>
                 </button>
                 {showOnline && (
                   <div className="mt-4 space-y-2 border-t border-slate-700 pt-4">
-                    <div onClick={() => inspectActiveUser("AIP System MGR")} className="text-xs bg-slate-900 p-2 rounded hover:bg-slate-950 border border-transparent hover:border-green-500 cursor-pointer transition-all">
-                      <span className="font-bold text-white block">AIP System MGR</span>
-                      <span className="text-slate-400">KMP HEADQUARTERS</span>
-                    </div>
-                    <div onClick={() => inspectActiveUser("Standard Officer")} className="text-xs bg-slate-900 p-2 rounded hover:bg-slate-950 border border-transparent hover:border-green-500 cursor-pointer transition-all flex items-center justify-between">
+                    {/* DYNAMICALLY RENDERS THE CURRENT USER */}
+                    <div onClick={() => inspectSystemUser(currentUser)} className="text-xs bg-slate-900 p-2 rounded hover:bg-slate-950 border border-transparent hover:border-green-500 cursor-pointer transition-all flex items-center justify-between">
                       <div>
-                        <span className="font-bold text-white block">Standard Officer</span>
-                        <span className="text-slate-400">KAWEMPE</span>
+                        <span className="font-bold text-white block">{currentUser.name} (You)</span>
+                        <span className="text-slate-400">{currentUser.station}</span>
                       </div>
-                      {connectionUserProfiles["Standard Officer"]?.profile_photo_path && (
-                        <img src={connectionUserProfiles["Standard Officer"].profile_photo_path} alt="" className="w-6 h-6 rounded-full border border-green-400 object-cover" onError={(e) => { e.target.style.display='none'; }} />
+                      {currentUser.profile_photo_path ? (
+                        <img src={currentUser.profile_photo_path} alt="" className="w-6 h-6 rounded-full border border-green-400 object-cover" onError={(e) => { e.target.style.display='none'; }} />
+                      ) : (
+                        <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center text-white font-bold">{currentUser.name.charAt(0)}</div>
                       )}
                     </div>
                   </div>
@@ -4155,29 +4173,32 @@ const App = () => {
     
     const controller = new AbortController();
     
-    const fetchData = async () => {
+const fetchData = async () => {
       const token = localStorage.getItem('kmp_authToken');
       if (!token) return;
 
       try {
-        const [resReports, resStats, resStories, resNom, resComms, resEst, resArchives] = await Promise.all([
+        // We added an 8th fetch here: /api/v1/users
+        const [resReports, resStats, resStories, resNom, resComms, resEst, resArchives, resUsers] = await Promise.all([
           authFetch("/api/v1/reports", { signal: controller.signal }),
           authFetch("/api/v1/stats", { signal: controller.signal }),
           authFetch("/api/v1/stories", { signal: controller.signal }),
           authFetch("/api/v1/nominal-roll", { signal: controller.signal }),
           authFetch("/api/v1/Admin_Communication", { signal: controller.signal }),
           authFetch("/api/v1/establishments", { signal: controller.signal }),
-          authFetch("/api/v1/nominal-roll-archive", { signal: controller.signal })
+          authFetch("/api/v1/nominal-roll-archive", { signal: controller.signal }),
+          authFetch("/api/v1/users", { signal: controller.signal }) // <-- NEW
         ]);
 
-        const [dataReports, dataStats, dataStories, dataNom, dataComms, dataEst, dataArchives] = await Promise.all([
+        const [dataReports, dataStats, dataStories, dataNom, dataComms, dataEst, dataArchives, dataUsers] = await Promise.all([
           resReports.ok ? resReports.json() : [],
           resStats.ok ? resStats.json() : [],
           resStories.ok ? resStories.json() : [],
           resNom.ok ? resNom.json() : [],
           resComms.ok ? resComms.json() : [],
           resEst.ok ? resEst.json() : [],
-          resArchives.ok ? resArchives.json() : []
+          resArchives.ok ? resArchives.json() : [],
+          resUsers.ok ? resUsers.json() : [] // <-- NEW
         ]);
 
         if (!controller.signal.aborted) {
@@ -4188,6 +4209,7 @@ const App = () => {
           setAdminCommsData(dataComms);
           setEstablishments(dataEst); 
           setNominal_Roll_archives(dataArchives);
+          setUsers(dataUsers); // <-- THIS POPULATES YOUR SYSTEM ROSTER!
         }
       } catch (err) {
         if (err.name !== 'AbortError') {

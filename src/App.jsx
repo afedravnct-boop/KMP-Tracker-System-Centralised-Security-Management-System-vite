@@ -3880,7 +3880,6 @@ const DashboardLayout = ({
 
   const inspectSystemUser = (user) => {
     setSelectedUserDetail({ ...user, isSystemUser: true });
-    
   };
 
 const handleExportLogs = async () => {

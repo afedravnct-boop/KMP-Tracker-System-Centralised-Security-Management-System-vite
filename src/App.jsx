@@ -3027,24 +3027,6 @@ const handleReviewRequest = async (reqId, actionStatus) => {
   }
 };
 
-const handleReviewRequest = async (reqId, actionStatus) => {
-    try {
-      const response = await authFetch(`/api/v1/requests/${reqId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: actionStatus })
-      });
-      
-      if (!response.ok) throw new Error("Failed to process request");
-      
-      // Remove it from the UI queue
-      setModRequests(modRequests.filter(r => r.id !== reqId));
-      alert(`Request ${actionStatus.toLowerCase()} successfully!`);
-    } catch (err) {
-      console.error(err);
-      alert("Error processing the modification request.");
-    }
-  };
 
 return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6 relative z-10 animate-in fade-in duration-300">

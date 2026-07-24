@@ -69,8 +69,13 @@ function usePersistentState(key, initialValue) {
 
 const downloadWithAuth = async (url, filename) => {
     try {
-      console.log("Starting secure download:", url);
-      const response = await authFetch(url);
+      const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+      const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+      
+      console.log("Starting secure download:", fullUrl);
+      const response = await fetch(fullUrl, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('kmp_authToken')}` }
+      });
       
       if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
@@ -86,20 +91,24 @@ const downloadWithAuth = async (url, filename) => {
 
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
+      link.style.display = 'none';
       link.href = downloadUrl;
       link.download = filename;
       
       document.body.appendChild(link);
       link.click();
       
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
+      // 🛡️ THE FIX: Wait 2 seconds before destroying the link so the browser can catch it!
+      setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(downloadUrl);
+      }, 2000);
       
     } catch (error) {
       console.error("Download Error:", error);
       alert(`Export Failed: ${error.message}`); 
     }
-  };
+};
 
 const MetricCard = ({ title, value, colorClass = "text-slate-800" }) => (
   <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-center items-center text-center transition-transform hover:scale-105">
@@ -266,12 +275,16 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
             {relevantComms.length === 0 ? (
               <div className="p-6 text-center text-xs font-bold text-slate-400 uppercase">No active directives at this time.</div>
             ) : (
-              <div className="divide-y divide-slate-200">
+<div className="divide-y divide-slate-200">
                 {relevantComms.map((comm) => (
-                  <div key={comm.id} className={`p-4 transition-colors hover:bg-slate-100 ${
-                    comm.message_type === 'CRITICAL_ALERT' ? 'border-l-4 border-l-red-500 bg-red-50/20' : 
-                    comm.message_type === 'ASSIGNMENT' ? 'border-l-4 border-l-yellow-500 bg-yellow-50/20' : 
-                    'border-l-4 border-l-blue-500 bg-blue-50/20'
+                  <div key={comm.id} className={`p-4 transition-all duration-500 ${
+                    comm.acknowledged 
+                      ? 'bg-gray-50 border-l-4 border-l-gray-300 opacity-70 grayscale-[30%]' // 🛡️ THE FIX: Dimmed and greyed out if read
+                      : `hover:bg-slate-100 ${ // Brightly highlighted if unread
+                          comm.message_type === 'CRITICAL_ALERT' ? 'border-l-4 border-l-red-500 bg-red-50/40' : 
+                          comm.message_type === 'ASSIGNMENT' ? 'border-l-4 border-l-yellow-500 bg-yellow-50/40' : 
+                          'border-l-4 border-l-blue-500 bg-blue-50/40'
+                        }`
                   }`}>
                     
                     {/* CLICKABLE HEADER TO EXPAND/COLLAPSE */}
@@ -3903,15 +3916,8 @@ const handleExportLogs = async () => {
 
       const logs = await response.json();
       
-      // EXACLY ALIGNED WITH NEON/SQLALCHEMY AUDIT_LOGS COLUMNS
       const headers = [
-        "ID", 
-        "Event Type", 
-        "Target User", 
-        "Status", 
-        "Details", 
-        "Created At", 
-        "User FNUM"
+        "ID", "Event Type", "Target User", "Status", "Details", "Created At", "User FNUM"
       ];
       
       const csvRows = logs.map(log => {
@@ -3931,11 +3937,17 @@ const handleExportLogs = async () => {
       const blob = new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
+      link.style.display = 'none';
       link.setAttribute("href", url);
       link.setAttribute("download", `KMP_Command_Audit_Logs_${new Date().toISOString().split('T')[0]}.csv`);
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      
+      // 🛡️ THE FIX: 2 Second Delay
+      setTimeout(() => {
+         document.body.removeChild(link);
+         window.URL.revokeObjectURL(url);
+      }, 2000);
       
     } catch (error) {
       console.error("Download failed:", error);
@@ -4432,7 +4444,8 @@ const fetchData = async () => {
     return () => controller.abort();
   }, [currentUser]); 
 
-  const handleMasterExport = async (scope, value) => {
+const handleMasterExport = async (scope, value) => {
+    const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
     let url = `${API_URL}/api/v1/reports/export?timeframe=all`; 
     if (scope && value) {
         url += `&scope=${scope}&value=${encodeURIComponent(value)}`;
@@ -4448,14 +4461,19 @@ const fetchData = async () => {
         const blob = await response.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
+        link.style.display = 'none';
         link.href = downloadUrl;
         
         link.download = `KMP_Master_Ledger_${value || "General"}_${new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}.zip`;
         
         document.body.appendChild(link);
         link.click();
-        link.remove();
-        window.URL.revokeObjectURL(downloadUrl);
+        
+        // 🛡️ THE FIX: 2 Second Delay
+        setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(downloadUrl);
+        }, 2000);
     } catch (err) {
         console.error("Export Error:", err);
         alert(err.message === "Clearance Denied" ? "Access Denied: You require Export Clearance." : "Failed to download export file.");

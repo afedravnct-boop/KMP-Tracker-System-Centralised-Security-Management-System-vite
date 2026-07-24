@@ -3973,7 +3973,7 @@ const handleExportLogs = async () => {
             ))}
           </nav>
 
-          {sidebarOpen && ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
+{sidebarOpen && ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
             <div className="px-4 space-y-3">
               <div className={`rounded-lg p-3 transition-colors ${currentPage === 'approvals' ? 'bg-slate-700 border border-slate-600' : 'bg-slate-800'}`}>
                 <div className="text-sm font-bold mb-2 flex items-center"><UserPlus size={16} className="mr-2"/> Access & Approvals</div>
@@ -3994,7 +3994,7 @@ const handleExportLogs = async () => {
                 )}
               </div>
 
-<div className="rounded-lg p-4 bg-slate-800">
+              <div className="rounded-lg p-4 bg-slate-800">
                 <button type="button" onClick={() => setShowOnline(!showOnline)} className="w-full flex justify-between items-center text-sm font-bold text-green-400">
                   <span className="flex items-center"><RadioReceiver size={16} className="mr-3"/> 🟢 Active Connections (1)</span>
                   <span className="bg-slate-900 px-2 py-2 rounded-full text-xs"></span>
@@ -4018,46 +4018,44 @@ const handleExportLogs = async () => {
               </div>
 
               <div className="rounded-lg p-3 bg-slate-800 border border-slate-700">
-  <button onClick={() => setShowAllUsers(!showAllUsers)} className="w-full flex justify-between items-center text-sm font-bold text-blue-400">
-     <span className="flex items-center"><Users size={16} className="mr-2"/> 👥 System Roster</span>
-     {/* This perfectly counts the exact number of approved users */}
-     <span className="bg-slate-900 px-2 py-0.5 rounded-full text-xs text-white border border-slate-600">{users?.length || 0}</span>
-  </button>
-  
-  {showAllUsers && (
-   <div className="mt-3 space-y-2 border-t border-slate-700 pt-3 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-      {users?.map(u => (
-         <div 
-           key={u.fnum} 
-           onClick={() => inspectSystemUser(u)} 
-           className="text-xs bg-slate-900 p-2 rounded hover:bg-slate-950 border border-transparent hover:border-blue-500 cursor-pointer transition-all flex items-center justify-between group"
-         >
-            <div className="flex items-center space-x-2">
-              
-              {/* THE FIX: Circular Profile Photo injected into the sidebar list */}
-              {u.profile_photo_path ? (
-                <img src={u.profile_photo_path} alt="" className="w-7 h-7 rounded-full object-cover border border-slate-600 group-hover:border-blue-400" onError={(e) => { e.target.style.display='none'; }} />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center font-bold text-[10px] border border-slate-600 group-hover:border-blue-400 group-hover:text-blue-300">
-                  {u.name?.charAt(0) || 'U'}
-                </div>
-              )}
-              
-              <div>
-                <span className="font-bold text-white block truncate w-28">{u.name}</span>
-                <span className="text-slate-400 font-mono text-[9px]">{u.fnum}</span>
-              </div>
-            </div>
+                <button onClick={() => setShowAllUsers(!showAllUsers)} className="w-full flex justify-between items-center text-sm font-bold text-blue-400">
+                  <span className="flex items-center"><Users size={16} className="mr-2"/> 👥 System Roster</span>
+                  <span className="bg-slate-900 px-2 py-0.5 rounded-full text-xs text-white border border-slate-600">{users?.length || 0}</span>
+                </button>
+                
+                {showAllUsers && (
+                 <div className="mt-3 space-y-2 border-t border-slate-700 pt-3 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                    {users?.map(u => (
+                       <div 
+                         key={u.fnum} 
+                         onClick={() => inspectSystemUser(u)} 
+                         className="text-xs bg-slate-900 p-2 rounded hover:bg-slate-950 border border-transparent hover:border-blue-500 cursor-pointer transition-all flex items-center justify-between group"
+                       >
+                          <div className="flex items-center space-x-2">
+                            {u.profile_photo_path ? (
+                              <img src={u.profile_photo_path} alt="" className="w-7 h-7 rounded-full object-cover border border-slate-600 group-hover:border-blue-400" onError={(e) => { e.target.style.display='none'; }} />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center font-bold text-[10px] border border-slate-600 group-hover:border-blue-400 group-hover:text-blue-300">
+                                {u.name?.charAt(0) || 'U'}
+                              </div>
+                            )}
+                            
+                            <div>
+                              <span className="font-bold text-white block truncate w-28">{u.name}</span>
+                              <span className="text-slate-400 font-mono text-[9px]">{u.fnum}</span>
+                            </div>
+                          </div>
 
-            <div className="text-[9px] px-1.5 py-0.5 bg-slate-800 rounded text-slate-300 font-bold uppercase border border-slate-700 group-hover:bg-blue-900 group-hover:text-blue-100 transition-colors">
-              {String(u.role || 'USER').replace('_ADMIN', '')}
-            </div>
-         </div>
-      ))}
-   </div>
-  )}
-</div>
-)}
+                          <div className="text-[9px] px-1.5 py-0.5 bg-slate-800 rounded text-slate-300 font-bold uppercase border border-slate-700 group-hover:bg-blue-900 group-hover:text-blue-100 transition-colors">
+                            {String(u.role || 'USER').replace('_ADMIN', '')}
+                          </div>
+                       </div>
+                    ))}
+                 </div>
+                )}
+              </div>
+            </div> 
+          )}
 
           {sidebarOpen && ['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) && (
             <div className="px-4 mt-4 space-y-3">

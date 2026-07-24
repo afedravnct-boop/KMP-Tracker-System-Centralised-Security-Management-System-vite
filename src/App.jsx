@@ -3843,12 +3843,16 @@ const DashboardLayout = ({
     { name: '⛓️‍💥 Success Stories', id: 'success', icon: <Trophy size={20} /> },
     { name: '🏢 Establishments', id: 'establishments', icon: <Building size={20} /> },
     { name: '👥 Nominal Roll', id: 'nominal-roll', icon: <Users size={20} /> },
-    { 
-      name: '📢 Admin Dispatch', 
-      id: 'Admin_Communication', 
-      icon: <Bell size={20} className={hasUnread ? 'animate-pulse text-yellow-400' : ''} /> 
-    },
   ];
+
+  // 🛡️ THE FIX: Only inject 'Admin Dispatch' into the sidebar if the user has Command Clearance!
+  if (['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
+     navItems.push({ 
+       name: '📢 Admin Dispatch', 
+       id: 'Admin_Communication', 
+       icon: <Bell size={20} className={hasUnread ? 'animate-pulse text-yellow-400' : ''} /> 
+     });
+  }
 
   const connectionUserProfiles = {
     "AIP System MGR": { fnum: 'A/2408', rank: 'AIP', ipps: '950010', position: 'System Manager', region: 'KMP HEADQUARTERS', station: 'KMP HEADQUARTERS', email: 'afedravnct@gmail.com', phone: '0779302872', profile_photo_path: '' },

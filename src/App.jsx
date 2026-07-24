@@ -3879,12 +3879,8 @@ const DashboardLayout = ({
   };
 
   const inspectSystemUser = (user) => {
-    // 1. Loads the full data into the modal
     setSelectedUserDetail({ ...user, isSystemUser: true });
     
-    // 2. Tells React to open the modal 
-    // (Replace setManageUserModalOpen with whatever state variable controls your modal visibility!)
-    setManageUserModalOpen(true); 
   };
 
 const handleExportLogs = async () => {

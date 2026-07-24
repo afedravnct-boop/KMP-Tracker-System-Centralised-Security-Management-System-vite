@@ -171,6 +171,9 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
   const [receiptsData, setReceiptsData] = useState([]);
   const [loadingReceipts, setLoadingReceipts] = useState(false);
 
+  // 🛡️ NEW: Track which message is currently expanded
+  const [expandedComm, setExpandedComm] = useState(null);
+
   const fetchReceipts = async (commId) => {
     setViewingReceiptsFor(commId);
     setLoadingReceipts(true);
@@ -265,43 +268,62 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
             ) : (
               <div className="divide-y divide-slate-200">
                 {relevantComms.map((comm) => (
-                  <div key={comm.id} className={`p-4 transition-colors hover:bg-white ${
-                    comm.message_type === 'CRITICAL_ALERT' ? 'border-l-4 border-l-red-500 bg-red-50/30' : 
-                    comm.message_type === 'ASSIGNMENT' ? 'border-l-4 border-l-yellow-500 bg-yellow-50/30' : 
-                    'border-l-4 border-l-blue-500 bg-blue-50/30'
+                  <div key={comm.id} className={`p-4 transition-colors hover:bg-slate-100 ${
+                    comm.message_type === 'CRITICAL_ALERT' ? 'border-l-4 border-l-red-500 bg-red-50/20' : 
+                    comm.message_type === 'ASSIGNMENT' ? 'border-l-4 border-l-yellow-500 bg-yellow-50/20' : 
+                    'border-l-4 border-l-blue-500 bg-blue-50/20'
                   }`}>
-                    <div className="flex justify-between items-start mb-1">
-                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-sm uppercase tracking-wider ${
-                        comm.message_type === 'CRITICAL_ALERT' ? 'bg-red-100 text-red-700' : 
-                        comm.message_type === 'ASSIGNMENT' ? 'bg-yellow-100 text-yellow-700' : 
-                        'bg-blue-100 text-blue-700'
-                      }`}>{comm.message_type.replace('_', ' ')}</span>
-                      <span className="text-[10px] font-bold text-slate-400">{comm.created_at}</span>
-                    </div>
-                    <h4 className="text-sm font-extrabold text-slate-800 leading-tight mb-2 mt-2">{comm.subject}</h4>
-                    <div className="text-xs text-slate-600 font-medium line-clamp-3 ql-editor p-0" dangerouslySetInnerHTML={{ __html: comm.message }} />
                     
-                    {/* NEW: ACKNOWLEDGMENT BLOCK */}
-                    <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between items-center">
-                        <div className="text-[9px] font-bold text-slate-400 uppercase">
-                          Dispatched by: {comm.sender_name}
-                          {isAdmin && (
-                              <button onClick={() => fetchReceipts(comm.id)} className="ml-3 text-blue-600 hover:text-blue-800 underline">
-                                  View Receipts
-                              </button>
-                          )}
+                    {/* CLICKABLE HEADER TO EXPAND/COLLAPSE */}
+                    <div 
+                      className="cursor-pointer" 
+                      onClick={() => setExpandedComm(expandedComm === comm.id ? null : comm.id)}
+                    >
+                        <div className="flex justify-between items-start mb-1">
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-sm uppercase tracking-wider ${
+                            comm.message_type === 'CRITICAL_ALERT' ? 'bg-red-100 text-red-700' : 
+                            comm.message_type === 'ASSIGNMENT' ? 'bg-yellow-100 text-yellow-700' : 
+                            'bg-blue-100 text-blue-700'
+                          }`}>{comm.message_type.replace('_', ' ')}</span>
+                          <span className="text-[10px] font-bold text-slate-400">{comm.created_at}</span>
                         </div>
-                        
-                        {comm.acknowledged ? (
-                            <span className="text-[10px] font-extrabold text-green-600 flex items-center bg-green-50 px-2 py-1 rounded">
-                               <CheckCircle size={12} className="mr-1"/> Acknowledged
-                            </span>
-                        ) : (
-                            <button onClick={() => onAcknowledgeComm(comm.id)} className="text-[10px] bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded font-bold shadow-sm transition flex items-center">
-                                Acknowledge Receipt
-                            </button>
-                        )}
+                        <div className="flex justify-between items-center mt-2">
+                           <h4 className="text-sm font-extrabold text-slate-800 leading-tight">{comm.subject}</h4>
+                           <span className={`text-[9px] font-bold px-2 py-1 rounded ml-2 whitespace-nowrap transition-colors ${
+                              expandedComm === comm.id ? 'bg-slate-200 text-slate-600' : 'bg-blue-100 text-blue-700'
+                           }`}>
+                              {expandedComm === comm.id ? 'Close' : 'Read Dispatch'}
+                           </span>
+                        </div>
                     </div>
+                    
+                    {/* ONLY RENDER MESSAGE AND BUTTON IF EXPANDED */}
+                    {expandedComm === comm.id && (
+                        <div className="mt-3 pt-3 border-t border-slate-200 animate-in fade-in slide-in-from-top-2">
+                            <div className="text-xs text-slate-600 font-medium ql-editor p-0" dangerouslySetInnerHTML={{ __html: comm.message }} />
+                            
+                            <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between items-center">
+                                <div className="text-[9px] font-bold text-slate-400 uppercase">
+                                  Dispatched by: {comm.sender_name}
+                                  {isAdmin && (
+                                      <button onClick={() => fetchReceipts(comm.id)} className="ml-3 text-blue-600 hover:text-blue-800 underline">
+                                          View Receipts
+                                      </button>
+                                  )}
+                                </div>
+                                
+                                {comm.acknowledged ? (
+                                    <span className="text-[10px] font-extrabold text-green-600 flex items-center bg-green-50 px-2 py-1 rounded border border-green-200">
+                                       <CheckCircle size={12} className="mr-1"/> Acknowledged
+                                    </span>
+                                ) : (
+                                    <button onClick={() => onAcknowledgeComm(comm.id)} className="text-[10px] bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded font-bold shadow-sm transition flex items-center">
+                                        Acknowledge Receipt
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                   </div>
                 ))}
               </div>

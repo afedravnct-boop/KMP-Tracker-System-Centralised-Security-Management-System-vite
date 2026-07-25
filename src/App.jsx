@@ -3209,7 +3209,8 @@ const AdminApprovals = ({ currentUser }) => {
         </div>
       )}
 
-{activeTab === 'logs' && (
+{/* activeTab set to 'logs' should strictly render AUDIT logs */}
+      {activeTab === 'logs' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-6xl mx-auto">
            <div className="bg-slate-900 px-4 py-3 border-b border-gray-200 flex items-center text-white font-semibold">
               <Activity className="w-5 h-5 mr-2 text-blue-400" /> Administrative Audit Trail
@@ -3228,11 +3229,10 @@ const AdminApprovals = ({ currentUser }) => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {loadingLogs ? (
                      <tr><td colSpan="5" className="p-8 text-center text-sm text-gray-500 font-bold animate-pulse">Decrypting server logs...</td></tr>
-                  ) : auditLogs.length === 0 ? (
+                  ) : audit_logs.length === 0 ? (
                     <tr><td colSpan="5" className="p-4 text-center text-sm text-gray-500">No recent security events logged in main database.</td></tr>
                   ) : (
-                    {/* We map auditLogs, NOT activityLogs */}
-                    auditLogs.map((log) => (
+                    audit_logs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-50">
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500 font-mono">
                           {log.created_at ? new Date(log.created_at).toLocaleString() : 'Unknown Time'}

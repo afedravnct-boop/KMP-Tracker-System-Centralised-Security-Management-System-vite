@@ -4283,7 +4283,9 @@ const handleExportLogs = async () => {
               {selectedUserDetail.isSystemUser && (
                 <>
                   <h4 className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center">
-                    <Shield size={14} className="mr-2 text-red-500"/> Component Admin Clearances
+                    <Shield size={14} className="mr-2 text-red-500"/> <h4 className="font-extrabold text-sm text-gray-900 border-b pb-2 flex items-center mb-4 mt-6">
+                    <Shield size={16} className="mr-2 text-red-600"/> 
+                    Component Admin Clearances
                   </h4>
                   <div className="space-y-3 bg-white p-4 rounded-lg border border-red-100 shadow-sm">
                     
@@ -4339,8 +4341,51 @@ const handleExportLogs = async () => {
                       </div>
                     </label>
 
+                    {/* NEW: Global Roster Visibility Toggle */}
+                    <label className="flex items-center space-x-3 cursor-pointer group">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+                        checked={Boolean(selectedUserDetail.permissions?.view_global_roster) || ['SUPER_ADMIN'].includes(selectedUserDetail.role) || ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(selectedUserDetail.region)}
+                        disabled={['SUPER_ADMIN'].includes(selectedUserDetail.role) || ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(selectedUserDetail.region)}
+                        onChange={(e) => {
+                          const newPerms = { ...(selectedUserDetail.permissions || {}), view_global_roster: e.target.checked };
+                          setSelectedUserDetail({ ...selectedUserDetail, permissions: newPerms });
+                          onUpdateUserRole(selectedUserDetail.fnum, selectedUserDetail.role, newPerms);
+                        }}
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-slate-800 group-hover:text-orange-700 transition-colors">Global Roster Visibility</div>
+                        <div className="text-[10px] text-slate-500 font-medium">Allows viewing personnel from ALL regions in the System Roster.</div>
+                      </div>
+                    </label>
+
                   </div>
                 </>
+              )}
+            </div>
+
+            {/* RESTORED: Exit and Revoke Buttons at the very bottom of the modal */}
+            <div className="bg-slate-100 p-4 border-t border-gray-200 flex justify-between items-center rounded-b-xl">
+              <button 
+                onClick={() => setSelectedUserDetail(null)} 
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold text-xs py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center border border-gray-300"
+              >
+                <X size={14} className="mr-1"/> Close Profile
+              </button>
+              
+              {selectedUserDetail.isSystemUser && (
+                <button 
+                  onClick={() => {
+                     if (window.confirm(`Are you absolutely sure you want to revoke all system access for ${selectedUserDetail.name}?`)) {
+                        onRevokeUser(selectedUserDetail.fnum);
+                        setSelectedUserDetail(null);
+                     }
+                  }} 
+                  className="text-xs font-bold text-red-600 hover:text-white hover:bg-red-600 py-2 px-4 rounded-lg transition-colors border border-red-200 shadow-sm"
+                >
+                  Revoke Access
+                </button>
               )}
             </div>
 

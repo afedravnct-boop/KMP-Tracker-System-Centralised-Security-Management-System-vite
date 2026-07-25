@@ -3220,30 +3220,13 @@ const AdminApprovals = ({ currentUser }) => {
         </div>
       )}
 
-{/* activeTab set to 'logs' should strictly render AUDIT logs */}
-      {activeTab === 'logs' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-6xl mx-auto">
-           <div className="bg-slate-900 px-4 py-3 border-b border-gray-200 flex items-center text-white font-semibold">
-              <Activity className="w-5 h-5 mr-2 text-blue-400" /> Administrative Audit Trail
-           </div>
-           <div className="overflow-x-auto">
-             <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date & Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Officer (FNUM)</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Target</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Details</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+<tbody className="bg-white divide-y divide-gray-200">
                   {loadingLogs ? (
                      <tr><td colSpan="5" className="p-8 text-center text-sm text-gray-500 font-bold animate-pulse">Decrypting server logs...</td></tr>
-                  ) : audit_logs.length === 0 ? (
+                  ) : activityLogs.length === 0 ? (
                     <tr><td colSpan="5" className="p-4 text-center text-sm text-gray-500">No recent security events logged in main database.</td></tr>
                   ) : (
-                    audit_logs.map((log) => (
+                    activityLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-50">
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500 font-mono">
                           {log.created_at ? new Date(log.created_at).toLocaleString() : 'Unknown Time'}
@@ -3264,10 +3247,6 @@ const AdminApprovals = ({ currentUser }) => {
                     ))
                   )}
                 </tbody>
-              </table>
-            </div>
-        </div>
-      )}
 
       {activeTab === 'resets' && (
         <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden max-w-6xl mx-auto">
@@ -3745,15 +3724,31 @@ const handleSignupSubmit = async (e) => {
         setPassword('');
         setAuthMessage("Network error. Could not connect to the server.");
       }
-    } else if (mode === 'forgot') {
-      onForgot(fnum);
-      setMode('login');
-      setfnum('');
-      setAuthMessage("Account recovery requested. The Admin has been notified.");
-      setTimeout(() => setAuthMessage(null), 5000);
+} else if (mode === 'forgot') {
+      try {
+        const formData = new URLSearchParams();
+        formData.append('fnum', fnum.trim());
+
+        const response = await fetch(`${API_URL}/api/v1/auth/request-reset`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setMode('login');
+          setfnum('');
+          setAuthMessage("✅ " + (data.message || "Account recovery requested. The Admin has been notified."));
+        } else {
+          setAuthMessage(`❌ ${data.detail || "Failed to submit request."}`);
+        }
+      } catch (err) {
+        setAuthMessage("❌ Network error. Could not connect to the server.");
+      }
     }
   };
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 relative">
       <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden relative z-10">

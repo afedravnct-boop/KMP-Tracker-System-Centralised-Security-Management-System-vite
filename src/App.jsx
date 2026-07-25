@@ -4282,8 +4282,7 @@ const handleExportLogs = async () => {
               {/* 3. ACCESS CONTROLS (Only visible if managing a system user) */}
               {selectedUserDetail.isSystemUser && (
                 <>
-                  <h4 className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center">
-                    <Shield size={14} className="mr-2 text-red-500"/> <h4 className="font-extrabold text-sm text-gray-900 border-b pb-2 flex items-center mb-4 mt-6">
+<h4 className="font-extrabold text-sm text-gray-900 border-b pb-2 flex items-center mb-4 mt-6">
                     <Shield size={16} className="mr-2 text-red-600"/> 
                     Component Admin Clearances
                   </h4>
@@ -4341,7 +4340,6 @@ const handleExportLogs = async () => {
                       </div>
                     </label>
 
-                    {/* NEW: Global Roster Visibility Toggle */}
                     <label className="flex items-center space-x-3 cursor-pointer group">
                       <input 
                         type="checkbox" 
@@ -4365,8 +4363,7 @@ const handleExportLogs = async () => {
               )}
             </div>
 
-            {/* RESTORED: Exit and Revoke Buttons at the very bottom of the modal */}
-            <div className="bg-slate-100 p-4 border-t border-gray-200 flex justify-between items-center rounded-b-xl">
+            <div className="bg-slate-100 p-4 border-t border-gray-200 flex justify-between items-center rounded-b-xl shrink-0">
               <button 
                 onClick={() => setSelectedUserDetail(null)} 
                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold text-xs py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center border border-gray-300"
@@ -4388,30 +4385,10 @@ const handleExportLogs = async () => {
                 </button>
               )}
             </div>
-
-            <div className="bg-slate-100 p-4 border-t border-gray-200 flex justify-between items-center">
-              {selectedUserDetail.isSystemUser ? (
-                <button 
-                  onClick={() => onRevokeUser(selectedUserDetail.fnum)} 
-                  className="text-xs font-bold text-red-600 hover:text-red-800 transition-colors"
-                >
-                  Revoke All Access
-                </button>
-              ) : (
-                <div></div> // Empty div to keep the Save button aligned right
-              )}
-              <button 
-                onClick={() => setSelectedUserDetail(null)} 
-                className="bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs py-2 px-6 rounded-lg shadow-sm transition-colors"
-              >
-                Save & Close
-              </button>
-            </div>
             
           </div>
         </div>
       )}
-
     </div>
   );
 };  

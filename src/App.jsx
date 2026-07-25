@@ -3111,6 +3111,10 @@ return (
         <button onClick={() => setActiveTab('approvals')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'approvals' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
           New Account Authorizations ({loadingPending ? '...' : realPendingUsers.length})
         </button>
+        <button onClick={() => setActiveTab('resets')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'resets' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          Password Resets ({activeTab === 'resets' ? resetRequests.length : '?'})
+        </button>
+      </div>
         <button onClick={() => setActiveTab('requests')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'requests' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
           HR Modification Requests ({activeTab === 'requests' ? modRequests.length : '?'})
         </button>
@@ -4083,7 +4087,7 @@ const handleExportLogs = async () => {
             ))}
           </nav>
 
-{sidebarOpen && ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
+{sidebarOpen && ['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) && (
             <div className="px-4 space-y-3">
               <div className={`rounded-lg p-3 transition-colors ${currentPage === 'approvals' ? 'bg-slate-700 border border-slate-600' : 'bg-slate-800'}`}>
                 <div className="text-sm font-bold mb-2 flex items-center"><UserPlus size={16} className="mr-2"/> Access & Approvals</div>
@@ -4596,7 +4600,7 @@ const handleMasterExport = async (scope, value) => {
       case 'success': return <SuccessStories currentUser={currentUser} stories={stories} setStories={setStories} />;
       case 'establishments': return <Establishments currentUser={currentUser} establishments={establishments} setEstablishments={setEstablishments} />;
       case 'nominal-roll': return <Nominal_Roll currentUser={currentUser} Nominal_Rolls={Nominal_Rolls} setNominal_Rolls={setNominal_Rolls} Nominal_Roll_archives={Nominal_Roll_archives} setNominal_Roll_archives={setNominal_Roll_archives} />; 
-      case 'approvals': return ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? <AdminApprovals pendingUsers={pendingUsers} setPendingUsers={setPendingUsers} users={users} setUsers={setUsers} currentUser={currentUser} /> : <HomeDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} onMasterExport={handleMasterExport} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm} />;
+      case 'approvals': return ['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) ? <AdminApprovals pendingUsers={pendingUsers} setPendingUsers={setPendingUsers} users={users} setUsers={setUsers} currentUser={currentUser} /> : <HomeDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} onMasterExport={handleMasterExport} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm} />;
       case 'profile': return <AdminProfile currentUser={currentUser} setCurrentUser={setCurrentUser} />;
       case 'Admin_Communication': return ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? <Admin_Communication currentUser={currentUser} users={users} /> : <HomeDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} onMasterExport={handleMasterExport} onViewConsolidated={handleViewConsolidated} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm}/>;
       default: return <HomeDashboard currentUser={currentUser} setCurrentPage={setCurrentPage} onMasterExport={handleMasterExport} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm} />;

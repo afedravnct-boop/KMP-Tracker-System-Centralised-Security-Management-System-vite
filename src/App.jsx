@@ -1528,7 +1528,6 @@ const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) =>
   const [filterStation, setFilterStation] = useState('ALL STATIONS');
   const [notification, setNotification] = useState(null);
   const [updateSearch, setUpdateSearch] = useState('');
-  // ADDED: Missing state for the date filter dropdown
   const [dateFilter, setDateFilter] = useState('ALL TIME');
 
   const safeStories = Array.isArray(stories) ? stories : [];
@@ -1551,13 +1550,40 @@ const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) =>
     photo_url: ''
   });
 
+  // Fully integrated date filtering matching the Crime Registry pattern
   const filteredStories = useMemo(() => {
     return stories.filter(s => {
       if (filterRegion !== 'ALL REGIONS' && s.region !== filterRegion) return false;
       if (filterStation !== 'ALL STATIONS' && s.station !== filterStation) return false;
+
+      if (dateFilter === 'TODAY') {
+        const todayStr = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+        if (s.date !== todayStr) return false;
+      } else if (dateFilter === 'LAST 7 DAYS') {
+        const repDate = new Date(s.date);
+        const today = new Date();
+        const diffDays = Math.ceil(Math.abs(today - repDate) / (1000 * 60 * 60 * 24));
+        if (diffDays > 7) return false;
+      } else if (dateFilter === 'LAST 30 DAYS') {
+        const repDate = new Date(s.date);
+        const today = new Date();
+        const diffDays = Math.ceil(Math.abs(today - repDate) / (1000 * 60 * 60 * 24));
+        if (diffDays > 30) return false;
+      } else if (dateFilter === 'LAST 90 DAYS') {
+        const repDate = new Date(s.date);
+        const today = new Date();
+        const diffDays = Math.ceil(Math.abs(today - repDate) / (1000 * 60 * 60 * 24));
+        if (diffDays > 90) return false;
+      } else if (dateFilter === 'LAST 120 DAYS') {
+        const repDate = new Date(s.date);
+        const today = new Date();
+        const diffDays = Math.ceil(Math.abs(today - repDate) / (1000 * 60 * 60 * 24));
+        if (diffDays > 120) return false;
+      }
+
       return true;
     });
-  }, [stories, filterRegion, filterStation]);
+  }, [stories, filterRegion, filterStation, dateFilter]);
 
   const availableUpdateStories = useMemo(() => {
     return stories.filter(s => {
@@ -1699,12 +1725,13 @@ const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) =>
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-6 relative z-10">
+    <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-6 relative z-10">
       <div className="text-center mb-8 flex flex-col items-center">
         <img src="/upf_badge.png" alt="UPF Logo" className="w-16 h-16 mb-3 object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
-        <h1 className="text-3xl font-extrabold text-gray-700 tracking-tight">Operational Success Stories</h1>
-        <h3 className="text-lg text-amber-500 mt-2 font-medium">Highlighting UPF Anti-Crime Milestones</h3>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-700 tracking-tight">Operational Success Stories</h1>
+        <h3 className="text-sm sm:text-lg text-amber-500 mt-2 font-medium">Highlighting UPF Anti-Crime Milestones</h3>
       </div>
+      
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -1713,27 +1740,14 @@ const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) =>
                 <button type="button" onClick={() => handleOperationToggle('new')} className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${operation === 'new' ? 'bg-white shadow text-yellow-600' : 'text-gray-600 hover:text-gray-900'}`}>
                   <PlusCircle className="w-4 h-4 inline mr-1" /> Register New
                 </button>
-                <button type="button" onClick={() => handleOperationToggle('update')} className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${operation === 'update' ? 'bg-green shadow text-white-600' : 'text-gray-600 hover:text-gray-900'}`}>
+                <button type="button" onClick={() => handleOperationToggle('update')} className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${operation === 'update' ? 'bg-green shadow text-white' : 'text-gray-600 hover:text-gray-900'}`}>
                   <Edit className="w-4 h-4 inline mr-1" /> Update Existing
                 </button>
-
-                <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-slate-200 shadow-sm relative">
-                  <div className="absolute top-4 right-4 z-10">
-                    <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="border-2 border-blue-500 text-blue-700 font-bold rounded-lg px-3 py-1 text-xs shadow-sm bg-white outline-none">
-                      <option value="ALL TIME">ALL TIME</option>
-                      <option value="TODAY">TODAY ONLY</option>
-                      <option value="LAST 7 DAYS">LAST 7 DAYS</option>
-                      <option value="LAST 30 DAYS">LAST 30 DAYS</option>
-                      <option value="LAST 90 DAYS">LAST 90 DAYS</option>
-                      <option value="LAST 120 DAYS">LAST 120 DAYS</option>
-                    </select>
-                  </div>
-                </div>
               </div>
 
               {notification && (
                 <div className={`border px-4 py-3 rounded-lg flex items-center mb-4 ${notification.includes('Error') ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
-                  {notification.includes('Error') ? <AlertTriangle className="w-5 h-5 mr-2 text-red-500" /> : <CheckCircle className="w-5 h-5 mr-2 text-green-500" />}
+                  {notification.includes('Error') ? <AlertTriangle className="w-5 h-5 mr-2 text-red-500 shrink-0" /> : <CheckCircle className="w-5 h-5 mr-2 text-green-500 shrink-0" />}
                   <span className="text-sm font-medium">{notification}</span>
                 </div>
               )}
@@ -1763,7 +1777,7 @@ const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) =>
                    </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">Select Region *</label>
                     <select name="region" value={formData.region} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-gray-50 border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
@@ -1782,7 +1796,7 @@ const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) =>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">Date Accomplished</label>
                     <input type="date" name="date" value={formData.date} onChange={handleInputChange} disabled={operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm border p-2 disabled:bg-gray-100 disabled:text-gray-500" />
@@ -1861,9 +1875,11 @@ const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) =>
             </div>
           </div>
         </div>
+
         <div className="lg:col-span-7 space-y-4">
+          {/* Responsive filter row mirroring the Crime Registry setup */}
           <div className="flex flex-col sm:flex-row gap-3">
-             <select value={filterRegion} onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); }} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)} className="border rounded-lg px-3 py-2 text-sm shadow-sm bg-white">
+             <select value={filterRegion} onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); }} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)} className="border rounded-lg px-3 py-2 text-sm shadow-sm bg-white w-full sm:w-auto">
                 {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && <option value="ALL REGIONS">ALL REGIONS</option>}
                 {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? (
                   Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)
@@ -1871,9 +1887,19 @@ const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) =>
                   <option value={currentUser.region}>{currentUser.region}</option>
                 )}
               </select>
-              <select value={filterStation} onChange={(e) => setFilterStation(e.target.value)} className="border rounded-lg px-3 py-2 text-sm shadow-sm bg-white">
+              <select value={filterStation} onChange={(e) => setFilterStation(e.target.value)} className="border rounded-lg px-3 py-2 text-sm shadow-sm bg-white w-full sm:w-auto">
                 <option value="ALL STATIONS">ALL STATIONS</option>
-                {filterRegion !== 'ALL REGIONS' && REGIONAL_HIERARCHY[filterRegion].map(stat => <option key={stat} value={stat}>{stat}</option>)}
+                {filterRegion !== 'ALL REGIONS' && REGIONAL_HIERARCHY[filterRegion]?.map(stat => <option key={stat} value={stat}>{stat}</option>)}
+              </select>
+              
+              {/* Visible, functional Date Filter Dropdown */}
+              <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="border-2 border-blue-500 text-blue-700 font-bold rounded-lg px-3 py-2 text-sm shadow-sm bg-white outline-none w-full sm:w-auto">
+                <option value="ALL TIME">ALL TIME</option>
+                <option value="TODAY">TODAY ONLY</option>
+                <option value="LAST 7 DAYS">LAST 7 DAYS</option>
+                <option value="LAST 30 DAYS">LAST 30 DAYS</option>
+                <option value="LAST 90 DAYS">LAST 90 DAYS</option>
+                <option value="LAST 120 DAYS">LAST 120 DAYS</option>
               </select>
           </div>
           
@@ -3382,7 +3408,8 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
     setNotification("Saving profile details...");
 
     try {
-      const response = await authFetch("/api/v1/auth/me", {
+      // 🟢 REMOVED /v1 TO MATCH YOUR LOGIN ROUTE PERFECTLY!
+      const response = await authFetch("/api/auth/me", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)

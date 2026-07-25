@@ -2230,9 +2230,9 @@ const handleFormSubmit = async (e) => {
                       value={formData.comment || ''} 
                       onChange={(content) => setFormData({ ...formData, comment: autoCapitalize(content) })}
                       className="bg-white rounded-md"
-                      modules={{
+                         ['bold', 'italic', 'underline'],
+                       modules={{
                         toolbar: [
-                          ['bold', 'italic', 'underline'],
                           [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                           ['clean']
                         ]
@@ -2240,7 +2240,6 @@ const handleFormSubmit = async (e) => {
                     />
                   </div>
                 </div>
-
                 <button 
   type="submit" 
   disabled={isSubmitting}
@@ -3458,7 +3457,7 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
             </div>
           )}
 
-{isEditing ? (
+          {isEditing ? (
             <div className="space-y-6">
               
               <div className={`p-6 rounded-xl border transition-colors duration-300 ${canAutoApprove ? 'bg-blue-50 border-blue-200' : isRequestMode ? 'bg-yellow-50 border-yellow-300' : 'bg-slate-100 border-slate-200'}`}>

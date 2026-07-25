@@ -2985,7 +2985,7 @@ const AdminApprovals = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState('approvals');
   const [modRequests, setModRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
-  const [activityLogs, setActivityLogs] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   
   const [realPendingUsers, setRealPendingUsers] = useState([]);
@@ -2997,50 +2997,17 @@ const AdminApprovals = ({ currentUser }) => {
   const isRPC = currentUser && currentUser.role === 'RPC';
   const isSystemAdmin = currentUser && ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
 
-  useEffect(() => {
-    if (activeTab === 'approvals') {
-      setLoadingPending(true);
-      authFetch("/api/v1/admin/pending-users")
-        .then(res => res.json())
-        .then(data => { setRealPendingUsers(Array.isArray(data) ? data : []); setLoadingPending(false); })
-        .catch(err => { console.error(err); setLoadingPending(false); });
-    } else if (activeTab === 'requests') {
-      setLoadingRequests(true);
-      authFetch("/api/v1/requests")
-        .then(res => res.json())
-        .then(data => { 
-            const filteredData = Array.isArray(data) ? data.filter(req => {
-                if (isSystemAdmin) return true;
-                if (isRPC) return req.requested_region === currentUser.region;
-                return false;
-            }) : [];
-            setModRequests(filteredData); 
-            setLoadingRequests(false); 
-        })
-        .catch(err => { console.error(err); setLoadingRequests(false); });
-    } else if (activeTab === 'logs') {
+} else if (activeTab === 'logs') {
       setLoadingLogs(true);
       authFetch("/api/v1/audit-logs")
         .then(res => res.json())
         .then(data => { 
-            setActivityLogs(Array.isArray(data) ? data : []); 
+            // Changed setActivityLogs to setAuditLogs here!
+            setAuditLogs(Array.isArray(data) ? data : []); 
             setLoadingLogs(false); 
         })
         .catch(err => { console.error(err); setLoadingLogs(false); });
-    } else if (activeTab === 'resets') {
-      setLoadingResets(true);
-      authFetch("/api/v1/admin/reset-requests")
-        .then(res => res.json())
-        .then(data => { setResetRequests(Array.isArray(data) ? data : []); setLoadingResets(false); })
-        .catch(err => { console.error(err); setLoadingResets(false); });
     }
-  }, [activeTab, currentUser, isRPC, isSystemAdmin]);
-
-  const handleApproveUser = async (fnum) => {
-    try {
-      const response = await authFetch(`/api/v1/admin/approve-user/${encodeURIComponent(fnum)}`, {
-        method: "PATCH"
-      });
 
       if (!response.ok) {
         const errData = await response.json();

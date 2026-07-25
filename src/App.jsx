@@ -3194,10 +3194,10 @@ const AdminApprovals = ({ currentUser }) => {
 <tbody className="bg-white divide-y divide-gray-200">
                   {loadingLogs ? (
                      <tr><td colSpan="5" className="p-8 text-center text-sm text-gray-500 font-bold animate-pulse">Decrypting server logs...</td></tr>
-                  ) : activityLogs.length === 0 ? (
+                  ) : auditLogs.length === 0 ? (
                     <tr><td colSpan="5" className="p-4 text-center text-sm text-gray-500">No recent security events logged in main database.</td></tr>
                   ) : (
-                    activityLogs.map((log) => (
+                    auditLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-50">
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500 font-mono">
                           {log.created_at ? new Date(log.created_at).toLocaleString() : 'Unknown Time'}

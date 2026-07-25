@@ -869,11 +869,13 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+<div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">Select Region *</label>
-                    <select name="region" value={formData.region} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-gray-50 border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
-                      {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? (
+                    <select name="region" value={formData.region} onChange={handleInputChange} disabled={currentUser.role !== 'SUPER_ADMIN' || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-gray-50 border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
+                      {operation === 'update' ? (
+                        <option value={formData.region}>{formData.region}</option>
+                      ) : currentUser.role === 'SUPER_ADMIN' ? (
                         Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)
                       ) : (
                         <option value={currentUser.region}>{currentUser.region}</option>
@@ -883,7 +885,9 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">Station *</label>
                     <select name="station" value={formData.station} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-gray-50 border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
-                      {['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) ? (
+                      {operation === 'update' ? (
+                        <option value={formData.station}>{formData.station}</option>
+                      ) : ['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) ? (
                         (REGIONAL_HIERARCHY[formData.region] || []).map(stat => <option key={stat} value={stat}>{stat}</option>)
                       ) : (
                         <option value={currentUser.station}>{currentUser.station}</option>
@@ -3306,6 +3310,9 @@ const AdminApprovals = ({ currentUser }) => {
 // ====================================================================
 // --- PROFILE UPDATE SYSTEM (COMMAND WORKFLOW ENABLED FOR ALL USERS) ---
 // ====================================================================
+// ====================================================================
+// --- PROFILE UPDATE SYSTEM (COMMAND WORKFLOW ENABLED FOR ALL USERS) ---
+// ====================================================================
 const AdminProfile = ({ currentUser, setCurrentUser }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isRequestMode, setIsRequestMode] = useState(false);
@@ -3328,7 +3335,38 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-const handleRequestSubmit = async (e) => {
+  // ✅ NEW S3 UPLOAD LOGIC FOR EXISTING USERS
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setNotification("⏳ Uploading new profile photo to secure S3 bucket...");
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      uploadData.append("fnum", currentUser.fnum);
+      uploadData.append("category", "user_profile");
+
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+        const response = await fetch(`${API_URL}/api/v1/users/upload-profile`, {
+          method: "POST",
+          body: uploadData,
+        });
+
+        if (!response.ok) throw new Error("Upload failed on server.");
+
+        const data = await response.json();
+        const s3Url = data.full_s3_url || data.cloud_storage_path;
+
+        setFormData(prev => ({ ...prev, profile_photo_path: s3Url }));
+        setNotification("✅ Photo uploaded to S3 successfully! Don't forget to save changes.");
+      } catch (error) {
+        console.error("Upload error:", error);
+        setNotification("❌ S3 upload error. Please try again.");
+      }
+    }
+  };
+
+  const handleRequestSubmit = async (e) => {
     if (e) e.preventDefault();
     setNotification("⏳ Sending official request to Command...");
 
@@ -3345,7 +3383,6 @@ const handleRequestSubmit = async (e) => {
         })
       });
 
-      // 🛡️ Extracts the exact rejection reason from Python
       if (!response.ok) {
          const errData = await response.json().catch(() => ({}));
          throw new Error(errData.detail || "Failed to send request.");
@@ -3366,7 +3403,6 @@ const handleRequestSubmit = async (e) => {
 
     } catch (err) {
       console.error(err);
-      // Displays the "already pending" message to the user!
       setNotification(`❌ Error: ${err.message}`);
     }
   };
@@ -3422,11 +3458,19 @@ const handleRequestSubmit = async (e) => {
           <div className="flex items-center z-10">
             <div className="relative group">
               {formData.profile_photo_path ? (
-                <img src={formData.profile_photo_path} alt="" className="w-24 h-24 rounded-full object-cover shadow-2xl border-4 border-slate-700 bg-white" onError={(e) => { e.target.style.display='none'; }} />
+                <img src={formData.profile_photo_path} alt="" className={`w-24 h-24 rounded-full object-cover shadow-2xl border-4 border-slate-700 bg-white ${isEditing ? 'opacity-80' : ''}`} onError={(e) => { e.target.style.display='none'; }} />
               ) : (
                 <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white font-extrabold text-4xl shadow-2xl border-4 border-slate-700">
                   {currentUser.name?.charAt(0) || 'A'}
                 </div>
+              )}
+              
+              {/* ✅ ADDED CAMERA BUTTON OVERLAY WHEN EDITING */}
+              {isEditing && (
+                <label className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-full cursor-pointer shadow-lg border-2 border-slate-800 transition-colors transform hover:scale-110">
+                  <Camera size={16} />
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                </label>
               )}
             </div>
             <div className="ml-6 text-white">
@@ -3502,7 +3546,7 @@ const handleRequestSubmit = async (e) => {
 
               <form onSubmit={handleProfileSave} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                 <div className="flex items-center text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
-                  <Edit size={14} className="mr-2" /> Editable Contact Data
+                  <Edit size={14} className="mr-2" /> Editable Contact Data & Photo
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -3516,7 +3560,7 @@ const handleRequestSubmit = async (e) => {
                 </div>
                 <div className="flex justify-end pt-4 mt-2 border-t border-gray-100">
                   <button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-colors flex items-center text-sm">
-                    💾 Save Contact Details
+                    💾 Save All Profile Changes
                   </button>
                 </div>
               </form>

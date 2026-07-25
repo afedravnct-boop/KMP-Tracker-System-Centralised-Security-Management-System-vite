@@ -276,55 +276,58 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
               <div className="p-6 text-center text-xs font-bold text-slate-400 uppercase">No active directives at this time.</div>
             ) : (
 <div className="divide-y divide-slate-200">
-                {relevantComms.map((comm) => (
+{relevantComms.map((comm) => (
                   <div key={comm.id} className={`p-4 transition-all duration-500 ${
                     comm.acknowledged 
-                      ? 'bg-gray-50 border-l-4 border-l-gray-300 opacity-70 grayscale-[30%]' // 🛡️ THE FIX: Dimmed and greyed out if read
-                      : `hover:bg-slate-100 ${ // Brightly highlighted if unread
+                      ? 'bg-gray-50 border-l-4 border-l-gray-300 opacity-70 grayscale-[30%]' 
+                      : `hover:bg-slate-100 ${ 
                           comm.message_type === 'CRITICAL_ALERT' ? 'border-l-4 border-l-red-500 bg-red-50/40' : 
                           comm.message_type === 'ASSIGNMENT' ? 'border-l-4 border-l-yellow-500 bg-yellow-50/40' : 
                           'border-l-4 border-l-blue-500 bg-blue-50/40'
                         }`
                   }`}>
                     
-                    {/* CLICKABLE HEADER TO EXPAND/COLLAPSE */}
-                    <div 
-                      className="cursor-pointer" 
-                      onClick={() => setExpandedComm(expandedComm === comm.id ? null : comm.id)}
-                    >
+                    <div className="cursor-pointer" onClick={() => setExpandedComm(expandedComm === comm.id ? null : comm.id)}>
                         <div className="flex justify-between items-start mb-1">
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-sm uppercase tracking-wider ${
-                            comm.message_type === 'CRITICAL_ALERT' ? 'bg-red-100 text-red-700' : 
-                            comm.message_type === 'ASSIGNMENT' ? 'bg-yellow-100 text-yellow-700' : 
-                            'bg-blue-100 text-blue-700'
-                          }`}>{comm.message_type.replace('_', ' ')}</span>
+                          <div className="flex items-center space-x-2">
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-sm uppercase tracking-wider ${
+                              comm.message_type === 'CRITICAL_ALERT' ? 'bg-red-100 text-red-700' : 
+                              comm.message_type === 'ASSIGNMENT' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
+                            }`}>{comm.message_type.replace('_', ' ')}</span>
+                            
+                            {/* NEW: Explicit READ Notification Badge */}
+                            {comm.acknowledged && (
+                              <span className="text-[9px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 flex items-center">
+                                <CheckCircle size={10} className="mr-1"/> READ
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] font-bold text-slate-400">{comm.created_at}</span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
-                           <h4 className="text-sm font-extrabold text-slate-800 leading-tight">{comm.subject}</h4>
+                           {/* NEW: Conditional Un-Bolding and Strikethrough Line for Read Messages */}
+                           <h4 className={`text-sm leading-tight ${
+                             comm.acknowledged 
+                               ? 'font-medium text-slate-500 line-through decoration-slate-400' 
+                               : 'font-extrabold text-slate-900'
+                           }`}>
+                             {comm.subject}
+                           </h4>
                            <span className={`text-[9px] font-bold px-2 py-1 rounded ml-2 whitespace-nowrap transition-colors ${
                               expandedComm === comm.id ? 'bg-slate-200 text-slate-600' : 'bg-blue-100 text-blue-700'
-                           }`}>
-                              {expandedComm === comm.id ? 'Close' : 'Read Dispatch'}
-                           </span>
+                           }`}>{expandedComm === comm.id ? 'Close' : 'Read Dispatch'}</span>
                         </div>
                     </div>
                     
-                    {/* ONLY RENDER MESSAGE AND BUTTON IF EXPANDED */}
                     {expandedComm === comm.id && (
                         <div className="mt-3 pt-3 border-t border-slate-200 animate-in fade-in slide-in-from-top-2">
-                            <div className="text-xs text-slate-600 font-medium ql-editor p-0" dangerouslySetInnerHTML={{ __html: comm.message }} />
+                            <div className={`text-xs font-medium ql-editor p-0 ${comm.acknowledged ? 'text-slate-500' : 'text-slate-700'}`} dangerouslySetInnerHTML={{ __html: comm.message }} />
                             
                             <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between items-center">
                                 <div className="text-[9px] font-bold text-slate-400 uppercase">
                                   Dispatched by: {comm.sender_name}
-                                  {isAdmin && (
-                                      <button onClick={() => fetchReceipts(comm.id)} className="ml-3 text-blue-600 hover:text-blue-800 underline">
-                                          View Receipts
-                                      </button>
-                                  )}
+                                  {isAdmin && <button onClick={() => fetchReceipts(comm.id)} className="ml-3 text-blue-600 hover:text-blue-800 underline">View Receipts</button>}
                                 </div>
-                                
                                 {comm.acknowledged ? (
                                     <span className="text-[10px] font-extrabold text-green-600 flex items-center bg-green-50 px-2 py-1 rounded border border-green-200">
                                        <CheckCircle size={12} className="mr-1"/> Acknowledged
@@ -339,9 +342,6 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
                     )}
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
 
           {isAdmin && (
              <div className="bg-white p-1 border-t border-slate-200 shrink-0">

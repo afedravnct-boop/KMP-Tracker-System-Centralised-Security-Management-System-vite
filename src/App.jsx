@@ -3209,38 +3209,44 @@ const AdminApprovals = ({ currentUser }) => {
         </div>
       )}
 
-      {activeTab === 'logs' && (
+{activeTab === 'logs' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-6xl mx-auto">
            <div className="bg-slate-900 px-4 py-3 border-b border-gray-200 flex items-center text-white font-semibold">
-              <Activity className="w-5 h-5 mr-2 text-blue-400" /> System Events Ledger
+              <Activity className="w-5 h-5 mr-2 text-blue-400" /> Administrative Audit Trail
            </div>
            <div className="overflow-x-auto">
              <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date & Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Officer (FNUM)</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Target User</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status/Details</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Target</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Details</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {loadingLogs ? (
-                     <tr><td colSpan="4" className="p-8 text-center text-sm text-gray-500 font-bold animate-pulse">Decrypting server logs...</td></tr>
-                  ) : activityLogs.length === 0 ? (
-                    <tr><td colSpan="4" className="p-4 text-center text-sm text-gray-500">No recent security events logged.</td></tr>
+                     <tr><td colSpan="5" className="p-8 text-center text-sm text-gray-500 font-bold animate-pulse">Decrypting server logs...</td></tr>
+                  ) : auditLogs.length === 0 ? (
+                    <tr><td colSpan="5" className="p-4 text-center text-sm text-gray-500">No recent security events logged in main database.</td></tr>
                   ) : (
-                    activityLogs.map((log) => (
+                    {/* We map auditLogs, NOT activityLogs */}
+                    auditLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-50">
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500 font-mono">
                           {log.created_at ? new Date(log.created_at).toLocaleString() : 'Unknown Time'}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-slate-700">{log.event_type}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600">{log.user_fnum || log.target_user}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-extrabold text-blue-700">
+                          {log.user_fnum}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                          <span className="font-extrabold text-slate-800 uppercase text-xs">{log.event_type}</span>
+                        </td>
+                         <td className="px-4 py-3 text-sm text-gray-600 font-medium">
+                          {log.target_user || 'N/A'}
+                        </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          <span className={`mr-2 px-2 py-0.5 inline-flex text-[10px] leading-5 font-bold rounded-full ${log.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {log.status}
-                          </span> 
                           {log.details}
                         </td>
                       </tr>

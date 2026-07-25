@@ -869,18 +869,28 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Select Region *</label>
-                    <select name="region" value={formData.region} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-gray-50 border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
-                      {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? (
-                        Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)
-                      ) : (
-                        <option value={currentUser.region}>{currentUser.region}</option>
-                      )}
-                    </select>
-                  </div>
-                  <div>
+<div className="grid grid-cols-2 gap-4">
+  <div>
+    <label className="block text-xs font-bold text-gray-700 mb-1">Select Region *</label>
+    <select name="region" value={formData.region} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-gray-50 border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
+      {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? (
+        Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)
+      ) : (
+        <option value={currentUser.region}>{currentUser.region}</option>
+      )}
+    </select>
+  </div>
+  <div>
+    <label className="block text-xs font-bold text-gray-700 mb-1">Station *</label>
+    <select name="station" value={formData.station} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-gray-50 border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
+      {['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) ? (
+        (REGIONAL_HIERARCHY[formData.region] || []).map(stat => <option key={stat} value={stat}>{stat}</option>)
+      ) : (
+        <option value={currentUser.station}>{currentUser.station}</option>
+      )}
+    </select>
+  </div>
+</div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">Station *</label>
                     <select name="station" value={formData.station} onChange={handleInputChange} disabled={operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-gray-50 border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
                       {(REGIONAL_HIERARCHY[formData.region] || []).map(stat => <option key={stat} value={stat}>{stat}</option>)}
@@ -2137,26 +2147,29 @@ const handleFormSubmit = async (e) => {
                 )}
                 
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <label className="block text-xs font-bold text-gray-700 mb-1">Select Region *</label>
-                      <select name="region" value={formData.region} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-white border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
-                        {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? (
-                          Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)
-                        ) : (
-                          <option value={currentUser.region}>{currentUser.region}</option>
-                        )}
-                      </select>
-                    </div>
-                    
-                    <div className="col-span-2">
-                      <label className="block text-xs font-bold text-gray-700 mb-1">DIVISION (Headquarter) *</label>
-                      <select name="division" value={formData.division} onChange={handleInputChange} disabled={operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-white border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
-                        {formData.region && REGIONAL_HIERARCHY[formData.region] ? REGIONAL_HIERARCHY[formData.region].map(stat => <option key={stat} value={stat}>{stat}</option>) : <option value="">Select Region First</option>}
-                      </select>
-                    </div>
-                  </div>
-                </div>
+<div className="grid grid-cols-2 gap-4">
+  <div className="col-span-2">
+    <label className="block text-xs font-bold text-gray-700 mb-1">Select Region *</label>
+    <select name="region" value={formData.region} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-white border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
+      {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? (
+        Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)
+      ) : (
+        <option value={currentUser.region}>{currentUser.region}</option>
+      )}
+    </select>
+  </div>
+  
+  <div className="col-span-2">
+    <label className="block text-xs font-bold text-gray-700 mb-1">DIVISION (Headquarter) *</label>
+    <select name="division" value={formData.division} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-white border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
+      {['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) ? (
+        formData.region && REGIONAL_HIERARCHY[formData.region] ? REGIONAL_HIERARCHY[formData.region].map(stat => <option key={stat} value={stat}>{stat}</option>) : <option value="">Select Region First</option>
+      ) : (
+        <option value={currentUser.station || currentUser.division}>{currentUser.station || currentUser.division}</option>
+      )}
+    </select>
+  </div>
+</div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
@@ -2730,36 +2743,40 @@ const filteredNominal_Roll_archives = useMemo(() => {
 
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
                   <h4 className="text-xs font-bold text-gray-500 uppercase border-b pb-1">2. Service & Placement</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-700 mb-1">REGION *</label>
-                      <select name="region" value={formData.region} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)} required className="w-full text-sm border-gray-300 rounded shadow-sm border p-2 bg-white">
-                        {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>) : <option value={currentUser.region}>{currentUser.region}</option>}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-700 mb-1">DUTY STATION *</label>
-                      <select name="station" value={formData.station} onChange={handleInputChange} required className="w-full text-sm border-gray-300 rounded shadow-sm border p-2 bg-white">
-                        {REGIONAL_HIERARCHY[formData.region].map(stat => <option key={stat} value={stat}>{stat}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-700 mb-1">POSITION *</label>
-                      <input type="text" name="position" value={formData.position} onChange={handleInputChange} required className="w-full text-sm border-gray-300 rounded shadow-sm border p-2" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-700 mb-1">DISTRICT</label>
-                      <input type="text" name="district" value={formData.district} onChange={handleInputChange} className="w-full text-sm border-gray-300 rounded shadow-sm border p-2" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-700 mb-1">SECTION</label>
-                      <input type="text" name="section" value={formData.section} onChange={handleInputChange} className="w-full text-sm border-gray-300 rounded shadow-sm border p-2" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-700 mb-1">DIR (Directorate)</label>
-                      <input type="text" name="dir" value={formData.dir} onChange={handleInputChange} className="w-full text-sm border-gray-300 rounded shadow-sm border p-2" />
-                    </div>
-                  </div>
+<div className="grid grid-cols-2 gap-3">
+  <div>
+    <label className="block text-[10px] font-bold text-gray-700 mb-1">REGION *</label>
+    <select name="region" value={formData.region} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)} required className="w-full text-sm border-gray-300 rounded shadow-sm border p-2 bg-white disabled:bg-gray-100 disabled:text-gray-500">
+      {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>) : <option value={currentUser.region}>{currentUser.region}</option>}
+    </select>
+  </div>
+  <div>
+    <label className="block text-[10px] font-bold text-gray-700 mb-1">DUTY STATION *</label>
+    <select name="station" value={formData.station} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role)} required className="w-full text-sm border-gray-300 rounded shadow-sm border p-2 bg-white disabled:bg-gray-100 disabled:text-gray-500">
+      {['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) ? (
+        (REGIONAL_HIERARCHY[formData.region] || []).map(stat => <option key={stat} value={stat}>{stat}</option>)
+      ) : (
+        <option value={currentUser.station}>{currentUser.station}</option>
+      )}
+    </select>
+  </div>
+  <div>
+    <label className="block text-[10px] font-bold text-gray-700 mb-1">POSITION *</label>
+    <input type="text" name="position" value={formData.position} onChange={handleInputChange} required className="w-full text-sm border-gray-300 rounded shadow-sm border p-2" />
+  </div>
+  <div>
+    <label className="block text-[10px] font-bold text-gray-700 mb-1">DISTRICT</label>
+    <input type="text" name="district" value={formData.district} onChange={handleInputChange} className="w-full text-sm border-gray-300 rounded shadow-sm border p-2" />
+  </div>
+  <div>
+    <label className="block text-[10px] font-bold text-gray-700 mb-1">SECTION</label>
+    <input type="text" name="section" value={formData.section} onChange={handleInputChange} className="w-full text-sm border-gray-300 rounded shadow-sm border p-2" />
+  </div>
+  <div>
+    <label className="block text-[10px] font-bold text-gray-700 mb-1">DIR (Directorate)</label>
+    <input type="text" name="dir" value={formData.dir} onChange={handleInputChange} className="w-full text-sm border-gray-300 rounded shadow-sm border p-2" />
+  </div>
+</div>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">

@@ -175,12 +175,9 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
   const hasSubmittedThisWeek = false; 
   const showComplianceWarning = isEndOfWeek && !hasSubmittedThisWeek && !isAdmin;
 
-  // New State for Admin Receipts Modal
   const [viewingReceiptsFor, setViewingReceiptsFor] = useState(null);
   const [receiptsData, setReceiptsData] = useState([]);
   const [loadingReceipts, setLoadingReceipts] = useState(false);
-
-  // 🛡️ NEW: Track which message is currently expanded
   const [expandedComm, setExpandedComm] = useState(null);
 
   const fetchReceipts = async (commId) => {
@@ -192,20 +189,12 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
       const res = await fetch(`${API_URL}/api/v1/communications/${commId}/readers`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if(res.ok) {
-        const data = await res.json();
-        setReceiptsData(data);
-      }
-    } catch(e) {
-      console.error(e);
-    } finally {
-      setLoadingReceipts(false);
-    }
+      if(res.ok) setReceiptsData(await res.json());
+    } catch(e) { console.error(e); } finally { setLoadingReceipts(false); }
   };
 
   const relevantComms = (commsData || []).filter(c => {
-    if (c.target_audience === 'ALL_USERS') return true;
-    if (c.target_audience === 'ALL') return true; // Account for legacy code
+    if (c.target_audience === 'ALL_USERS' || c.target_audience === 'ALL') return true;
     if (c.target_audience === 'ADMINS_ONLY' && isAdmin) return true;
     if (c.target_audience === 'RPC_ONLY' && isRPC) return true;
     if (c.target_audience === 'SPECIFIC_REGION' && c.target_region === currentUser.region) return true;
@@ -214,8 +203,6 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8 relative z-10 animate-in fade-in duration-300">
-      
-      {/* Receipts Modal for Admins */}
       {viewingReceiptsFor && (
         <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-300">
@@ -225,17 +212,14 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
                 </div>
                 <div className="p-4 max-h-[60vh] overflow-y-auto custom-scrollbar bg-slate-50">
                    {loadingReceipts ? (
-                      <p className="text-xs text-center text-gray-500 font-bold animate-pulse py-4">Fetching secure ledgers...</p>
+                      <p className="text-xs text-center text-gray-500 font-bold animate-pulse py-4">Fetching ledgers...</p>
                    ) : receiptsData.length === 0 ? (
                       <p className="text-xs text-center text-gray-500 font-medium py-4">No officers have acknowledged this dispatch yet.</p>
                    ) : (
                        <div className="space-y-2">
                           {receiptsData.map((r, i) => (
-                             <div key={i} className="flex justify-between items-center text-xs p-3 bg-white rounded border border-green-100 shadow-sm">
-                                <div>
-                                    <span className="font-extrabold text-slate-800 block">{r.name}</span>
-                                    <span className="font-mono text-[9px] text-gray-400">{r.fnum}</span>
-                                </div>
+                             <div key={i} className="flex justify-between items-center text-xs p-3 bg-white rounded shadow-sm">
+                                <div><span className="font-extrabold text-slate-800 block">{r.name}</span><span className="font-mono text-[9px] text-gray-400">{r.fnum}</span></div>
                                 <span className="text-[10px] text-green-600 font-bold bg-green-50 px-2 py-1 rounded">Read: {r.read_at}</span>
                              </div>
                           ))}
@@ -266,6 +250,12 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
       </div>
 
       <div className="w-full">
+        <h3 className="text-center text-sm font-bold text-slate-600 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+           Welcome, <span className="text-blue-700">{currentUser.rank} {currentUser.name}</span>. Select an operational module.
+        </h3>   
+      </div>
+
+      <div className="w-full">
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
           <div className="bg-slate-900 text-white px-4 py-3 flex justify-between items-center shrink-0">
             <h3 className="font-bold text-sm flex items-center tracking-wider"><Bell size={16} className="mr-2 text-yellow-400 animate-pulse"/> Administrative Communication</h3>
@@ -273,10 +263,10 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
           
           <div className="p-0 overflow-y-auto max-h-[350px] custom-scrollbar bg-slate-50 flex-1">
             {relevantComms.length === 0 ? (
-              <div className="p-6 text-center text-xs font-bold text-slate-400 uppercase">No active directives at this time.</div>
+              <div className="p-6 text-center text-xs font-bold text-slate-400 uppercase">No active directives.</div>
             ) : (
-<div className="divide-y divide-slate-200">
-{relevantComms.map((comm) => (
+              <div className="divide-y divide-slate-200">
+                {relevantComms.map((comm) => (
                   <div key={comm.id} className={`p-4 transition-all duration-500 ${
                     comm.acknowledged 
                       ? 'bg-gray-50 border-l-4 border-l-gray-300 opacity-70 grayscale-[30%]' 
@@ -295,7 +285,6 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
                               comm.message_type === 'ASSIGNMENT' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'
                             }`}>{comm.message_type.replace('_', ' ')}</span>
                             
-                            {/* NEW: Explicit READ Notification Badge */}
                             {comm.acknowledged && (
                               <span className="text-[9px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 flex items-center">
                                 <CheckCircle size={10} className="mr-1"/> READ
@@ -305,7 +294,6 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
                           <span className="text-[10px] font-bold text-slate-400">{comm.created_at}</span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
-                           {/* NEW: Conditional Un-Bolding and Strikethrough Line for Read Messages */}
                            <h4 className={`text-sm leading-tight ${
                              comm.acknowledged 
                                ? 'font-medium text-slate-500 line-through decoration-slate-400' 
@@ -342,7 +330,9 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
                     )}
                   </div>
                 ))}
-
+              </div>
+            )}
+          </div>
           {isAdmin && (
              <div className="bg-white p-1 border-t border-slate-200 shrink-0">
                <button onClick={() => setCurrentPage('Admin_Communication')} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 rounded-lg transition-colors flex items-center justify-center">

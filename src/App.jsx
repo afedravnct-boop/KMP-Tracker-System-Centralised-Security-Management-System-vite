@@ -2982,33 +2982,15 @@ const AdminApprovals = ({ currentUser }) => {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [activityLogs, setActivityLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
-  const [resetRequests, setResetRequests] = useState([]);
-  const [loadingResets, setLoadingResets] = useState(false);
   
   const [realPendingUsers, setRealPendingUsers] = useState([]);
   const [loadingPending, setLoadingPending] = useState(false);
 
+  const [resetRequests, setResetRequests] = useState([]);
+  const [loadingResets, setLoadingResets] = useState(false);
+
   const isRPC = currentUser && currentUser.role === 'RPC';
   const isSystemAdmin = currentUser && ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
-
-const handleReviewRequest = async (reqId, actionStatus) => {
-    try {
-      const response = await authFetch(`/api/v1/requests/${reqId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: actionStatus })
-      });
-      
-      if (!response.ok) throw new Error("Failed to process request");
-      
-      // Remove it from the UI queue
-      setModRequests(modRequests.filter(r => r.id !== reqId));
-      alert(`Request ${actionStatus.toLowerCase()} successfully!`);
-    } catch (err) {
-      console.error(err);
-      alert("Error processing the modification request.");
-    }
-  };
 
   useEffect(() => {
     if (activeTab === 'approvals') {
@@ -3031,7 +3013,6 @@ const handleReviewRequest = async (reqId, actionStatus) => {
             setLoadingRequests(false); 
         })
         .catch(err => { console.error(err); setLoadingRequests(false); });
-
     } else if (activeTab === 'logs') {
       setLoadingLogs(true);
       authFetch("/api/v1/audit-logs")
@@ -3041,8 +3022,6 @@ const handleReviewRequest = async (reqId, actionStatus) => {
             setLoadingLogs(false); 
         })
         .catch(err => { console.error(err); setLoadingLogs(false); });
-    }
-
     } else if (activeTab === 'resets') {
       setLoadingResets(true);
       authFetch("/api/v1/admin/reset-requests")
@@ -3050,28 +3029,44 @@ const handleReviewRequest = async (reqId, actionStatus) => {
         .then(data => { setResetRequests(Array.isArray(data) ? data : []); setLoadingResets(false); })
         .catch(err => { console.error(err); setLoadingResets(false); });
     }
-
-   }, [activeTab, currentUser, isRPC, isSystemAdmin]);  
+  }, [activeTab, currentUser, isRPC, isSystemAdmin]);
 
   const handleApproveUser = async (fnum) => {
-  try {
-    const response = await authFetch(`/api/v1/admin/approve-user/${encodeURIComponent(fnum)}`, {
-      method: "PATCH"
-    });
+    try {
+      const response = await authFetch(`/api/v1/admin/approve-user/${encodeURIComponent(fnum)}`, {
+        method: "PATCH"
+      });
 
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.detail || "Failed to approve user.");
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.detail || "Failed to approve user.");
+      }
+
+      setRealPendingUsers(realPendingUsers.filter(u => u.fnum !== fnum));
+      alert(`Officer ${fnum} successfully authorized!`);
+    } catch (err) {
+      console.error(err);
+      alert(`Authorization Failed: ${err.message}`);
     }
+  };
 
-    setRealPendingUsers(realPendingUsers.filter(u => u.fnum !== fnum));
-    alert(`Officer ${fnum} successfully authorized!`);
-    
-  } catch (err) {
-    console.error(err);
-    alert(`Authorization Failed: ${err.message}`);
-  }
-};
+  const handleReviewRequest = async (reqId, actionStatus) => {
+    try {
+      const response = await authFetch(`/api/v1/requests/${reqId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: actionStatus })
+      });
+      
+      if (!response.ok) throw new Error("Failed to process request");
+      
+      setModRequests(modRequests.filter(r => r.id !== reqId));
+      alert(`Request ${actionStatus.toLowerCase()} successfully!`);
+    } catch (err) {
+      console.error(err);
+      alert("Error processing the modification request.");
+    }
+  };
 
   const handleResetAction = async (reqId, actionStr) => {
     try {
@@ -3099,7 +3094,7 @@ const handleReviewRequest = async (reqId, actionStatus) => {
     }
   };
 
-return (
+  return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6 relative z-10 animate-in fade-in duration-300">
       <div className="text-center mb-8 flex flex-col items-center">
         <img src="/upf_badge.png" alt="UPF Logo" className="w-16 h-16 mb-3 object-contain" />
@@ -3121,27 +3116,13 @@ return (
           Password Resets ({activeTab === 'resets' ? resetRequests.length : '?'})
         </button>
       </div>
-        <button onClick={() => setActiveTab('requests')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'requests' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-          HR Modification Requests ({activeTab === 'requests' ? modRequests.length : '?'})
-        </button>
-        <button onClick={() => setActiveTab('logs')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'logs' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-          Audit Logs
-        </button>
-        <button onClick={() => setActiveTab('resets')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'resets' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-          Password Resets ({activeTab === 'resets' ? resetRequests.length : '?'})
-        </button> 
-      </div>
 
       {activeTab === 'approvals' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-6xl mx-auto">
           {loadingPending ? (
-            <div className="p-8 text-center text-gray-500 font-medium animate-pulse">
-              Syncing with Command Database...
-            </div>
+            <div className="p-8 text-center text-gray-500 font-medium animate-pulse">Syncing with Command Database...</div>
           ) : realPendingUsers.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 font-medium">
-              No active unapproved access requests pending in queue.
-            </div>
+            <div className="p-8 text-center text-gray-500 font-medium">No active unapproved access requests pending in queue.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -3237,7 +3218,50 @@ return (
           )}
         </div>
       )}
-      
+
+      {activeTab === 'logs' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-6xl mx-auto">
+           <div className="bg-slate-900 px-4 py-3 border-b border-gray-200 flex items-center text-white font-semibold">
+              <Activity className="w-5 h-5 mr-2 text-blue-400" /> System Events Ledger
+           </div>
+           <div className="overflow-x-auto">
+             <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date & Time</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Target User</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status/Details</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {loadingLogs ? (
+                     <tr><td colSpan="4" className="p-8 text-center text-sm text-gray-500 font-bold animate-pulse">Decrypting server logs...</td></tr>
+                  ) : activityLogs.length === 0 ? (
+                    <tr><td colSpan="4" className="p-4 text-center text-sm text-gray-500">No recent security events logged.</td></tr>
+                  ) : (
+                    activityLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500 font-mono">
+                          {log.created_at ? new Date(log.created_at).toLocaleString() : 'Unknown Time'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-slate-700">{log.event_type}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600">{log.user_fnum || log.target_user}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <span className={`mr-2 px-2 py-0.5 inline-flex text-[10px] leading-5 font-bold rounded-full ${log.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            {log.status}
+                          </span> 
+                          {log.details}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+        </div>
+      )}
+
       {activeTab === 'resets' && (
         <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden max-w-6xl mx-auto">
           <div className="bg-slate-900 px-4 py-3 border-b border-gray-200 flex items-center text-white font-semibold">
@@ -3289,48 +3313,6 @@ return (
         </div>
       )}
 
-      {activeTab === 'logs' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-6xl mx-auto">
-           <div className="bg-slate-900 px-4 py-3 border-b border-gray-200 flex items-center text-white font-semibold">
-              <Activity className="w-5 h-5 mr-2 text-blue-400" /> System Events Ledger
-           </div>
-           <div className="overflow-x-auto">
-             <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date & Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Target User</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status/Details</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {loadingLogs ? (
-                     <tr><td colSpan="4" className="p-8 text-center text-sm text-gray-500 font-bold animate-pulse">Decrypting server logs...</td></tr>
-                  ) : activityLogs.length === 0 ? (
-                    <tr><td colSpan="4" className="p-4 text-center text-sm text-gray-500">No recent security events logged.</td></tr>
-                  ) : (
-                    activityLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500 font-mono">
-                          {log.created_at ? new Date(log.created_at).toLocaleString() : 'Unknown Time'}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-slate-700">{log.event_type}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600">{log.user_fnum || log.target_user}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          <span className={`mr-2 px-2 py-0.5 inline-flex text-[10px] leading-5 font-bold rounded-full ${log.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {log.status}
-                          </span> 
-                          {log.details}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-        </div>
-      )}
     </div>
   );
 };

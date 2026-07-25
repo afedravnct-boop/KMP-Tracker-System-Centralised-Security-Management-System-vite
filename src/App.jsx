@@ -2985,7 +2985,7 @@ const AdminApprovals = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState('approvals');
   const [modRequests, setModRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
-  const [auditLogs, setAuditLogs] = useState([]);
+  const [audit_logs, setaudit_logs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   
   const [realPendingUsers, setRealPendingUsers] = useState([]);
@@ -3002,8 +3002,8 @@ const AdminApprovals = ({ currentUser }) => {
       authFetch("/api/v1/audit-logs")
         .then(res => res.json())
         .then(data => { 
-            // Changed setActivityLogs to setAuditLogs here!
-            setAuditLogs(Array.isArray(data) ? data : []); 
+            // Changed setActivityLogs to setaudit_logs here!
+            setaudit_logs(Array.isArray(data) ? data : []); 
             setLoadingLogs(false); 
         })
         .catch(err => { console.error(err); setLoadingLogs(false); });
@@ -3194,10 +3194,10 @@ const AdminApprovals = ({ currentUser }) => {
 <tbody className="bg-white divide-y divide-gray-200">
                   {loadingLogs ? (
                      <tr><td colSpan="5" className="p-8 text-center text-sm text-gray-500 font-bold animate-pulse">Decrypting server logs...</td></tr>
-                  ) : auditLogs.length === 0 ? (
+                  ) : audit_logs.length === 0 ? (
                     <tr><td colSpan="5" className="p-4 text-center text-sm text-gray-500">No recent security events logged in main database.</td></tr>
                   ) : (
-                    auditLogs.map((log) => (
+                    audit_logs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-50">
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500 font-mono">
                           {log.created_at ? new Date(log.created_at).toLocaleString() : 'Unknown Time'}

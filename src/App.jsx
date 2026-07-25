@@ -4216,11 +4216,12 @@ const handleExportLogs = async () => {
       </main>
 
       {/* USER ACCESS MANAGEMENT MODAL */}
-      {selectedUserDetail && (
+{selectedUserDetail && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
+          
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-y-auto max-h-[95vh] custom-scrollbar flex flex-col">
             
-            <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
+            <div className="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0">
               <h3 className="font-bold flex items-center text-sm">
                 <Shield size={18} className="text-blue-400 mr-2" /> 
                 ACCESS CLEARANCE MATRIX
@@ -4229,7 +4230,6 @@ const handleExportLogs = async () => {
                 <X size={20} />
               </button>
             </div>
-
 <div className="p-6">
               {/* 1. Header & Photo */}
               <div className="flex items-center space-x-4 mb-6 pb-4 border-b border-gray-100">

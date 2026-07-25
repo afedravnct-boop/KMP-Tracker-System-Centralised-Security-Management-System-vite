@@ -2982,6 +2982,8 @@ const AdminApprovals = ({ currentUser }) => {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [activityLogs, setActivityLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [resetRequests, setResetRequests] = useState([]);
+  const [loadingResets, setLoadingResets] = useState(false);
   
   const [realPendingUsers, setRealPendingUsers] = useState([]);
   const [loadingPending, setLoadingPending] = useState(false);
@@ -3040,7 +3042,16 @@ const handleReviewRequest = async (reqId, actionStatus) => {
         })
         .catch(err => { console.error(err); setLoadingLogs(false); });
     }
-  }, [activeTab, currentUser, isRPC, isSystemAdmin]);
+
+    } else if (activeTab === 'resets') {
+      setLoadingResets(true);
+      authFetch("/api/v1/admin/reset-requests")
+        .then(res => res.json())
+        .then(data => { setResetRequests(Array.isArray(data) ? data : []); setLoadingResets(false); })
+        .catch(err => { console.error(err); setLoadingResets(false); });
+    }
+
+   }, [activeTab, currentUser, isRPC, isSystemAdmin]);  
 
   const handleApproveUser = async (fnum) => {
   try {
@@ -3062,6 +3073,31 @@ const handleReviewRequest = async (reqId, actionStatus) => {
   }
 };
 
+  const handleResetAction = async (reqId, actionStr) => {
+    try {
+      const formData = new URLSearchParams();
+      formData.append('action', actionStr);
+      
+      const response = await authFetch(`/api/v1/admin/execute-reset/${reqId}`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail);
+      
+      setResetRequests(resetRequests.filter(r => r.id !== reqId));
+      
+      if (actionStr === "APPROVE") {
+         alert(`Password successfully reset! Give the officer this temporary key: ${data.new_password}`);
+      } else {
+         alert("Request rejected.");
+      }
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
 
 return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6 relative z-10 animate-in fade-in duration-300">
@@ -3081,6 +3117,9 @@ return (
         <button onClick={() => setActiveTab('logs')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'logs' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
           Audit Logs
         </button>
+        <button onClick={() => setActiveTab('resets')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'resets' ? 'border-red-600 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          Password Resets ({activeTab === 'resets' ? resetRequests.length : '?'})
+        </button> 
       </div>
 
       {activeTab === 'approvals' && (
@@ -3176,6 +3215,57 @@ return (
                             <CheckCircle size={14} className="mr-1" /> Approve
                           </button>
                           <button onClick={() => handleReviewRequest(req.id, "REJECTED")} className="bg-red-100 hover:bg-red-200 text-red-700 border border-red-300 font-bold py-1.5 px-3 rounded text-xs transition flex items-center shadow-sm">
+                            <X size={14} className="mr-1" /> Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {activeTab === 'resets' && (
+        <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden max-w-6xl mx-auto">
+          <div className="bg-slate-900 px-4 py-3 border-b border-gray-200 flex items-center text-white font-semibold">
+            <Lock className="w-5 h-5 mr-2 text-red-400" /> Authorized Password Recovery
+          </div>
+          {loadingResets ? (
+            <div className="p-8 text-center text-gray-500 font-medium animate-pulse">Scanning jurisdiction for requests...</div>
+          ) : resetRequests.length === 0 ? (
+            <div className="p-8 text-center text-gray-500 font-medium">No pending password reset requests in your command.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date Requested</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Officer Details</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Station / Division</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Command Action</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {resetRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-red-50/50">
+                      <td className="px-4 py-3 whitespace-nowrap text-xs font-bold text-gray-500">{req.request_date}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm font-extrabold text-blue-700">{req.name}</div>
+                        <div className="text-xs font-bold text-slate-500">{req.fnum} | {req.rank}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                        <div className="font-bold">{req.station}</div>
+                        <div className="text-xs text-gray-500">{req.region}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                        <div className="flex space-x-2">
+                          <button onClick={() => handleResetAction(req.id, "APPROVE")} className="bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 px-3 rounded text-xs transition flex items-center shadow-sm">
+                            <Unlock size={14} className="mr-1" /> Authorize Reset
+                          </button>
+                          <button onClick={() => handleResetAction(req.id, "REJECT")} className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 font-bold py-1.5 px-3 rounded text-xs transition flex items-center shadow-sm">
                             <X size={14} className="mr-1" /> Reject
                           </button>
                         </div>

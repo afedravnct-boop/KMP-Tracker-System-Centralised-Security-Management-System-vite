@@ -835,7 +835,6 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
                    </div>
                 )}
                 
-                <div className="grid grid-cols-2 gap-4">
 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="block text-xs font-bold text-gray-700 mb-1">File Reference Prefix & Number *</label>
@@ -890,17 +889,6 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
                         <option value={currentUser.station}>{currentUser.station}</option>
                       )}
                     </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Date Recorded</label>
-                    <input type="date" name="date" value={formData.date} onChange={handleInputChange} disabled={operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm border p-2 disabled:bg-gray-100 disabled:text-gray-500" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Time of Record</label>
-                    <input type="text" name="time" value={formData.time} onChange={handleInputChange} disabled={operation === 'update'} placeholder="0830Hrs" className="w-full text-sm border-gray-300 rounded-md shadow-sm border p-2 disabled:bg-gray-100 disabled:text-gray-500" />
                   </div>
                 </div>
 

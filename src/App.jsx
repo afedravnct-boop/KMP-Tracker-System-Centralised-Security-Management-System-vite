@@ -3277,9 +3277,6 @@ const AdminApprovals = ({ currentUser }) => {
 // ====================================================================
 // --- PROFILE UPDATE SYSTEM (COMMAND WORKFLOW ENABLED FOR ALL USERS) ---
 // ====================================================================
-// ====================================================================
-// --- PROFILE UPDATE SYSTEM (COMMAND WORKFLOW ENABLED FOR ALL USERS) ---
-// ====================================================================
 const AdminProfile = ({ currentUser, setCurrentUser }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isRequestMode, setIsRequestMode] = useState(false);
@@ -3302,7 +3299,6 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ✅ NEW S3 UPLOAD LOGIC FOR EXISTING USERS
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -3416,7 +3412,7 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
      } else {
          handleRequestSubmit(e);
      }
-  }
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6 mt-10 relative z-10 animate-in fade-in duration-300">
@@ -3432,7 +3428,6 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
                 </div>
               )}
               
-              {/* ✅ ADDED CAMERA BUTTON OVERLAY WHEN EDITING */}
               {isEditing && (
                 <label className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-full cursor-pointer shadow-lg border-2 border-slate-800 transition-colors transform hover:scale-110">
                   <Camera size={16} />
@@ -3511,7 +3506,7 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
                 </div>
               </div>
 
-              <form onSubmit={handleProfileSave} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+              <form onSubmit={handleProfileSave} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
                 <div className="flex items-center text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
                   <Edit size={14} className="mr-2" /> Editable Contact Data & Photo
                 </div>
@@ -3531,6 +3526,7 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
                   </button>
                 </div>
               </form>
+
             </div>
           ) : (
              <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">

@@ -163,7 +163,7 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
   );
 };
 
-const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewConsolidated, Admin_Communication: commsData, onAcknowledgeComm }) => {
+const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewConsolidated, Admin_Communication, onAcknowledgeComm }) => {
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isRPC = ['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role);
   
@@ -4630,52 +4630,46 @@ const App = () => {
     checkClearance();
   }, [setCurrentUser]);
 
-useEffect(() => {
-    if (!currentUser) return;
+// 🟢 BULLETPROOF FETCH ENGINE
+  // Changed dependency from [currentUser] to [currentUser?.fnum] to prevent infinite rendering loops!
+  useEffect(() => {
+    if (!currentUser?.fnum) return; 
     
     const controller = new AbortController();
-    
-    const fetchDataSequentially = async () => {
-      const token = localStorage.getItem('kmp_authToken');
-      if (!token) return;
+    const signal = controller.signal;
 
+    // We define all ledgers and their state-updaters in a dictionary
+    const fetchTargets = [
+      { url: "/api/v1/users", setter: setUsers },
+      { url: "/api/v1/reports", setter: setReports },
+      { url: "/api/v1/stats", setter: setStats },
+      { url: "/api/v1/stories", setter: setStories },
+      { url: "/api/v1/establishments", setter: setEstablishments },
+      { url: "/api/v1/nominal-roll", setter: setNominal_Rolls },
+      { url: "/api/v1/Admin_Communication", setter: setAdminCommsData },
+      { url: "/api/v1/nominal-roll-archive", setter: setNominal_Roll_archives }
+    ];
+
+    // We fire them independently. Chrome will automatically queue them safely.
+    // If ONE fails, it DOES NOT stop the others from loading!
+    fetchTargets.forEach(async ({ url, setter }) => {
       try {
-        // 🟢 WATERFALL LOADING: Fetches one by one. 
-        // Zero browser resource exhaustion. Zero database spikes.
-        const resUsers = await authFetch("/api/v1/users", { signal: controller.signal });
-        if (resUsers.ok) setUsers(await resUsers.json());
-
-        const resReports = await authFetch("/api/v1/reports", { signal: controller.signal });
-        if (resReports.ok) setReports(await resReports.json());
-
-        const resStats = await authFetch("/api/v1/stats", { signal: controller.signal });
-        if (resStats.ok) setStats(await resStats.json());
-
-        const resStories = await authFetch("/api/v1/stories", { signal: controller.signal });
-        if (resStories.ok) setStories(await resStories.json());
-
-        const resEst = await authFetch("/api/v1/establishments", { signal: controller.signal });
-        if (resEst.ok) setEstablishments(await resEst.json());
-
-        const resNom = await authFetch("/api/v1/nominal-roll", { signal: controller.signal });
-        if (resNom.ok) setNominal_Rolls(await resNom.json());
-
-        const resComms = await authFetch("/api/v1/Admin_Communication", { signal: controller.signal });
-        if (resComms.ok) setAdminCommsData(await resComms.json());
-
-        const resArchives = await authFetch("/api/v1/nominal-roll-archive", { signal: controller.signal });
-        if (resArchives.ok) setNominal_Roll_archives(await resArchives.json());
-
+        const response = await authFetch(url, { signal });
+        if (response.ok) {
+          const data = await response.json();
+          setter(data);
+        } else {
+          console.warn(`Warning: ${url} returned status ${response.status}`);
+        }
       } catch (err) {
         if (err.name !== 'AbortError') {
-          console.warn("Sequential sync failed:", err);
+          console.error(`Fetch chain broken for ${url}:`, err);
         }
       }
-    };
+    });
         
-    fetchDataSequentially();
     return () => controller.abort();
-  }, [currentUser]); 
+  }, [currentUser?.fnum]); 
 
   const handleMasterExport = async (scope, value) => {
     const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
@@ -4735,18 +4729,28 @@ useEffect(() => {
     setIsViewingHR(false);           
   };
 
-  const renderPage = () => {
+const renderPage = () => {
     switch (currentPage) {
-      case 'home': return <HomeDashboard currentUser={currentUser} setCurrentPage={handlePageChange} onMasterExport={handleMasterExport} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm} />;
-      case 'reports': return <CrimeIncidentRegistry currentUser={currentUser} reports={reports} setReports={setReports} />;
-      case 'statistics': return <Statistics currentUser={currentUser} stats={stats} setStats={setStats} />;
-      case 'success': return <SuccessStories currentUser={currentUser} stories={stories} setStories={setStories} />;
-      case 'establishments': return <Establishments currentUser={currentUser} establishments={establishments} setEstablishments={setEstablishments} />;
-      case 'nominal-roll': return <Nominal_Roll currentUser={currentUser} Nominal_Rolls={Nominal_Rolls} setNominal_Rolls={setNominal_Rolls} Nominal_Roll_archives={Nominal_Roll_archives} setNominal_Roll_archives={setNominal_Roll_archives} />; 
-      case 'approvals': return ['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) ? <AdminApprovals pendingUsers={pendingUsers} setPendingUsers={setPendingUsers} users={users} setUsers={setUsers} currentUser={currentUser} /> : <HomeDashboard currentUser={currentUser} setCurrentPage={handlePageChange} onMasterExport={handleMasterExport} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm} />;
-      case 'profile': return <AdminProfile currentUser={currentUser} setCurrentUser={setCurrentUser} Nominal_Rolls={Nominal_Rolls} />;
-      case 'Admin_Communication': return ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? <Admin_Communication currentUser={currentUser} users={users} /> : <HomeDashboard currentUser={currentUser} setCurrentPage={handlePageChange} onMasterExport={handleMasterExport} onViewConsolidated={handleViewConsolidated} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm}/>;
-      default: return <HomeDashboard currentUser={currentUser} setCurrentPage={handlePageChange} onMasterExport={handleMasterExport} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm} />;
+      case 'home': 
+        return <HomeDashboard currentUser={currentUser} setCurrentPage={handlePageChange} onMasterExport={handleMasterExport} onViewConsolidated={handleViewConsolidated} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm} />;
+      case 'reports': 
+        return <CrimeIncidentRegistry currentUser={currentUser} reports={reports} setReports={setReports} />;
+      case 'statistics': 
+        return <Statistics currentUser={currentUser} stats={stats} setStats={setStats} />;
+      case 'success': 
+        return <SuccessStories currentUser={currentUser} stories={stories} setStories={setStories} />;
+      case 'establishments': 
+        return <Establishments currentUser={currentUser} establishments={establishments} setEstablishments={setEstablishments} />;
+      case 'nominal-roll': 
+        return <Nominal_Roll currentUser={currentUser} Nominal_Rolls={Nominal_Rolls} setNominal_Rolls={setNominal_Rolls} Nominal_Roll_archives={Nominal_Roll_archives} setNominal_Roll_archives={setNominal_Roll_archives} />; 
+      case 'approvals': 
+        return ['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role) ? <AdminApprovals pendingUsers={pendingUsers} setPendingUsers={setPendingUsers} users={users} setUsers={setUsers} currentUser={currentUser} /> : <HomeDashboard currentUser={currentUser} setCurrentPage={handlePageChange} onMasterExport={handleMasterExport} onViewConsolidated={handleViewConsolidated} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm} />;
+      case 'profile': 
+        return <AdminProfile currentUser={currentUser} setCurrentUser={setCurrentUser} Nominal_Rolls={Nominal_Rolls} />;
+      case 'Admin_Communication': 
+        return ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? <Admin_Communication currentUser={currentUser} users={users} /> : <HomeDashboard currentUser={currentUser} setCurrentPage={handlePageChange} onMasterExport={handleMasterExport} onViewConsolidated={handleViewConsolidated} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm}/>;
+      default: 
+        return <HomeDashboard currentUser={currentUser} setCurrentPage={handlePageChange} onMasterExport={handleMasterExport} onViewConsolidated={handleViewConsolidated} Admin_Communication={adminCommsData} onAcknowledgeComm={handleAcknowledgeComm} />;
     }
   };
 

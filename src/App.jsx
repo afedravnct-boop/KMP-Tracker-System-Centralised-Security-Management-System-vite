@@ -1116,7 +1116,9 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
   const [filterRegion, setFilterRegion] = useState(['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? 'ALL REGIONS' : currentUser.region);
   const [filterStation, setFilterStation] = useState('ALL STATIONS');
   const [updateSearch, setUpdateSearch] = useState('');
-
+  
+  const [dateFilter, setDateFilter] = useState('ALL TIME');
+  
   const [formData, setFormData] = useState({
     sn: null,
     region: currentUser.region,

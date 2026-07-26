@@ -4632,44 +4632,47 @@ const App = () => {
     checkClearance();
   }, [setCurrentUser]);
 
-// 🟢 BULLETPROOF FETCH ENGINE
-  // Changed dependency from [currentUser] to [currentUser?.fnum] to prevent infinite rendering loops!
-  useEffect(() => {
+useEffect(() => {
+    // 🟢 The ?.fnum prevents the infinite rendering loop
     if (!currentUser?.fnum) return; 
     
     const controller = new AbortController();
-    const signal = controller.signal;
+    
+    const fetchAllData = async () => {
+      const token = localStorage.getItem('kmp_authToken');
+      if (!token) return;
 
-    // We define all ledgers and their state-updaters in a dictionary
-    const fetchTargets = [
-      { url: "/api/v1/users", setter: setUsers },
-      { url: "/api/v1/reports", setter: setReports },
-      { url: "/api/v1/stats", setter: setStats },
-      { url: "/api/v1/stories", setter: setStories },
-      { url: "/api/v1/establishments", setter: setEstablishments },
-      { url: "/api/v1/nominal-roll", setter: setNominal_Rolls },
-      { url: "/api/v1/Admin_Communication", setter: setAdminCommsData },
-      { url: "/api/v1/nominal-roll-archive", setter: setNominal_Roll_archives }
-    ];
-
-    // We fire them independently. Chrome will automatically queue them safely.
-    // If ONE fails, it DOES NOT stop the others from loading!
-    fetchTargets.forEach(async ({ url, setter }) => {
       try {
-        const response = await authFetch(url, { signal });
-        if (response.ok) {
-          const data = await response.json();
-          setter(data);
-        } else {
-          console.warn(`Warning: ${url} returned status ${response.status}`);
+        // 🟢 Restored your stable, original Promise.all structure
+        const [resReports, resStats, resStories, resNom, resComms, resEst, resArchives, resUsers] = await Promise.all([
+          authFetch("/api/v1/reports", { signal: controller.signal }),
+          authFetch("/api/v1/stats", { signal: controller.signal }),
+          authFetch("/api/v1/stories", { signal: controller.signal }),
+          authFetch("/api/v1/nominal-roll", { signal: controller.signal }),
+          authFetch("/api/v1/Admin_Communication", { signal: controller.signal }),
+          authFetch("/api/v1/establishments", { signal: controller.signal }),
+          authFetch("/api/v1/nominal-roll-archive", { signal: controller.signal }),
+          authFetch("/api/v1/users", { signal: controller.signal })
+        ]);
+
+        if (!controller.signal.aborted) {
+          if (resReports.ok) setReports(await resReports.json());
+          if (resStats.ok) setStats(await resStats.json());
+          if (resStories.ok) setStories(await resStories.json());
+          if (resNom.ok) setNominal_Rolls(await resNom.json());
+          if (resComms.ok) setAdminCommsData(await resComms.json());
+          if (resEst.ok) setEstablishments(await resEst.json());
+          if (resArchives.ok) setNominal_Roll_archives(await resArchives.json());
+          if (resUsers.ok) setUsers(await resUsers.json());
         }
       } catch (err) {
         if (err.name !== 'AbortError') {
-          console.error(`Fetch chain broken for ${url}:`, err);
+          console.error("Data sync failed:", err);
         }
       }
-    });
+    };
         
+    fetchAllData();
     return () => controller.abort();
   }, [currentUser?.fnum]); 
 
@@ -4866,6 +4869,9 @@ const renderPage = () => {
       }}
       onUpdateUserRole={handleUpdateUserRole}
       Admin_Communication={adminCommsData}
+      onViewConsolidated={handleViewConsolidated}
+      onViewHRReport={handleViewHRReport}
+      onGenerateHRReport={handleGenerateHRReport}
     >
       {isViewingConsolidated && (
         <ConsolidatedLedger 

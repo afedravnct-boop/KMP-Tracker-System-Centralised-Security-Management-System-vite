@@ -3458,7 +3458,7 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
     }
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     setNotification("⏳ Verifying profile data with HR Nominal Roll...");
 
@@ -3466,7 +3466,8 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
       const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
       const token = localStorage.getItem('kmp_authToken');
       
-      const response = await fetch(`${API_URL}/api/auth/me`, {
+      // 🟢 CHANGED THE URL HERE TO MATCH THE NEW BACKEND ROUTE
+      const response = await fetch(`${API_URL}/api/v1/users/profile/update`, {
         method: "PUT",
         headers: { 
             "Content-Type": "application/json",
@@ -4852,8 +4853,21 @@ const App = () => {
     );
   }
 
-  if (!currentUser) return <LoginScreen 
-    onLogin={setCurrentUser} 
+ if (!currentUser) return <LoginScreen 
+    onLogin={(user) => {
+      // 🟢 INSTANTLY RESET TO HOME PAGE UPON SUCCESSFUL LOGIN
+      localStorage.removeItem('kmp_currentPage'); 
+      setCurrentPage('home'); 
+      setCurrentUser(user);
+
+      // 🟢 SILENTLY TRIGGER THE AUDIT LOG FOR TODAY'S DATE
+      const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+      fetch(`${API_URL}/api/v1/system/log-session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fnum: user.fnum })
+      }).catch(e => console.error(e));
+    }} 
     onForgot={() => {}} 
     onSignup={(u) => setPendingUsers([...pendingUsers, u])} 
     pendingUsers={pendingUsers} 
@@ -4883,14 +4897,14 @@ const App = () => {
       currentUser={currentUser}
       currentPage={currentPage} 
       setCurrentPage={handlePageChange} 
-      onLogout={() => { localStorage.removeItem('kmp_authToken'); setCurrentUser(null); }}
-      onGenerateOpsReport={() => handleMasterExport("station", currentUser.station)}
-      onViewOpsReport={() => {}}     
-      onGenerateHRReport={handleGenerateHRReport}
-      onViewHRReport={handleViewHRReport} 
-      onViewConsolidated={handleViewConsolidated} 
-      users={users}
-      onRevokeUser={(fnum) => { setUsers(users.filter(u => u.fnum !== fnum)); }}
+      onLogout={() => { 
+        // 🟢 WIPE THE PAGE MEMORY WHEN THEY LOG OUT
+        localStorage.removeItem('kmp_authToken'); 
+        localStorage.removeItem('kmp_currentUser'); 
+        localStorage.removeItem('kmp_currentPage'); 
+        setCurrentUser(null); 
+        setCurrentPage('home');
+      }}
       onUpdateUserRole={handleUpdateUserRole}
       Admin_Communication={adminCommsData}
     >

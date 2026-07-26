@@ -4630,97 +4630,50 @@ const App = () => {
     checkClearance();
   }, [setCurrentUser]);
 
-  // 🛡️ TACTICAL AUTO-LOGOUT (15 MIN INACTIVITY)
-  useEffect(() => {
-    if (!currentUser) return;
-
-    let inactivityTimer;
-    const INACTIVITY_LIMIT = 15 * 60 * 1000;
-
-    const executeAutoLogout = () => {
-      console.log("Inactivity limit reached. Executing auto-logout.");
-      localStorage.removeItem('kmp_authToken');
-      localStorage.removeItem('kmp_currentUser');
-      setCurrentUser(null);
-      alert("Session expired due to inactivity. Please log in again.");
-    };
-
-    const resetTimer = () => {
-      clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(executeAutoLogout, INACTIVITY_LIMIT);
-    };
-
-    const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    activityEvents.forEach(event => window.addEventListener(event, resetTimer));
-    resetTimer();
-
-    return () => {
-      clearTimeout(inactivityTimer);
-      activityEvents.forEach(event => window.removeEventListener(event, resetTimer));
-    };
-  }, [currentUser, setCurrentUser]);
-
-  useEffect(() => {
-    let link = document.querySelector("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
-    }
-    link.href = '/upf_badge.png';
-    document.title = "Uganda Police Force - Secure Portal";
-  }, []);
-
-  useEffect(() => {
+useEffect(() => {
     if (!currentUser) return;
     
     const controller = new AbortController();
     
-    const fetchData = async () => {
+    const fetchDataSequentially = async () => {
       const token = localStorage.getItem('kmp_authToken');
       if (!token) return;
 
       try {
-        const [resReports, resStats, resStories, resNom, resComms, resEst, resArchives, resUsers] = await Promise.all([
-          authFetch("/api/v1/reports", { signal: controller.signal }),
-          authFetch("/api/v1/stats", { signal: controller.signal }),
-          authFetch("/api/v1/stories", { signal: controller.signal }),
-          authFetch("/api/v1/nominal-roll", { signal: controller.signal }),
-          authFetch("/api/v1/Admin_Communication", { signal: controller.signal }),
-          authFetch("/api/v1/establishments", { signal: controller.signal }),
-          authFetch("/api/v1/nominal-roll-archive", { signal: controller.signal }),
-          authFetch("/api/v1/users", { signal: controller.signal })
-        ]);
+        // 🟢 WATERFALL LOADING: Fetches one by one. 
+        // Zero browser resource exhaustion. Zero database spikes.
+        const resUsers = await authFetch("/api/v1/users", { signal: controller.signal });
+        if (resUsers.ok) setUsers(await resUsers.json());
 
-        const [dataReports, dataStats, dataStories, dataNom, dataComms, dataEst, dataArchives, dataUsers] = await Promise.all([
-          resReports.ok ? resReports.json() : [],
-          resStats.ok ? resStats.json() : [],
-          resStories.ok ? resStories.json() : [],
-          resNom.ok ? resNom.json() : [],
-          resComms.ok ? resComms.json() : [],
-          resEst.ok ? resEst.json() : [],
-          resArchives.ok ? resArchives.json() : [],
-          resUsers.ok ? resUsers.json() : [] 
-        ]);
+        const resReports = await authFetch("/api/v1/reports", { signal: controller.signal });
+        if (resReports.ok) setReports(await resReports.json());
 
-        if (!controller.signal.aborted) {
-          setReports(dataReports);
-          setStats(dataStats);
-          setStories(dataStories);
-          setNominal_Rolls(dataNom);
-          setAdminCommsData(dataComms);
-          setEstablishments(dataEst); 
-          setNominal_Roll_archives(dataArchives);
-          setUsers(dataUsers);
-        }
+        const resStats = await authFetch("/api/v1/stats", { signal: controller.signal });
+        if (resStats.ok) setStats(await resStats.json());
+
+        const resStories = await authFetch("/api/v1/stories", { signal: controller.signal });
+        if (resStories.ok) setStories(await resStories.json());
+
+        const resEst = await authFetch("/api/v1/establishments", { signal: controller.signal });
+        if (resEst.ok) setEstablishments(await resEst.json());
+
+        const resNom = await authFetch("/api/v1/nominal-roll", { signal: controller.signal });
+        if (resNom.ok) setNominal_Rolls(await resNom.json());
+
+        const resComms = await authFetch("/api/v1/Admin_Communication", { signal: controller.signal });
+        if (resComms.ok) setAdminCommsData(await resComms.json());
+
+        const resArchives = await authFetch("/api/v1/nominal-roll-archive", { signal: controller.signal });
+        if (resArchives.ok) setNominal_Roll_archives(await resArchives.json());
+
       } catch (err) {
         if (err.name !== 'AbortError') {
-          console.warn("Sync failed:", err);
+          console.warn("Sequential sync failed:", err);
         }
       }
     };
         
-    fetchData();
+    fetchDataSequentially();
     return () => controller.abort();
   }, [currentUser]); 
 

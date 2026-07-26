@@ -1134,13 +1134,40 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
     convicted: 0
   });
 
+  // Fully integrated date filtering matching the Crime Registry pattern
   const filteredStats = useMemo(() => {
     return stats.filter(s => {
       if (filterRegion !== 'ALL REGIONS' && s.region !== filterRegion) return false;
       if (filterStation !== 'ALL STATIONS' && s.station !== filterStation) return false;
+
+      if (dateFilter === 'TODAY') {
+        const todayStr = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
+        if (s.date !== todayStr) return false;
+      } else if (dateFilter === 'LAST 7 DAYS') {
+        const repDate = new Date(s.date);
+        const today = new Date();
+        const diffDays = Math.ceil(Math.abs(today - repDate) / (1000 * 60 * 60 * 24));
+        if (diffDays > 7) return false;
+      } else if (dateFilter === 'LAST 30 DAYS') {
+        const repDate = new Date(s.date);
+        const today = new Date();
+        const diffDays = Math.ceil(Math.abs(today - repDate) / (1000 * 60 * 60 * 24));
+        if (diffDays > 30) return false;
+      } else if (dateFilter === 'LAST 90 DAYS') {
+        const repDate = new Date(s.date);
+        const today = new Date();
+        const diffDays = Math.ceil(Math.abs(today - repDate) / (1000 * 60 * 60 * 24));
+        if (diffDays > 90) return false;
+      } else if (dateFilter === 'LAST 120 DAYS') {
+        const repDate = new Date(s.date);
+        const today = new Date();
+        const diffDays = Math.ceil(Math.abs(today - repDate) / (1000 * 60 * 60 * 24));
+        if (diffDays > 120) return false;
+      }
+
       return true;
     });
-  }, [stats, filterRegion, filterStation]);
+  }, [stats, filterRegion, filterStation, dateFilter]);
 
   const availableUpdateStats = useMemo(() => {
     return stats.filter(s => {
@@ -1286,11 +1313,11 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-6 relative z-10">
+    <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-6 relative z-10">
       <div className="text-center mb-8 flex flex-col items-center">
         <img src="/upf_badge.png" alt="UPF Logo" className="w-16 h-16 mb-3 object-contain" />
-        <h1 className="text-3xl font-extrabold text-gray-700 tracking-tight">Disruptive OPS Statistics</h1>
-        <h3 className="text-lg text-blue-700 mt-2 font-medium">Weekly Numerical Aggregates</h3>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-700 tracking-tight">Disruptive OPS Statistics</h1>
+        <h3 className="text-sm sm:text-lg text-blue-700 mt-2 font-medium">Weekly Numerical Aggregates</h3>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4 space-y-6">
@@ -1308,26 +1335,16 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
                 </button>
               </div>
 
-<div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-slate-200 shadow-sm relative">
-                <div className="absolute top-4 right-4 z-10">
-                  <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="border-2 border-blue-500 text-blue-700 font-bold rounded-lg px-3 py-1 text-xs shadow-sm bg-white outline-none">
-                    <option value="ALL TIME">ALL TIME</option>
-                    <option value="TODAY">TODAY ONLY</option>
-                    <option value="LAST 7 DAYS">LAST 7 DAYS</option>
-                    <option value="LAST 30 DAYS">LAST 30 DAYS</option>
-                    <option value="LAST 90 DAYS">LAST 90 DAYS</option>
-                    <option value="LAST 120 DAYS">LAST 120 DAYS</option>
-                  </select>
-                </div>
+              <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-slate-200 shadow-sm relative">
                 <h4 className="text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">📋 Area Metrics ({filterRegion} - {dateFilter})</h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  {/* If you plan to add metric cards here later, they go inside this div */}
-                </div> {/* 🟢 ADD THIS MISSING DIV */}
-              </div> {/* 🟢 ADD THIS MISSING DIV */}
+                  {/* Metric cards placeholder */}
+                </div>
+              </div>
 
               {notification && (
                 <div className={`border px-4 py-3 rounded-lg flex items-center mb-4 ${notification.includes('Error') || notification.includes('❌') ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
-                  {notification.includes('Error') || notification.includes('❌') ? <AlertTriangle className="w-5 h-5 mr-2 text-red-500" /> : <CheckCircle className="w-5 h-5 mr-2 text-green-500" />}
+                  {notification.includes('Error') || notification.includes('❌') ? <AlertTriangle className="w-5 h-5 mr-2 text-red-500 shrink-0" /> : <CheckCircle className="w-5 h-5 mr-2 text-green-500 shrink-0" />}
                   <span className="text-sm font-medium">{notification}</span>
                 </div>
               )}
@@ -1358,7 +1375,7 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
                 )}
                 
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">Select Region *</label>
                       <select name="region" value={formData.region} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) || operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-white border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
@@ -1372,7 +1389,7 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">Station / Division *</label>
                       <select name="station" value={formData.station} onChange={handleInputChange} disabled={operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm bg-white border p-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
-                        {REGIONAL_HIERARCHY[formData.region].map(stat => <option key={stat} value={stat}>{stat}</option>)}
+                        {(REGIONAL_HIERARCHY[formData.region] || []).map(stat => <option key={stat} value={stat}>{stat}</option>)}
                       </select>
                     </div>
                     <div>
@@ -1380,7 +1397,7 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
                       <input type="date" name="date" value={formData.date} onChange={handleInputChange} disabled={operation === 'update'} required className="w-full text-sm border-gray-300 rounded-md shadow-sm border bg-white p-2 disabled:bg-gray-100 disabled:text-gray-500" />
                     </div>
                   </div>
-                </div> {/* 🟢 YOU ARE LIKELY MISSING THIS DIV! ADD IT HERE. */}
+                </div> 
 
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h4 className="text-sm font-bold text-blue-900 border-b border-blue-200 pb-2 mb-4 flex items-center">
@@ -1440,7 +1457,7 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
         
         <div className="lg:col-span-8 space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
-             <select value={filterRegion} onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); }} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)} className="border rounded-lg px-3 py-2 text-sm shadow-sm bg-white">
+             <select value={filterRegion} onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); }} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)} className="border rounded-lg px-3 py-2 text-sm shadow-sm bg-white w-full sm:w-auto">
                 {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && <option value="ALL REGIONS">ALL REGIONS</option>}
                 {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? (
                   Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)
@@ -1448,9 +1465,18 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
                   <option value={currentUser.region}>{currentUser.region}</option>
                 )}
               </select>
-              <select value={filterStation} onChange={(e) => setFilterStation(e.target.value)} className="border rounded-lg px-3 py-2 text-sm shadow-sm bg-white">
+              <select value={filterStation} onChange={(e) => setFilterStation(e.target.value)} className="border rounded-lg px-3 py-2 text-sm shadow-sm bg-white w-full sm:w-auto">
                 <option value="ALL STATIONS">ALL STATIONS</option>
-                {filterRegion !== 'ALL REGIONS' && REGIONAL_HIERARCHY[filterRegion].map(stat => <option key={stat} value={stat}>{stat}</option>)}
+                {filterRegion !== 'ALL REGIONS' && REGIONAL_HIERARCHY[filterRegion]?.map(stat => <option key={stat} value={stat}>{stat}</option>)}
+              </select>
+              
+              <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="border-2 border-blue-500 text-blue-700 font-bold rounded-lg px-3 py-2 text-sm shadow-sm bg-white outline-none w-full sm:w-auto">
+                <option value="ALL TIME">ALL TIME</option>
+                <option value="TODAY">TODAY ONLY</option>
+                <option value="LAST 7 DAYS">LAST 7 DAYS</option>
+                <option value="LAST 30 DAYS">LAST 30 DAYS</option>
+                <option value="LAST 90 DAYS">LAST 90 DAYS</option>
+                <option value="LAST 120 DAYS">LAST 120 DAYS</option>
               </select>
           </div>
 

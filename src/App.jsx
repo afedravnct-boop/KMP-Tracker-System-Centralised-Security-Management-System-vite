@@ -3348,23 +3348,32 @@ const AdminApprovals = ({ currentUser }) => {
 // ====================================================================
 // --- PROFILE UPDATE SYSTEM (COMMAND WORKFLOW ENABLED FOR ALL USERS) ---
 // ====================================================================
-const AdminProfile = ({ currentUser, setCurrentUser }) => {
+const AdminProfile = ({ currentUser, setCurrentUser }) => { 
   const [isEditing, setIsEditing] = useState(false);
   const [isRequestMode, setIsRequestMode] = useState(false);
   const [notification, setNotification] = useState(null);
   
   const canAutoApprove = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
 
+  // 🟢 DEFINED OFFICER RANKS FOR PROMOTION CHECKS
+  const OFFICER_RANKS = ['AIP', 'IP', 'ASP', 'SP', 'SASP', 'SSP', 'ACP', 'CP', 'SCP', 'AIGP', 'DIGP', 'IGP'];
+
   const [formData, setFormData] = useState({
+    fnum: currentUser.fnum || '', 
     name: currentUser.name || '',
     rank: currentUser.rank || '',
     region: currentUser.region || '',
     station: currentUser.station || '',
     email: currentUser.email || '',
     phone: currentUser.phone || '',
-    password: '', 
     profile_photo_path: currentUser.profile_photo_path || ''
   });
+
+  // 🟢 DYNAMIC LOGIC TO UNFREEZE F/NO FIELD
+  const isOfficerRank = OFFICER_RANKS.includes(formData.rank?.toUpperCase().trim());
+  const wasNCO = !OFFICER_RANKS.includes(currentUser.rank?.toUpperCase().trim());
+  // If they are an NCO upgrading to an Officer, they get to edit their FNUM (even if they aren't an admin!)
+  const canEditFnum = canAutoApprove || (isOfficerRank && wasNCO);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -3405,11 +3414,17 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
     setNotification("⏳ Sending official request to Command...");
 
     try {
-      const response = await authFetch("/api/v1/requests", {
+      const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+      const token = localStorage.getItem('kmp_authToken');
+      const response = await fetch(`${API_URL}/api/v1/requests`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}` 
+        },
         body: JSON.stringify({
           fnum: currentUser.fnum,
+          requested_fnum: formData.fnum !== currentUser.fnum ? formData.fnum : null,
           requested_name: formData.name !== currentUser.name ? formData.name : null,
           requested_rank: formData.rank !== currentUser.rank ? formData.rank : null,
           requested_region: formData.region !== currentUser.region ? formData.region : null,
@@ -3425,8 +3440,10 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
       setNotification("✅ Request successfully logged for Command review.");
       setIsRequestMode(false);
       
+      // Revert local state to approved bounds
       setFormData({
          ...formData,
+         fnum: currentUser.fnum,
          name: currentUser.name, 
          rank: currentUser.rank, 
          region: currentUser.region, 
@@ -3443,43 +3460,64 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    setNotification("Saving profile details...");
+    setNotification("⏳ Verifying profile data with HR Nominal Roll...");
 
     try {
-      // 🟢 REMOVED /v1 TO MATCH YOUR LOGIN ROUTE PERFECTLY!
-      const response = await authFetch("/api/auth/me", {
+      const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+      const token = localStorage.getItem('kmp_authToken');
+      
+      const response = await fetch(`${API_URL}/api/auth/me`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(formData)
       });
 
-      if (!response.ok) throw new Error("Failed to update database.");
+      const data = await response.json();
 
+      if (!response.ok) {
+         throw new Error(data.detail || "Failed to update database.");
+      }
+
+      // 🟢 THE JWT GHOSTING FIX: Catch the new token if FNUM changed
+      if (data.new_token) {
+          localStorage.setItem('kmp_authToken', data.new_token);
+          console.log("Token successfully refreshed for new Officer File Number.");
+      }
+
+      // Update active React user state globally
       setCurrentUser({
         ...currentUser,
-        name: canAutoApprove ? formData.name : currentUser.name,
-        rank: canAutoApprove ? formData.rank : currentUser.rank,
-        region: canAutoApprove ? formData.region : currentUser.region,
-        station: canAutoApprove ? formData.station : currentUser.station,
+        fnum: formData.fnum,
+        name: formData.name,
+        rank: formData.rank,
+        region: formData.region,
+        station: formData.station,
         email: formData.email,
         phone: formData.phone,
         profile_photo_path: formData.profile_photo_path
       });
 
-      setNotification("✅ Profile successfully updated!");
+      setNotification("✅ Profile verified and successfully updated!");
       setIsEditing(false); 
       setIsRequestMode(false);
       setTimeout(() => setNotification(null), 4000);
 
     } catch (err) {
       console.error(err);
-      setNotification("❌ Error: Failed to update profile.");
+      setNotification(`❌ ${err.message}`);
     }
   };
 
   const handleProfileSave = (e) => {
      e.preventDefault();
-     if (canAutoApprove) {
+
+     // If the user changed their FNUM (meaning they are an NCO promoted to Officer),
+     // we route them directly to the DB Verification backend (bypassing the manual Request system)
+     // because HR approval is verified automatically against the Nominal Roll table!
+     if (canAutoApprove || formData.fnum !== currentUser.fnum) {
          handleSubmit(e);
      } else {
          handleRequestSubmit(e);
@@ -3546,7 +3584,7 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
                     </button>
                   )}
                   {!canAutoApprove && isRequestMode && (
-                    <button type="button" onClick={handleRequestSubmit} className="text-[10px] bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded font-bold transition flex items-center shadow-sm">
+                    <button type="button" onClick={handleProfileSave} className="text-[10px] bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded font-bold transition flex items-center shadow-sm">
                       <Send size={12} className="mr-1"/> Send Official Request
                     </button>
                   )}
@@ -3559,12 +3597,22 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
                   </div>
                   <div className="flex gap-4">
                     <div className="w-1/2">
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Force Number</label>
-                      <input type="text" value={currentUser.fnum} disabled className="w-full p-2.5 bg-gray-200 border border-gray-300 rounded-lg font-bold text-gray-600 cursor-not-allowed" />
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                        Force / File Number
+                      </label>
+                      <input 
+                        type="text" 
+                        name="fnum"
+                        value={formData.fnum}
+                        onChange={(e) => setFormData({...formData, fnum: e.target.value.toUpperCase()})}
+                        disabled={!canEditFnum} 
+                        className={`w-full p-2.5 border rounded-lg font-bold transition-all ${canEditFnum ? 'bg-yellow-50 border-yellow-400 text-gray-900 focus:ring-2 focus:ring-yellow-500 shadow-inner' : 'bg-gray-200 border-gray-300 text-gray-600 cursor-not-allowed'}`} 
+                      />
+                      {canEditFnum && <p className="text-[9px] text-blue-600 mt-1 font-bold animate-pulse">Unlocked for Promotion Verification</p>}
                     </div>
                     <div className="w-1/2">
                       <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Rank</label>
-                      <input type="text" name="rank" value={formData.rank} onChange={handleInputChange} disabled={!canAutoApprove && !isRequestMode} className={`w-full p-2.5 rounded-lg font-bold border ${canAutoApprove || isRequestMode ? 'bg-white border-blue-300 text-gray-900 focus:ring-2 focus:ring-blue-500' : 'bg-gray-200 border-gray-300 text-gray-600 cursor-not-allowed'}`} />
+                      <input type="text" name="rank" value={formData.rank} onChange={(e) => setFormData({...formData, rank: e.target.value.toUpperCase()})} disabled={!canAutoApprove && !isRequestMode && !wasNCO} className={`w-full p-2.5 rounded-lg font-bold border ${(canAutoApprove || isRequestMode || wasNCO) ? 'bg-white border-blue-300 text-gray-900 focus:ring-2 focus:ring-blue-500' : 'bg-gray-200 border-gray-300 text-gray-600 cursor-not-allowed'}`} />
                     </div>
                   </div>
                   <div>
@@ -3601,12 +3649,54 @@ const AdminProfile = ({ currentUser, setCurrentUser }) => {
 
             </div>
           ) : (
-             <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100"><label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">Force Number</label><p className="font-extrabold text-gray-900 text-lg">{currentUser.fnum}</p></div>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100"><label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">Role Level</label><p className={`font-extrabold text-lg ${canAutoApprove ? 'text-green-600' : 'text-blue-600'}`}>{currentUser.role}</p></div>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100"><label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">Email</label><p className="font-bold text-gray-900 truncate">{currentUser.email || "N/A"}</p></div>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100"><label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">Phone</label><p className="font-bold text-gray-900 truncate">{currentUser.phone || "N/A"}</p></div>
-             </div>
+            <div className="space-y-6">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b pb-2 flex items-center">
+                <Shield size={14} className="mr-2 text-slate-400" /> Comprehensive Officer Profile
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-inner">
+                
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Force/File Number</label>
+                  <div className="text-sm font-extrabold text-slate-900">{currentUser.fnum}</div>
+                </div>
+                
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">IPPS Number</label>
+                  <div className="text-sm font-bold text-slate-800">{currentUser.ipps || 'N/A'}</div>
+                </div>
+                
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Sex</label>
+                  <div className="text-sm font-bold text-slate-800">{currentUser.sex || 'N/A'}</div>
+                </div>
+                
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">System Role</label>
+                  <div className={`text-sm font-extrabold ${canAutoApprove ? 'text-green-600' : 'text-blue-600'}`}>{currentUser.role || 'USER'}</div>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Official Title / Position</label>
+                  <div className="text-sm font-bold text-slate-800">{currentUser.position || 'N/A'}</div>
+                </div>
+                
+                <div className="col-span-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Command Chain (Region / Station)</label>
+                  <div className="text-sm font-bold text-slate-800">{currentUser.region || 'N/A'} / {currentUser.station || 'N/A'}</div>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Official Email</label>
+                  <div className="text-sm font-bold text-slate-800 truncate">{currentUser.email || 'N/A'}</div>
+                </div>
+                
+                <div className="col-span-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Contact Number</label>
+                  <div className="text-sm font-bold text-slate-800">{currentUser.phone || 'N/A'}</div>
+                </div>
+
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -3705,6 +3795,11 @@ const handleSignupSubmit = async (e) => {
 
     if (!signupData.profile_photo_path) {
       setAuthMessage("⚠️ Error: Profile photo upload is mandatory.");
+      return;
+    }
+    
+    if (!/^\d{10}$/.test(signupData.phone)) {
+      setAuthMessage("⚠️ Error: Contact number must be exactly 10 digits (e.g. 0772123456).");
       return;
     }
 
@@ -3914,7 +4009,7 @@ const handleSignupSubmit = async (e) => {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">Telephone *</label>
-                      <input type="tel" name="phone" required value={signupData.phone} onChange={handleSignupChange} className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 text-sm" />
+                      <input type="tel" name="phone" required maxLength="10" pattern="\d{10}" value={signupData.phone} onChange={handleSignupChange} className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 text-sm" placeholder="e.g. 0772123456" />
                     </div>
                   </div>
 
@@ -4766,6 +4861,14 @@ const handleMasterExport = async (scope, value) => {
     downloadWithAuth("/api/v1/export/establishments", "HR_Establishment_Summary.zip");
   };
 
+  const handlePageChange = (pageId) => {
+    setCurrentPage(pageId);          // Changes the actual page
+    setIsViewingConsolidated(false); // Removes the Consolidated overlay
+    setIsViewingHR(false);           // Removes the HR overlay
+  };
+
+  const handleUpdateUserRole = async (fnum, newRole, newPermissions) => {
+
   const handleUpdateUserRole = async (fnum, newRole, newPermissions) => {
     setUsers(users.map(u => u.fnum === fnum ? { ...u, role: newRole, permissions: newPermissions } : u));
     
@@ -4784,7 +4887,7 @@ const handleMasterExport = async (scope, value) => {
     <DashboardLayout 
       currentUser={currentUser}
       currentPage={currentPage} 
-      setCurrentPage={setCurrentPage} 
+      setCurrentPage={handlePageChange} 
       onLogout={() => { localStorage.removeItem('kmp_authToken'); setCurrentUser(null); }}
       onGenerateOpsReport={() => handleMasterExport("station", currentUser.station)}
       onViewOpsReport={() => {}} 

@@ -167,6 +167,8 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isRPC = ['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role);
   
+  const commsData = Admin_Communication || [];
+
   const canViewConsolidated = isAdmin || currentUser.permissions?.consolidated;
   const canExportData = isRPC || currentUser.permissions?.export_data;
 

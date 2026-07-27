@@ -5070,7 +5070,7 @@ useEffect(() => {
           authFetch("/api/v1/stats", { signal: controller.signal }),
           authFetch("/api/v1/stories", { signal: controller.signal }),
           authFetch("/api/v1/nominal-roll", { signal: controller.signal }),
-	  authFetch("/api/v1/communications", { signal: controller.signal }),
+	  authFetch("/api/v1/Admin_Communication", { signal: controller.signal }),
           authFetch("/api/v1/establishments", { signal: controller.signal }),
           authFetch("/api/v1/nominal-roll-archive", { signal: controller.signal }),
           authFetch("/api/v1/users", { signal: controller.signal })

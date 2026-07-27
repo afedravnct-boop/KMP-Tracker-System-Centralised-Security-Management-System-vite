@@ -169,6 +169,10 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
   
   const commsData = adminCommsData || [];
 
+  const rawComms = adminCommsData || Admin_Communication || [];
+
+  const safeComms = Array.isArray(rawComms) ? rawComms : (rawComms.data || rawComms.items || []);
+
   const canViewConsolidated = isAdmin || currentUser.permissions?.consolidated;
   const canExportData = isRPC || currentUser.permissions?.export_data;
 
@@ -195,7 +199,7 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
     } catch(e) { console.error(e); } finally { setLoadingReceipts(false); }
   };
 
-const relevantComms = (Array.isArray(adminCommsData) ? adminCommsData : []).filter(c => {
+const relevantComms = safeComms.filter(c => {
     // Super Admins bypass the filter and see all active messages
     if (currentUser.role === 'SUPER_ADMIN') return true;
     
@@ -425,12 +429,7 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
   const [operation, setOperation] = useState('new');
   const [notification, setNotification] = useState(null);
 
-  const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) || currentUser.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
-  const [filterStation, setFilterStation] = useState(
-  ['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) 
-    ? 'ALL STATIONS' 
-    : currentUser?.station || ''
-);  
+const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) || currentUser.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('ALL TIME');
   const [updateSearch, setUpdateSearch] = useState('');
@@ -1168,12 +1167,7 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
   const [operation, setOperation] = useState('new');
   const [notification, setNotification] = useState(null);
 
-  const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) || currentUser.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
-  const [filterStation, setFilterStation] = useState(
-  ['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) 
-    ? 'ALL STATIONS' 
-    : currentUser?.station || ''
-);  
+const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) || currentUser.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
   const [updateSearch, setUpdateSearch] = useState('');
   
   const [dateFilter, setDateFilter] = useState('ALL TIME');
@@ -1633,12 +1627,7 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
 // ====================================================================
 const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) => {
   const [operation, setOperation] = useState('new');
-  const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) || currentUser.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
-  const [filterStation, setFilterStation] = useState(
-  ['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) 
-    ? 'ALL STATIONS' 
-    : currentUser?.station || ''
-);   
+const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) || currentUser.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');   
   const [notification, setNotification] = useState(null);
   const [updateSearch, setUpdateSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('ALL TIME');
@@ -2110,7 +2099,7 @@ const Establishments = ({ currentUser, establishments, setEstablishments, setSid
   const [operation, setOperation] = useState('new');
   const [notification, setNotification] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) || currentUser.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
+const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) || currentUser.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
   const [filterStation, setFilterStation] = useState('ALL STATIONS');
   const [updateSearch, setUpdateSearch] = useState('');
 
@@ -2573,12 +2562,7 @@ const Nominal_Roll = ({ currentUser, Nominal_Rolls, setNominal_Rolls, Nominal_Ro
   const [operation, setOperation] = useState('new');
   const [notification, setNotification] = useState(null);
 
-  const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) || currentUser.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
-  const [filterStation, setFilterStation] = useState(
-  ['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) 
-    ? 'ALL STATIONS' 
-    : currentUser?.station || ''
-);  
+const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) || currentUser.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');  
   const [updateSearch, setUpdateSearch] = useState('');
 
   const [viewMode, setViewMode] = useState('active'); 
@@ -3260,7 +3244,7 @@ const AdminApprovals = ({ currentUser }) => {
   const [resetRequests, setResetRequests] = useState([]);
   const [loadingResets, setLoadingResets] = useState(false);
 
-  const isRPC = currentUser && currentUser.role === 'RPC', 'Deputy Commander';
+const isRPC = currentUser && ['RPC', 'Deputy Commander'].includes(currentUser.role);
   const isSystemAdmin = currentUser && ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
 
   useEffect(() => {
@@ -4522,8 +4506,8 @@ const DashboardLayout = ({
     
   }, [currentPage, currentUser?.fnum]); // This triggers EVERY time the page changes!
 
-// Calculate if the current user has unread messages, regardless of their role
-  const relevantComms = (Array.isArray(Admin_Communication) ? Admin_Communication : []).filter(c => {
+  const safeSidebarComms = Array.isArray(Admin_Communication) ? Admin_Communication : (Admin_Communication?.data || Admin_Communication?.items || []);
+  const relevantComms = safeSidebarComms.filter(c => {
     if (currentUser?.role === 'SUPER_ADMIN') return true;
     const audience = c.target_audience || c.audience || 'ALL_USERS';
     const region = c.target_region || c.region;

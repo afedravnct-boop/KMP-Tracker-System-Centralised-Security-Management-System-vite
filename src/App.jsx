@@ -5284,7 +5284,7 @@ const handleUpdateUserRole = async (fnum, newRole, newPermissions) => {
       onUpdateUserRole={handleUpdateUserRole}
       onRevokeUser={handleRevokeUser}
       users={users}
-      adminCommsData={adminCommsData}
+      Admin_Communication={adminCommsData}
       onViewConsolidated={handleViewConsolidated}
       onViewHRReport={handleViewHRReport}
       onGenerateHRReport={handleGenerateHRReport}

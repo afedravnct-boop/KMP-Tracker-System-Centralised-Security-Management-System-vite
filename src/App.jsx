@@ -1489,9 +1489,8 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
                   </>
                 ) : (
                   <option value={currentUser.station}>{currentUser.station}</option>
-                )}
-                            
-              
+                )}   
+          </select>    
           </div>
 
           <ExpandableTableCard 
@@ -2989,9 +2988,8 @@ const filteredNominal_Roll_archives = useMemo(() => {
                 ) : (
                   <option value={currentUser.station}>{currentUser.station}</option>
                 )}
-              </select>
-             
-          </div>
+            </select>
+            </div>
 
           {viewMode === 'metrics' ? (
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm animate-in fade-in zoom-in-95 duration-200">

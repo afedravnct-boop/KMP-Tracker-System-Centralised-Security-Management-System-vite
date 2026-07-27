@@ -194,7 +194,7 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
     } catch(e) { console.error(e); } finally { setLoadingReceipts(false); }
   };
 
-  const relevantComms = (commsData || []).filter(c => {
+  const relevantComms = (Array.isArray(commsData) ? commsData : []).filter(c => {
     if (c.target_audience === 'ALL_USERS' || c.target_audience === 'ALL') return true;
     if (c.target_audience === 'ADMINS_ONLY' && isAdmin) return true;
     if (c.target_audience === 'RPC_ONLY' && isRPC) return true;
@@ -484,7 +484,7 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
   };
 
   const filteredReports = useMemo(() => {
-    return reports.filter(r => {
+    return (Array.isArray(reports) ? reports : []).filter(r => {
       if (filterRegion !== 'ALL REGIONS' && r.region !== filterRegion) return false;
       if (filterStation !== 'ALL STATIONS' && r.station !== filterStation) return false;
       if (searchQuery && !r.narrative.toLowerCase().includes(searchQuery.toLowerCase()) && 
@@ -508,7 +508,7 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
   }, [reports, filterRegion, filterStation, searchQuery, dateFilter, customStartDate, customEndDate]);
 
   const availableUpdateCases = useMemo(() => {
-    return reports.filter(r => {
+    return (Array.isArray(reports) ? reports : []).filter(r => {
       if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && r.region !== currentUser.region) return false;
       if (updateSearch) {
         const query = updateSearch.toLowerCase();
@@ -1150,7 +1150,7 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
 
   // Fully integrated date filtering matching the Crime Registry pattern
   const filteredStats = useMemo(() => {
-    return stats.filter(s => {
+    return (Array.isArray(stats) ? stats : []).filter(s => {
       if (filterRegion !== 'ALL REGIONS' && s.region !== filterRegion) return false;
       if (filterStation !== 'ALL STATIONS' && s.station !== filterStation) return false;
 
@@ -1184,7 +1184,7 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
   }, [stats, filterRegion, filterStation, dateFilter]);
 
   const availableUpdateStats = useMemo(() => {
-    return stats.filter(s => {
+    return (Array.isArray(stats) ? stats : []).filter(s => {
       if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && s.region !== currentUser.region) return false;
       if (updateSearch) {
         const query = updateSearch.toLowerCase();
@@ -1597,7 +1597,7 @@ const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) =>
 
   // Fully integrated date filtering matching the Crime Registry pattern
   const filteredStories = useMemo(() => {
-    return stories.filter(s => {
+    return (Array.isArray(stories) ? stories : []).filter(s => {
       if (filterRegion !== 'ALL REGIONS' && s.region !== filterRegion) return false;
       if (filterStation !== 'ALL STATIONS' && s.station !== filterStation) return false;
 
@@ -1631,7 +1631,7 @@ const SuccessStories = ({ currentUser, stories, setStories, setSidebarOpen }) =>
   }, [stories, filterRegion, filterStation, dateFilter]);
 
   const availableUpdateStories = useMemo(() => {
-    return stories.filter(s => {
+    return (Array.isArray(stories) ? stories : []).filter(s => {
       if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && s.region !== currentUser.region) return false;
       if (updateSearch) {
         const query = updateSearch.toLowerCase();
@@ -2045,7 +2045,7 @@ const Establishments = ({ currentUser, establishments, setEstablishments, setSid
   });
 
   const filteredEstablishments = useMemo(() => {
-    return establishments.filter(e => {
+    return (Array.isArray(establishments) ? establishments : []).filter(e => {
       if (filterRegion !== 'ALL REGIONS' && e.region !== filterRegion) return false;
       if (filterDivision !== 'ALL DIVISIONS' && e.division !== filterDivision) return false;
       if (filterStation !== 'ALL STATIONS' && e.station !== filterStation) return false;
@@ -2054,7 +2054,7 @@ const Establishments = ({ currentUser, establishments, setEstablishments, setSid
   }, [establishments, filterRegion, filterDivision, filterStation]);
 
   const availableUpdateEstablishments = useMemo(() => {
-    return establishments.filter(e => {
+    return (Array.isArray(establishments) ? establishments : []).filter(e => {
       if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && e.region !== currentUser.region) return false;
       if (updateSearch) {
         const query = updateSearch.toLowerCase();
@@ -2483,7 +2483,7 @@ const Nominal_Roll = ({ currentUser, Nominal_Rolls, setNominal_Rolls, Nominal_Ro
   });
 
   const filteredRolls = useMemo(() => {
-    return (Nominal_Rolls || []).filter(n => {
+    return (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).filter(n => {
       if (filterRegion !== 'ALL REGIONS' && n.region !== filterRegion) return false;
       if (filterStation !== 'ALL STATIONS' && n.station !== filterStation) return false;
       return true;
@@ -2507,7 +2507,7 @@ const filteredNominal_Roll_archives = useMemo(() => {
   });
 }, [Nominal_Roll_archives, filterRegion, filterStation, currentUser]);
   const availableUpdateRolls = useMemo(() => {
-    return (Nominal_Rolls || []).filter(n => {
+    return (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).filter(n => {
       if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && n.region !== currentUser.region) return false;
       if (updateSearch) {
         const query = updateSearch.toLowerCase();

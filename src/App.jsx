@@ -4538,22 +4538,12 @@ const DashboardLayout = ({
     { name: '👥 Nominal Roll', id: 'nominal-roll', icon: <Users size={20} /> },
   ];
 
-  // 🛡️ THE FIX: Only inject 'Admin Dispatch' into the sidebar if the user has Command Clearance!
+// 🛡️ THE FIX: Only inject 'Admin Dispatch' into the sidebar if the user has Command Clearance!
   if (['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)) {
      navItems.push({ 
        name: '📢📧 Admin Dispatch', 
        id: 'Admin_Communication', 
-       icon: (
-         <div className="relative flex items-center justify-center">
-           <Bell size={20} />
-           {hasUnread && (
-             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e] animate-ping" />
-           )}
-           {hasUnread && (
-             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]" />
-           )}
-         </div>
-       ) 
+       icon: <Bell size={20} />
      });
   }
 

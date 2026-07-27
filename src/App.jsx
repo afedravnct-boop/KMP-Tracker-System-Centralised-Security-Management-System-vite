@@ -4670,7 +4670,6 @@ const handleExportLogs = async () => {
                     )}
                   </span>
                 )}
-                )}
               </button>
             ))}
           </nav>

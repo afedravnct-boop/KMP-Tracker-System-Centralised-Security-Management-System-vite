@@ -3298,13 +3298,19 @@ const isRPC = currentUser && ['RPC', 'Deputy Commander'].includes(currentUser.ro
   };
 
 const handleReviewRequest = async (reqId, actionStatus) => {
+    // Prevent fetching if the ID is missing
+    if (!reqId) {
+      alert("Error: Request ID is undefined. Primary key mismatch.");
+      return;
+    }
+
     try {
       const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
       const token = localStorage.getItem('kmp_authToken');
       
-      // Changed to PUT to match your backend standards
+      // Reverted to PATCH (your original, correct code!)
       const response = await fetch(`${API_URL}/api/v1/requests/${reqId}`, {
-        method: "PUT", 
+        method: "PATCH", 
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -3313,16 +3319,15 @@ const handleReviewRequest = async (reqId, actionStatus) => {
       });
       
       if (!response.ok) {
-        // This will now catch and read the REAL error from your Python backend!
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.detail || `Server Error: ${response.status}`);
       }
       
-      setModRequests(modRequests.filter(r => r.id !== reqId));
+      // Safely filter out the request using whichever primary key it possesses
+      setModRequests(modRequests.filter(r => r.id !== reqId && r.sn !== reqId && r.request_id !== reqId));
       alert(`Request ${actionStatus.toLowerCase()} successfully!`);
     } catch (err) {
       console.error(err);
-      // We will now see exactly WHY it failed on the screen
       alert(`Error processing request: ${err.message}`);
     }
   };
@@ -3464,12 +3469,12 @@ const handleReviewRequest = async (reqId, actionStatus) => {
                         {req.requested_station && req.requested_station !== req.current_station && <div className="text-xs"><span className="font-bold text-slate-400">Station:</span> <span className="text-red-500 line-through mr-1">{req.current_station}</span> ➡️ <span className="text-green-600 font-bold">{req.requested_station}</span></div>}
                         {req.requested_region && req.requested_region !== req.current_region && <div className="text-xs"><span className="font-bold text-slate-400">Region:</span> <span className="text-red-500 line-through mr-1">{req.current_region}</span> ➡️ <span className="text-green-600 font-bold">{req.requested_region}</span></div>}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+<td className="px-4 py-3 whitespace-nowrap text-sm">
                         <div className="flex space-x-2">
-                          <button onClick={() => handleReviewRequest(req.id, "APPROVED")} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded text-xs transition flex items-center shadow-sm">
+                          <button onClick={() => handleReviewRequest(req.id || req.sn || req.request_id, "APPROVED")} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 px-3 rounded text-xs transition flex items-center shadow-sm">
                             <CheckCircle size={14} className="mr-1" /> Approve
                           </button>
-                          <button onClick={() => handleReviewRequest(req.id, "REJECTED")} className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 font-bold py-1.5 px-3 rounded text-xs transition flex items-center shadow-sm">
+                          <button onClick={() => handleReviewRequest(req.id || req.sn || req.request_id, "REJECTED")} className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 font-bold py-1.5 px-3 rounded text-xs transition flex items-center shadow-sm">
                             <X size={14} className="mr-1" /> Reject
                           </button>
                         </div>

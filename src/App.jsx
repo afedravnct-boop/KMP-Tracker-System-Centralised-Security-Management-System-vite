@@ -4947,8 +4947,8 @@ const handleExportLogs = async () => {
                       <input 
                         type="checkbox" 
                         className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
-                        checked={Boolean(selectedUserDetail.permissions?.export_data) || selectedUserDetail.role === 'RPC', 'Deputy Commander' || String(selectedUserDetail.role || '').includes('ADMIN')}
-                        disabled={selectedUserDetail.role === 'RPC', 'Deputy Commander' || String(selectedUserDetail.role || '').includes('ADMIN')}
+                        checked={Boolean(selectedUserDetail.permissions?.export_data) || ['RPC', 'Deputy Commander'].includes(selectedUserDetail.role) || String(selectedUserDetail.role || '').includes('ADMIN')}
+                        disabled={['RPC', 'Deputy Commander'].includes(selectedUserDetail.role) || String(selectedUserDetail.role || '').includes('ADMIN')}
                         onChange={(e) => {
                           const newPerms = { ...(selectedUserDetail.permissions || {}), export_data: e.target.checked };
                           setSelectedUserDetail({ ...selectedUserDetail, permissions: newPerms });

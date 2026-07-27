@@ -185,6 +185,7 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
   const [receiptsData, setReceiptsData] = useState([]);
   const [loadingReceipts, setLoadingReceipts] = useState(false);
   const [expandedComm, setExpandedComm] = useState(null);
+  const [isInboxExpanded, setIsInboxExpanded] = useState(false);
 
   const fetchReceipts = async (commId) => {
     setViewingReceiptsFor(commId);
@@ -297,7 +298,7 @@ const relevantComms = safeComms.filter(c => {
               <div className="p-6 text-center text-xs font-bold text-slate-400 uppercase">No active directives.</div>
             ) : (
               <div className="divide-y divide-slate-200">
-                {relevantComms.map((comm) => (
+                {(isInboxExpanded ? relevantComms : relevantComms.slice(0, 1)).map((comm) => (
                   <div key={comm.id} className={`p-4 transition-all duration-500 ${
                     comm.acknowledged 
                       ? 'bg-gray-50 border-l-4 border-l-gray-300 opacity-70 grayscale-[30%]' 
@@ -361,6 +362,18 @@ const relevantComms = safeComms.filter(c => {
                     )}
                   </div>
                 ))}
+                {relevantComms.length > 1 && (
+                  <div 
+                    onClick={() => setIsInboxExpanded(!isInboxExpanded)}
+                    className="p-3 bg-slate-200/50 text-center text-[10px] font-extrabold text-slate-600 hover:bg-slate-200 cursor-pointer transition-colors tracking-widest uppercase"
+                  >
+                    {isInboxExpanded ? "Collapse Inbox" : `View ${relevantComms.length - 1} Older Dispatches`}
+                  </div>
+                )}
+
+              </div>
+            )}
+          </div>
               </div>
             )}
           </div>

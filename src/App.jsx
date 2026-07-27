@@ -4286,19 +4286,42 @@ const DashboardLayout = ({
   // 🟢 LIVE DATABASE HEARTBEAT & ONLINE ROSTER SYNC
   const [realOnlineUsers, setRealOnlineUsers] = useState([]);
 
-  useEffect(() => {
-    const token = localStorage.getItem('kmp_authToken');
-    if (!token) return;
-
+useEffect(() => {
     const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
     const syncHeartbeat = async () => {
+      // 🛡️ THE FIX: Grab the freshest token on every single heartbeat!
+      const currentToken = localStorage.getItem('kmp_authToken');
+      if (!currentToken) return;
+
       try {
         // 1. Send the ping to keep this user alive in the DB
         await fetch(`${API_URL}/api/v1/users/heartbeat`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${currentToken}` }
         });
+
+        // 2. Fetch the live list of active officers
+        const response = await fetch(`${API_URL}/api/v1/users/online`, {
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        
+        if (response.ok) {
+          setRealOnlineUsers(await response.json());
+        }
+      } catch (err) {
+        console.warn("Heartbeat sync paused, retrying next minute...");
+      }
+    };
+
+    // Fire immediately upon mounting the dashboard
+    syncHeartbeat();
+
+    // Loop exactly every 60 seconds (60000ms)
+    const heartbeatInterval = setInterval(syncHeartbeat, 60000);
+
+    return () => clearInterval(heartbeatInterval);
+  }, []);
 
         // 2. Fetch the live list of active officers
         const response = await fetch(`${API_URL}/api/v1/users/online`, {

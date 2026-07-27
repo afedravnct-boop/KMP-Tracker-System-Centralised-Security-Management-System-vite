@@ -3259,7 +3259,18 @@ const AdminApprovals = ({ currentUser }) => {
 const isRPC = currentUser && ['RPC', 'Deputy Commander'].includes(currentUser.role);
   const isSystemAdmin = currentUser && ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
 
-  useEffect(() => {
+useEffect(() => {
+    // 1. Fetch HR Requests IMMEDIATELY so the number always shows on the tab
+    setLoadingRequests(true);
+    authFetch("/api/v1/requests")
+      .then(res => res.json())
+      .then(data => {
+          setModRequests(Array.isArray(data) ? data : []);
+          setLoadingRequests(false);
+      })
+      .catch(err => { console.error(err); setLoadingRequests(false); });
+
+    // 2. Only fetch Audit Logs when the tab is clicked (because logs are heavy!)
     if (activeTab === 'logs') {
       setLoadingLogs(true);
       authFetch("/api/v1/audit-logs")
@@ -3269,16 +3280,6 @@ const isRPC = currentUser && ['RPC', 'Deputy Commander'].includes(currentUser.ro
             setLoadingLogs(false); 
         })
         .catch(err => { console.error(err); setLoadingLogs(false); });
-    }
-    if (activeTab === 'requests') {
-      setLoadingRequests(true);
-      authFetch("/api/v1/requests")
-        .then(res => res.json())
-        .then(data => {
-            setModRequests(Array.isArray(data) ? data : []);
-            setLoadingRequests(false);
-        })
-        .catch(err => { console.error(err); setLoadingRequests(false); });
     }
   }, [activeTab]);
 
@@ -3370,12 +3371,12 @@ const handleReviewRequest = async (reqId, actionStatus) => {
         <h3 className="text-lg text-gray-500 mt-2 font-medium">Review pending officer signups, HR transfers, and Audit Logs.</h3>
       </div>
 
-      <div className="flex space-x-2 border-b border-gray-200 mb-6 bg-white/50 backdrop-blur rounded-t-xl px-4 pt-4 overflow-x-auto custom-scrollbar">
+<div className="flex space-x-2 border-b border-gray-200 mb-6 bg-white/50 backdrop-blur rounded-t-xl px-4 pt-4 overflow-x-auto custom-scrollbar">
         <button onClick={() => setActiveTab('approvals')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'approvals' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
           New Account Authorizations ({loadingPending ? '...' : realPendingUsers.length})
         </button>
         <button onClick={() => setActiveTab('requests')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'requests' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-          HR Modification Requests ({activeTab === 'requests' ? modRequests.length : '?'})
+          HR Modification Requests ({modRequests.length})
         </button>
         <button onClick={() => setActiveTab('logs')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'logs' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
           Audit Logs

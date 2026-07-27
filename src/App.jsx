@@ -163,10 +163,11 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
   );
 };
 
-const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewConsolidated, adminCommsData, onAcknowledgeComm }) => {  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
+const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewConsolidated, adminCommsData, onAcknowledgeComm }) => {
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isRPC = ['ADMIN', 'SUPER_ADMIN', 'RPC'].includes(currentUser.role);
   
-  const commsData = Admin_Communication || [];
+  const commsData = adminCommsData || [];
 
   const canViewConsolidated = isAdmin || currentUser.permissions?.consolidated;
   const canExportData = isRPC || currentUser.permissions?.export_data;
@@ -201,6 +202,8 @@ const HomeDashboard = ({ currentUser, setCurrentPage, onMasterExport, onViewCons
     if (c.target_audience === 'SPECIFIC_REGION' && c.target_region === currentUser.region) return true;
     return false;
   }).slice(0, 5);
+  
+  const hasUnread = relevantComms.some(c => !c.acknowledged);
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8 relative z-10 animate-in fade-in duration-300">

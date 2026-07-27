@@ -1028,7 +1028,7 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
                 ) : (
                   <option value={currentUser.station}>{currentUser.station}</option>
                 )}
-              
+          </select>    
           </div>
 
           <ExpandableTableCard 

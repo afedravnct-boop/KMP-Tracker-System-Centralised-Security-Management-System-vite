@@ -2516,8 +2516,6 @@ const handleFormSubmit = async (e) => {
 
             {/* 2. DYNAMIC STATION FILTER */}
             <select 
-  {/* 2. DYNAMIC STATION FILTER */}
-            <select 
               value={filterStation} 
               onChange={(e) => setFilterStation(e.target.value)} 
               disabled={!(['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser?.role) || currentUser?.permissions?.view_global_roster)} 
@@ -2526,15 +2524,10 @@ const handleFormSubmit = async (e) => {
               {['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser?.role) || currentUser?.permissions?.view_global_roster ? (
                 <>
                   <option value="ALL STATIONS">ALL STATIONS</option>
-                  
-                  {/* If 'ALL REGIONS', show every station. Otherwise, show only the selected Region's stations. */}
-                  {filterRegion === 'ALL REGIONS' 
-                    ? Object.values(REGIONAL_HIERARCHY).flat().map(stat => (
-                        <option key={stat} value={stat}>{stat}</option>
-                      ))
-                    : REGIONAL_HIERARCHY[filterRegion]?.map(stat => (
-                        <option key={stat} value={stat}>{stat}</option>
-                      ))
+                  {/* Only map the stations that belong to the currently selected Region */}
+                  {filterRegion !== 'ALL REGIONS' && REGIONAL_HIERARCHY[filterRegion] 
+                    ? REGIONAL_HIERARCHY[filterRegion].map(stat => <option key={stat} value={stat}>{stat}</option>)
+                    : null
                   }
                 </>
               ) : (

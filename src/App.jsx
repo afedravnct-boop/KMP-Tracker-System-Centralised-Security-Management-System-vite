@@ -442,7 +442,7 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
 
   const [filterRegion, setFilterRegion] = useState(currentUser?.role === 'SUPER_ADMIN' ? 'ALL REGIONS' : currentUser?.region || '');
   const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser?.role) || currentUser?.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
-  const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser?.role) || currentUser?.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('ALL TIME');
   const [updateSearch, setUpdateSearch] = useState('');
@@ -1188,7 +1188,6 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
   const [notification, setNotification] = useState(null);
 
   const [filterRegion, setFilterRegion] = useState(currentUser?.role === 'SUPER_ADMIN' ? 'ALL REGIONS' : currentUser?.region || '');
-  const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser?.role) || currentUser?.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
   const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser?.role) || currentUser?.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
   const [updateSearch, setUpdateSearch] = useState('');
   
@@ -2137,7 +2136,7 @@ const Establishments = ({ currentUser, establishments, setEstablishments, setSid
   const [notification, setNotification] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filterRegion, setFilterRegion] = useState(currentUser?.role === 'SUPER_ADMIN' ? 'ALL REGIONS' : currentUser?.region || '');
-  const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser?.role) || currentUser?.permissions?.view_global_roster) ? 'ALL STATIONS' : currentUser?.station || '');
+
   const [updateSearch, setUpdateSearch] = useState('');
 
   const [filterDivision, setFilterDivision] = useState('ALL DIVISIONS');

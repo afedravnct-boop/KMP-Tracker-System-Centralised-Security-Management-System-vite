@@ -41,7 +41,8 @@ const POSITIONS = {
     "KMP Commander", "Deputy KMP Commander",
     "KMP CID Commander", "KMP CI Commander", "KMP Operations Commander", 
     "KMP Traffic & Road Safety Commander", "KMP 999 eru commander", 
-    "999 ERU Regional Data Officer", "KMP SFC Coordinator"
+    "999 ERU Regional Data Officer", "KMP SFC Coordinator",
+    "Data Officer", "Data Assistant Officer"
   ],
   RPC: [
     "KMP South Commander", "KMP North Commander", "KMP East Commander", "Deputy Commander KMP south", "Deputy Commander KMP North", "Deputy Commander KMP East"
@@ -1461,7 +1462,7 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
                 </button>
               </div>
 
-              <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-slate-200 shadow-sm relative">
+                <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-slate-200 shadow-sm relative">
                 <h4 className="text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">📋 Area Metrics ({filterRegion} - {dateFilter})</h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                   {/* Metric cards placeholder */}
@@ -2548,8 +2549,35 @@ const Establishments = ({ currentUser, establishments, setEstablishments, setSid
           </div>
         </div>
         
-        <div className="lg:col-span-8 space-y-4">
+<div className="lg:col-span-8 space-y-4">
+          
+          {/* 🟢 MOVED AREA METRICS: Now sits above the table and filters! */}
+          <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-slate-200 shadow-sm relative">
+            <div className="absolute top-4 right-4 z-10">
+              <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="border-2 border-blue-500 text-blue-700 font-bold rounded-lg px-3 py-1 text-xs shadow-sm bg-white outline-none">
+                <option value="ALL TIME">ALL TIME</option>
+                <option value="TODAY">TODAY ONLY</option>
+                <option value="LAST 7 DAYS">LAST 7 DAYS</option>
+                <option value="LAST 30 DAYS">LAST 30 DAYS</option>
+                <option value="LAST 90 DAYS">LAST 90 DAYS</option>
+                <option value="LAST 120 DAYS">LAST 120 DAYS</option>
+              </select>
+            </div>
+            <h4 className="text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">📋 Area Metrics ({filterRegion} - {dateFilter})</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              <MetricCard title="Arrested" value={totals.arrested} colorClass="text-blue-700" />
+              <MetricCard title="Given Bond" value={totals.given_bond} colorClass="text-indigo-600" />
+              <MetricCard title="Cautioned" value={totals.cautioned} colorClass="text-gray-600" />
+              <MetricCard title="Pending Court" value={totals.pending_court} colorClass="text-yellow-600" />
+              <MetricCard title="To Court" value={totals.taken_to_court} colorClass="text-blue-500" />
+              <MetricCard title="Released" value={totals.released} colorClass="text-green-600" />
+              <MetricCard title="Remanded" value={totals.remanded} colorClass="text-red-600" />
+              <MetricCard title="Convicted" value={totals.convicted} colorClass="text-purple-600" />
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-3">
+{/* 1. DYNAMIC REGION FILTER */}
             <select 
               value={filterRegion} 
               onChange={(e) => { 
@@ -2569,6 +2597,7 @@ const Establishments = ({ currentUser, establishments, setEstablishments, setSid
               )}
             </select>
 
+            {/* 2. DYNAMIC STATION FILTER */}
             <select 
               value={filterStation} 
               onChange={(e) => setFilterStation(e.target.value)} 
@@ -3691,7 +3720,8 @@ const AdminProfile = ({ currentUser, setCurrentUser, setCurrentPage }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isRequestMode, setIsRequestMode] = useState(false);
   const [notification, setNotification] = useState(null);
-  
+  const [viewingImage, setViewingImage] = useState(null);
+
   const canAutoApprove = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
 
   // 🟢 DEFINED OFFICER RANKS FOR PROMOTION CHECKS
@@ -3933,7 +3963,14 @@ const handleSubmit = async (e) => {
           <div className="flex items-center z-10">
             <div className="relative group">
               {formData.profile_photo_path ? (
-                <img src={formData.profile_photo_path} alt="" className={`w-24 h-24 rounded-full object-cover shadow-2xl border-4 border-slate-700 bg-white ${isEditing ? 'opacity-80' : ''}`} onError={(e) => { e.target.style.display='none'; }} />
+                {formData.profile_photo_path ? (
+                <img 
+                  src={formData.profile_photo_path} 
+                  alt="" 
+                  className={`w-24 h-24 rounded-full object-cover shadow-2xl border-4 border-slate-700 bg-white transition-transform ${isEditing ? 'opacity-80' : 'cursor-pointer hover:scale-105'}`} 
+                  onClick={() => !isEditing && setViewingImage(formData.profile_photo_path)} // 🟢 OPENS FULL VIEW
+                  onError={(e) => { e.target.style.display='none'; }} 
+                />
               ) : (
                 <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white font-extrabold text-4xl shadow-2xl border-4 border-slate-700">
                   {currentUser.name?.charAt(0) || 'A'}
@@ -3957,7 +3994,7 @@ const handleSubmit = async (e) => {
           
           <button 
             onClick={() => { setIsEditing(!isEditing); setIsRequestMode(false); }} 
-            className={`z-10 flex items-center px-4 py-2 rounded-lg font-bold transition-colors shadow-sm ${isEditing ? 'bg-slate-700 text-white border border-slate-600' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
+            className={`z-10 flex items-center px-4 py-2 rounded-lg font-bold transition-colors shadow-sm ${isEditing ? 'bg-slate-700 text-white border border-slate-600' : 'bg-blue-600 text-white hover:bg-blue-300'}`}
           >
             {isEditing ? <><X size={16} className="mr-2"/> Cancel Edit</> : <><Edit size={16} className="mr-2"/> Update Profile</>}
           </button>
@@ -4093,7 +4130,7 @@ const handleSubmit = async (e) => {
                   <div className="text-sm font-bold text-slate-800 truncate">{currentUser.email || 'N/A'}</div>
                 </div>
                 
-                <div className="col-span-2">
+               <div className="col-span-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Contact Number</label>
                   <div className="text-sm font-bold text-slate-800">{currentUser.phone || 'N/A'}</div>
                 </div>
@@ -4103,6 +4140,22 @@ const handleSubmit = async (e) => {
           )}
         </div>
       </div>
+
+      {/* 🟢 FULL SCREEN IMAGE MODAL FOR MY PROFILE */}
+      {viewingImage && (
+        <div className="fixed inset-0 bg-black/90 z-[300] flex justify-center items-center p-4 animate-in fade-in" onClick={() => setViewingImage(null)}>
+          <button className="absolute top-6 right-6 text-white hover:text-red-500 transition-colors bg-white/10 p-2 rounded-full shadow-lg">
+            <X size={24}/>
+          </button>
+          <img 
+            src={viewingImage} 
+            alt="Full Profile" 
+            className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl border-2 border-slate-700" 
+            onClick={(e) => e.stopPropagation()} 
+          />
+        </div>
+      )}
+
     </div>
   );
 };
@@ -4129,6 +4182,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
     `Divisional Commander ${signupData.station}`,
     `CID Officer ${signupData.station}`,
     `Data Officer ${signupData.station}`
+    `Data Assistant Officer ${signupData.station}`
   ];
 
   const [attempts, setAttempts] = useState(0);
@@ -4161,19 +4215,20 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
     }
   };
 
-  const handlePhotoUpload = async (e) => {
+const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const localPreviewUrl = URL.createObjectURL(file);
-      setSignupData(prev => ({ ...prev, profile_photo_path: localPreviewUrl }));
-      setAuthMessage("Uploading profile photo to S3 bucket...");
-
+      setNotification("⏳ Uploading and saving new profile photo...");
       const uploadData = new FormData();
       uploadData.append("file", file);
-      uploadData.append("fnum", signupData.fnum || "PENDING_REGISTRATION");
+      uploadData.append("fnum", currentUser.fnum);
       uploadData.append("category", "user_profile");
 
       try {
+        const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+        const token = localStorage.getItem('kmp_authToken');
+        
+        // 1. Upload to S3
         const response = await fetch(`${API_URL}/api/v1/users/upload-profile`, {
           method: "POST",
           body: uploadData,
@@ -4184,11 +4239,38 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
         const data = await response.json();
         const s3Url = data.full_s3_url || data.cloud_storage_path;
 
-        setSignupData(prev => ({ ...prev, profile_photo_path: s3Url }));
-        setAuthMessage("✅ Photo uploaded to S3 successfully!");
+        // 2. Auto-save to Database immediately
+        const securePayload = {
+          fnum: currentUser.fnum,
+          name: currentUser.name,
+          rank: currentUser.rank,
+          region: currentUser.region,
+          station: currentUser.station,
+          email: formData.email,
+          phone: formData.phone,
+          profile_photo_path: s3Url
+        };
+
+        const updateRes = await fetch(`${API_URL}/api/v1/users/profile/update`, {
+          method: "PUT",
+          headers: { 
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify(securePayload)
+        });
+
+        if (!updateRes.ok) throw new Error("Failed to link photo to profile in database.");
+
+        // 3. Update React State Permanently
+        setFormData(prev => ({ ...prev, profile_photo_path: s3Url }));
+        setCurrentUser(prev => ({ ...prev, profile_photo_path: s3Url }));
+        setNotification("✅ Photo uploaded and permanently saved successfully!");
+        
+        setTimeout(() => setNotification(null), 4000);
       } catch (error) {
         console.error("Upload error:", error);
-        setAuthMessage("⚠️ S3 upload error. Temporary preview active.");
+        setNotification(`❌ Error: ${error.message}`);
       }
     }
   };
@@ -4528,6 +4610,7 @@ const DashboardLayout = ({
   const [showOnline, setShowOnline] = useState(false);
   const [showAllUsers, setShowAllUsers] = useState(false);
   const [selectedUserDetail, setSelectedUserDetail] = useState(null);
+  const [viewingProfileImage, setViewingProfileImage] = useState(null);
   
   const [lastViewedId, setLastViewedId] = useState(() => {
     const saved = localStorage.getItem('last_viewed_comm_id');
@@ -4914,7 +4997,7 @@ const handleExportLogs = async () => {
                     </div>
                   </div>
                                     
-                  {['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && (
+{(['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) || currentUser.permissions?.consolidated) && (
                     <button 
                       onClick={onViewConsolidated}
                       className="w-full text-xs py-2 rounded transition flex items-center justify-center font-bold mt-3 bg-slate-900 hover:bg-slate-950 text-blue-400 border border-blue-900"
@@ -4988,14 +5071,18 @@ const handleExportLogs = async () => {
               <div className="flex items-center space-x-4 mb-6 pb-4 border-b border-gray-100">
                 <div className="w-16 h-16 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-extrabold text-2xl overflow-hidden shadow-sm border-2 border-blue-500">
                   {selectedUserDetail.profile_photo_path ? (
-                     <img src={selectedUserDetail.profile_photo_path} alt="Profile" className="w-full h-full object-cover" />
+                     {/* 1. Header & Photo */}
+              <div className="flex items-center space-x-4 mb-6 pb-4 border-b border-gray-100">
+                <div className="w-16 h-16 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-extrabold text-2xl overflow-hidden shadow-sm border-2 border-blue-500">
+                  {selectedUserDetail.profile_photo_path ? (
+                     <img 
+                       src={selectedUserDetail.profile_photo_path} 
+                       alt="Profile" 
+                       className="w-full h-full object-cover cursor-pointer hover:scale-110 transition-transform" 
+                       onClick={() => setViewingProfileImage(selectedUserDetail.profile_photo_path)} // 🟢 OPENS FULL VIEW
+                     />
                   ) : (selectedUserDetail.name?.charAt(0) || 'U')}
                 </div>
-                <div>
-                  <div className="font-extrabold text-slate-800 text-xl leading-tight">{selectedUserDetail.name}</div>
-                  <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mt-1">
-                    {selectedUserDetail.fnum} • {selectedUserDetail.rank} • {selectedUserDetail.station}
-                  </div>
                 </div>
               </div>
 
@@ -5134,17 +5221,33 @@ const handleExportLogs = async () => {
                   }} 
                   className="text-xs font-bold text-red-600 hover:text-white hover:bg-red-600 py-2 px-4 rounded-lg transition-colors border border-red-200 shadow-sm"
                 >
-                  Revoke Access
-                </button>
-              )}
+Revoke Access
+                  </button>
+                )}
+              </div>
+              
             </div>
-            
           </div>
-        </div>
-      )}
-    </div>
-  );
-};  
+        )}
+
+        {/* 🟢 FULL SCREEN IMAGE MODAL FOR SELECTED USER */}
+        {viewingProfileImage && (
+          <div className="fixed inset-0 bg-black/90 z-[300] flex justify-center items-center p-4 animate-in fade-in" onClick={() => setViewingProfileImage(null)}>
+            <button className="absolute top-6 right-6 text-white hover:text-red-500 transition-colors bg-white/10 p-2 rounded-full shadow-lg">
+              <X size={24}/>
+            </button>
+            <img 
+              src={viewingProfileImage} 
+              alt="Full Profile" 
+              className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl border-2 border-slate-700" 
+              onClick={(e) => e.stopPropagation()} 
+            />
+          </div>
+        )}
+
+      </div>
+    );
+  };  
 
 // ====================================================================
 // --- ROOT APP COMPONENT ---
@@ -5219,7 +5322,7 @@ useEffect(() => {
           authFetch("/api/v1/users", { signal: controller.signal })
         ]);
 
-        if (!controller.signal.aborted) {
+if (!controller.signal.aborted) {
           if (resReports.ok) setReports(await resReports.json());
           if (resStats.ok) setStats(await resStats.json());
           if (resStories.ok) setStories(await resStories.json());
@@ -5227,14 +5330,18 @@ useEffect(() => {
           if (resComms.ok) setAdminCommsData(await resComms.json());
           if (resEst.ok) setEstablishments(await resEst.json());
           if (resArchives.ok) setNominal_Roll_archives(await resArchives.json());
-          if (resUsers.ok) setUsers(await resUsers.json());
+          
+          if (resUsers.ok) {
+            const allUsers = await resUsers.json();
+            setUsers(allUsers);
+            
+            // 🟢 LIVE SYNC FIX: Instantly update current user permissions without requiring logout
+            const me = allUsers.find(u => u.fnum === currentUser.fnum);
+            if (me && (JSON.stringify(me.permissions) !== JSON.stringify(currentUser.permissions) || me.role !== currentUser.role)) {
+                setCurrentUser(prev => ({ ...prev, permissions: me.permissions, role: me.role }));
+            }
+          }
         }
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error("Data sync failed:", err);
-        }
-      }
-    };
         
     fetchAllData();
     return () => controller.abort();

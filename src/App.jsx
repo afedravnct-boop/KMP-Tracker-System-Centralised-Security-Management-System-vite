@@ -362,6 +362,7 @@ const relevantComms = safeComms.filter(c => {
                     )}
                   </div>
                 ))}
+{/* 🛡️ THE FIX: Toggle Button to Expand/Collapse Inbox */}
                 {relevantComms.length > 1 && (
                   <div 
                     onClick={() => setIsInboxExpanded(!isInboxExpanded)}
@@ -371,9 +372,6 @@ const relevantComms = safeComms.filter(c => {
                   </div>
                 )}
 
-              </div>
-            )}
-          </div>
               </div>
             )}
           </div>

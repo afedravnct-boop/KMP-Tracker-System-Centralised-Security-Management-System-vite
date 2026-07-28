@@ -3687,7 +3687,7 @@ const handleReviewRequest = async (reqId, actionStatus) => {
 // ====================================================================
 // --- PROFILE UPDATE SYSTEM (COMMAND WORKFLOW ENABLED FOR ALL USERS) ---
 // ====================================================================
-const AdminProfile = ({ currentUser, setCurrentUser }) => { 
+const AdminProfile = ({ currentUser, setCurrentUser, setCurrentPage }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isRequestMode, setIsRequestMode] = useState(false);
   const [notification, setNotification] = useState(null);
@@ -3918,6 +3918,16 @@ const handleSubmit = async (e) => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6 mt-10 relative z-10 animate-in fade-in duration-300">
+      {/* 🟢 THE FIX: Dedicated Back Button */}
+      <button 
+        onClick={() => setCurrentPage && setCurrentPage('home')} 
+        className="flex items-center text-sm font-bold text-slate-500 hover:text-blue-700 transition-colors bg-white hover:bg-blue-50 px-4 py-2 rounded-lg shadow-sm border border-slate-200 w-fit"
+      >
+        <Home size={16} className="mr-2" /> Return to Master Dashboard
+      </button>
+
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-slate-900 px-6 py-8 border-b border-gray-200 flex justify-between items-center relative">
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="bg-slate-900 px-6 py-8 border-b border-gray-200 flex justify-between items-center relative">
           <div className="flex items-center z-10">

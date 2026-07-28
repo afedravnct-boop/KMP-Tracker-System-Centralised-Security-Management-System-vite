@@ -4918,8 +4918,9 @@ const handleExportLogs = async () => {
           )}
         </div>
 
-        <div className="p-4 border-t border-slate-700 bg-slate-950">
-          <div className="flex items-center mb-4 px-2 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors" onClick={() => setSelectedUserDetail({ ...currentUser, isSystemUser: false })}>
+<div className="p-4 border-t border-slate-700 bg-slate-950">
+          {/* 🟢 THE FIX: Change onClick to setCurrentPage('profile') so it routes to the editable page! */}
+          <div className="flex items-center mb-4 px-2 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors" onClick={() => setCurrentPage('profile')}>
              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow overflow-hidden">
                {currentUser?.profile_photo_path ? (
                  <img src={currentUser.profile_photo_path} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display='none'; }} />
@@ -4934,8 +4935,8 @@ const handleExportLogs = async () => {
              )}
           </div>
           <button onClick={onLogout} className="flex items-center w-full px-4 py-2 text-red-400 hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-red-900">
-            <LogOut size={18} />
-            {sidebarOpen && <span className="ml-3 font-medium text-sm">Secure Logout</span>}
+             <LogOut size={18} />
+             {sidebarOpen && <span className="ml-3 font-medium text-sm">Secure Logout</span>}
           </button>
         </div>
       </div>

@@ -2798,30 +2798,39 @@ const Nominal_Roll = ({ currentUser, Nominal_Rolls, setNominal_Rolls, Nominal_Ro
     district: '', region: currentUser.region, section: '', dir: '', status: 'ACTIVE'
   });
 
-  const filteredRolls = useMemo(() => {
+const filteredRolls = useMemo(() => {
     return (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).filter(n => {
-      if (filterRegion !== 'ALL REGIONS' && n.region !== filterRegion) return false;
-      if (filterStation !== 'ALL STATIONS' && n.station !== filterStation) return false;
+      // Safely normalize database strings and filter strings
+      const dbRegion = (n.region || '').trim().toUpperCase();
+      const dbStation = (n.station || '').trim().toUpperCase();
+      const selRegion = (filterRegion || '').trim().toUpperCase();
+      const selStation = (filterStation || '').trim().toUpperCase();
+
+      if (selRegion !== 'ALL REGIONS' && selRegion !== '' && dbRegion !== selRegion) return false;
+      if (selStation !== 'ALL STATIONS' && selStation !== '' && dbStation !== selStation) return false;
+      
       return true;
     });
   }, [Nominal_Rolls, filterRegion, filterStation]);
 
-const filteredNominal_Roll_archives = useMemo(() => {
-  if (!Array.isArray(Nominal_Roll_archives)) return [];
+  const filteredNominal_Roll_archives = useMemo(() => {
+    if (!Array.isArray(Nominal_Roll_archives)) return [];
+    const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
 
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+    return Nominal_Roll_archives.filter(n => {
+      if (isSuperAdmin) return true;
 
-  return Nominal_Roll_archives.filter(n => {
-    if (isSuperAdmin) return true;
+      const dbRegion = (n.region || '').trim().toUpperCase();
+      const dbStation = (n.station || '').trim().toUpperCase();
+      const selRegion = (filterRegion !== 'ALL REGIONS' ? filterRegion : currentUser.region || '').trim().toUpperCase();
+      const selStation = (filterStation !== 'ALL STATIONS' ? filterStation : currentUser.station || '').trim().toUpperCase();
 
-    const regionToMatch = filterRegion !== 'ALL REGIONS' ? filterRegion : currentUser.region;
-    const stationToMatch = filterStation !== 'ALL STATIONS' ? filterStation : currentUser.station;
+      if (dbRegion !== selRegion) return false;
+      if (dbStation !== selStation) return false;
+      return true;
+    });
+  }, [Nominal_Roll_archives, filterRegion, filterStation, currentUser]);
 
-    if (n.region !== regionToMatch) return false;
-    if (n.station !== stationToMatch) return false;
-    return true;
-  });
-}, [Nominal_Roll_archives, filterRegion, filterStation, currentUser]);
   const availableUpdateRolls = useMemo(() => {
     return (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).filter(n => {
       if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && n.region !== currentUser.region) return false;

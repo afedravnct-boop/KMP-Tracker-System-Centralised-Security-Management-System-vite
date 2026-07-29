@@ -4902,47 +4902,41 @@ const DashboardLayout = ({
     return () => clearInterval(heartbeatInterval);
   }, []);
 
-// 🟢 ACTIVE IDLE TIMER & AUTO-LOGOUT LOGIC
+// 🟢 ACTIVE IDLE TIMER & AUTO-LOGOUT DIALOGUE LOGIC
   useEffect(() => {
-    const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 Minutes
+    const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // Exactly 30 Minutes
     let lastActivityTime = Date.now();
     let hasWarned = false;
 
     const enforceLogout = () => {
-      // Alert pauses the browser. When they click OK, the next line executes instantly.
+      // This triggers the explicit dialog box you want
       alert("Session Expired: You have been securely logged out due to inactivity.");
-      onLogout(); 
+      if (typeof onLogout === 'function') {
+        onLogout();
+      } else {
+        localStorage.removeItem('kmp_authToken');
+        window.location.reload();
+      }
     };
 
     const updateActivity = () => {
-      const now = Date.now();
-      // 🟢 THE FIX: If the browser slept and woke up past the timeout, DO NOT reset the clock. Boot them immediately.
-      if (now - lastActivityTime >= IDLE_TIMEOUT_MS) {
-        enforceLogout();
-        return;
-      }
-      lastActivityTime = now;
+      lastActivityTime = Date.now();
       hasWarned = false; 
     };
 
-    // Attach activity listeners
+    // Attach activity listeners across the entire window
     window.addEventListener('mousemove', updateActivity);
     window.addEventListener('keypress', updateActivity);
     window.addEventListener('click', updateActivity);
     window.addEventListener('scroll', updateActivity);
 
-    // The heartbeat check loop (runs every 10 seconds)
+    // Check interval running every 10 seconds
     const idleCheckInterval = setInterval(() => {
       const elapsed = Date.now() - lastActivityTime;
       
-      // Optional: Show a quick warning 1 minute before timeout (at 29 minutes)
-      if (elapsed >= IDLE_TIMEOUT_MS - 60000 && !hasWarned) {
-        hasWarned = true;
-        console.warn("Security Notice: Session expiring soon due to inactivity.");
-      }
-
-      // Final Timeout Reached via Interval
+      // Final Timeout Reached -> Triggers the alert popup
       if (elapsed >= IDLE_TIMEOUT_MS) {
+        clearInterval(idleCheckInterval);
         enforceLogout();
       }
     }, 10000);

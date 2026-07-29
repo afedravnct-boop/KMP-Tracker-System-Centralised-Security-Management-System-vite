@@ -3081,10 +3081,10 @@ const filteredNominal_Roll_archives = useMemo(() => {
         )}
       </div>
 
-<div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Column: Sidebar with Bulk Upload & Log Form */}
+   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-5 space-y-6">
+
+          {/* 🟢 Bulk Excel Upload with Required Schema Preview */}
           {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'RPC') && (
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
               <div>
@@ -3092,44 +3092,43 @@ const filteredNominal_Roll_archives = useMemo(() => {
                   <FileUp className="w-4 h-4 mr-2 text-blue-600" /> Batch Excel Import
                 </h4>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Ensure your Excel file uses these exact column headers:
+                  Ensure your Excel file uses these exact column headers for consistency:
                 </p>
               </div>
 
-              {/* Exact Column Headers Guide */}
+              {/* Exact Column Headers Badge List */}
               <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-[11px] font-mono text-slate-700 flex flex-wrap gap-1.5">
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">sn</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">fnum</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">rank</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">name</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">sex</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">position</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">dob</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">doe</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">dopost</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">dopro</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">contact</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">educlevel</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">ipps</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">tin</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">nin</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">homedist</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">tribe</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">accno</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">bankbranch</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">station</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">district</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">region</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">section</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">dir</span>
-                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold">status</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">sn</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">fnum</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">rank</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">name</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">sex</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">position</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">dob</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">doe</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">dopost</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">dopro</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">contact</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">educlevel</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">ipps</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">tin</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">nin</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">homedist</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">tribe</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">accno</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">bankbranch</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">station</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">district</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">region</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">section</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">dir</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-slate-300 shadow-2xs font-bold">status</span>
               </div>
 
               <BulkNominalRollUpload onUploadSuccess={fetchNominalRollData} />
             </div>
           )}
 
-          {/* Existing "Log Personnel" Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-slate-900 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-white font-semibold flex items-center"><Users className="w-5 h-5 mr-2 text-blue-400" /> ⚙️ Log Personnel</h3>
@@ -3143,13 +3142,6 @@ const filteredNominal_Roll_archives = useMemo(() => {
                   <Edit className="w-4 h-4 inline mr-1" /> Update Existing
                 </button>
               </div>
-              
-              {/* Form fields... */}
-            </div>
-          </div>
-
-        </div>
-    </div>
 
               {notification && (
                 <div className={`border px-4 py-3 rounded-lg flex items-center mb-4 ${notification.includes('Error') ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>

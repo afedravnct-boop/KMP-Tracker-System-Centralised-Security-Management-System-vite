@@ -3084,9 +3084,6 @@ const filteredNominal_Roll_archives = useMemo(() => {
    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-5 space-y-6">
 
-<div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-5 space-y-6">
-
           {/* 🟢 Bulk Excel Upload with Required Schema Preview */}
           {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'RPC') && (
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">

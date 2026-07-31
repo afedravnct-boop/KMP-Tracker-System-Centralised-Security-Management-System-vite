@@ -168,13 +168,10 @@ const HomeDashboard = ({ currentUser, setCurrentPage, reports = [], stats = [], 
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
   const isRPC = ['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role);
   
-  const hasNominalClearance = ['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser?.role) || 
+  const hasNominalClearance = ['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander', 'Regional_HR_Officer'].includes(currentUser?.role) || 
                               (currentUser?.position || '').toUpperCase().includes('HR') ||
                               currentUser?.permissions?.view_nominal_roll || 
                               currentUser?.permissions?.upload_hr;
-
-  const renderPage = () => {
-    switch (currentPage) { 
 
   const rawComms = adminCommsData || [];
   const safeComms = Array.isArray(rawComms) ? rawComms : (rawComms.data || rawComms.items || []);
@@ -183,7 +180,7 @@ const HomeDashboard = ({ currentUser, setCurrentPage, reports = [], stats = [], 
   const canExportData = isRPC || currentUser.permissions?.export_data;
 
   const today = new Date().getDay();
-  const isEndOfWeek = today === 5 || today === 6 || today === 0;
+  const isEndOfWeek = today === 4 || today === 6 || today === 0;
 
   const userStation = (currentUser.station || '').trim().toUpperCase();
   const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);

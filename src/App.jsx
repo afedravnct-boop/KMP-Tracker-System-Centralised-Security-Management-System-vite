@@ -3318,7 +3318,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
     <p className="text-blue-300 mt-3 text-sm font-bold bg-blue-900/50 px-4 py-1.5 rounded-full border border-blue-500/30 backdrop-blur-sm shadow-inner flex items-center justify-center">
       <Lock size={14} className="mr-2" /> 
       {/* 🟢 SPINNING GLOBE/INTERNET SYMBOL */}
-      <Globe size={14} className="mx-2 animate-spin text-yellow-400" style={{ animationDuration: '4s' }} /> 
+      <Globe size={18} className="mx-2 animate-spin text-white-400" style={{ animationDuration: '4s' }} /> 
       KMP-CSDMS Standby Mode
     </p>
   </div>
@@ -4436,21 +4436,23 @@ case 'Admin_Communication': return <Admin_Communication currentUser={currentUser
   }, []);
 
   return (
-    <DashboardLayout 
-      currentUser={currentUser} currentPage={currentPage} setCurrentPage={handlePageChange} 
-      onLogout={() => { localStorage.removeItem('kmp_authToken'); localStorage.removeItem('kmp_currentUser'); localStorage.removeItem('kmp_currentPage'); window.location.reload(); }}
-      onUpdateUserRole={handleUpdateUserRole} onRevokeUser={handleRevokeUser} users={users} Admin_Communication={adminCommsData}
-      onViewConsolidated={handleViewConsolidated} onViewHRReport={handleViewHRReport} onGenerateHRReport={handleGenerateHRReport}
-    >
-      {isViewingConsolidated && <ConsolidatedLedger data={consolidatedData} reports={reports} stats={stats} stories={stories} onClose={() => setIsViewingConsolidated(false)} />}
-      {isViewingHR && hrLedgerData && <HrEstablishmentsLedger data={hrLedgerData} onClose={() => setIsViewingHR(false)} currentUser={currentUser} onUploadSuccess={() => window.location.reload()} />}
-      <div className={(isViewingConsolidated || isViewingHR) ? 'hidden' : 'block w-full h-full'}>
-        {renderPage()}
-      </div>
+    <> {/* 🟢 Added React Fragment wrapper */}
+      <DashboardLayout 
+        currentUser={currentUser} currentPage={currentPage} setCurrentPage={handlePageChange} 
+        onLogout={() => { localStorage.removeItem('kmp_authToken'); localStorage.removeItem('kmp_currentUser'); localStorage.removeItem('kmp_currentPage'); window.location.reload(); }}
+        onUpdateUserRole={handleUpdateUserRole} onRevokeUser={handleRevokeUser} users={users} Admin_Communication={adminCommsData}
+        onViewConsolidated={handleViewConsolidated} onViewHRReport={handleViewHRReport} onGenerateHRReport={handleGenerateHRReport}
+      >
+        {isViewingConsolidated && <ConsolidatedLedger data={consolidatedData} reports={reports} stats={stats} stories={stories} onClose={() => setIsViewingConsolidated(false)} />}
+        {isViewingHR && hrLedgerData && <HrEstablishmentsLedger data={hrLedgerData} onClose={() => setIsViewingHR(false)} currentUser={currentUser} onUploadSuccess={() => window.location.reload()} />}
+        <div className={(isViewingConsolidated || isViewingHR) ? 'hidden' : 'block w-full h-full'}>
+          {renderPage()}
+        </div>
+      </DashboardLayout>
 
-      {/* 🟢 FULL-SCREEN IDLE SECURITY CURTAIN OVERLAY */}
+      {/* 🟢 MOVED OUTSIDE of DashboardLayout to guarantee TRUE full-screen over everything */}
       <WorkspaceSecurityCurtain />
-    </DashboardLayout>
+    </>
   );
 };
 

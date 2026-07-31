@@ -3094,20 +3094,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
   const [password, setPassword] = useState('');
   const [authMessage, setAuthMessage] = useState(null);
   
-  const [signupData, setSignupData] = useState({
-    fnum: '', ipps: '', name: '', rank: '', sex: 'MALE', region: 'KMP NORTH', station: 'KAWEMPE', position: '', email: '', phone: '', password: '', profile_photo_path: ''
-  });
-  const [photoFile, setPhotoFile] = useState(null);
-
-  const availablePositions = [
-    ...POSITIONS.ADMIN, ...POSITIONS.RPC, `${signupData.region} Commander`, `Divisional Commander ${signupData.station}`, `CID Officer ${signupData.station}`, `Data Officer ${signupData.station}`, `Data Assistant Officer ${signupData.station}`
-  ];
-
-  const [attempts, setAttempts] = useState(0);
-  const [lockoutEnd, setLockoutEnd] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(0);
-
-  // 🟢 LOGIN SCREEN IDLE CURTAIN STATE
+    // 🟢 LOGIN SCREEN IDLE CURTAIN STATE
   const [isLoginIdle, setIsLoginIdle] = useState(false);
 
   useEffect(() => {
@@ -3144,6 +3131,19 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
     }, 1000);
     return () => clearInterval(interval);
   }, [lockoutEnd]);
+
+  const [signupData, setSignupData] = useState({
+    fnum: '', ipps: '', name: '', rank: '', sex: 'MALE', region: 'KMP NORTH', station: 'KAWEMPE', position: '', email: '', phone: '', password: '', profile_photo_path: ''
+  });
+  const [photoFile, setPhotoFile] = useState(null);
+
+  const availablePositions = [
+    ...POSITIONS.ADMIN, ...POSITIONS.RPC, `${signupData.region} Commander`, `Divisional Commander ${signupData.station}`, `CID Officer ${signupData.station}`, `Data Officer ${signupData.station}`, `Data Assistant Officer ${signupData.station}`
+  ];
+
+  const [attempts, setAttempts] = useState(0);
+  const [lockoutEnd, setLockoutEnd] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
 
   const handleSignupChange = (e) => {
     const { name, value } = e.target;

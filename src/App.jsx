@@ -3305,21 +3305,23 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
 
           <div className="absolute inset-0 opacity-10 bg-center bg-no-repeat bg-cover mt-10" style={{ backgroundImage: `url('/UPF Flag Emblem.png')` }}></div>
 
-          <div className="relative z-10 flex flex-col items-center">
-            <img 
-              src="/UPF Flag Emblem.png" 
-              alt="UPF Waving Flag Emblem" 
-              className="w-72 h-44 mb-6 drop-shadow-[0_0_25px_rgba(255,255,255,0.3)] animate-flag-wave object-contain rounded-xl border border-slate-600 shadow-2xl"
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
-            <h2 className="text-3xl font-extrabold text center-white tracking-wide uppercase drop-shadow-md">KMP SECURITY DATA MANAGEMENT SYSTEM</h2>
-            <p className="text-blue-300 mt-3 text-sm font-bold bg-blue-900/50 px-4 py-1.5 rounded-full border border-blue-500/30 backdrop-blur-sm shadow-inner flex items-center">
-              <Lock size={14} className="mr-2" /> 
-              {/* 🟢 SPINNING GLOBE/INTERNET SYMBOL */}
-              <Globe size={14} className="mx-2 animate-spin text-yellow-400" style={{ animationDuration: '4s' }} /> 
-              KMP-CSDMS Standby Mode
-            </p>
-          </div>
+<div className="relative z-10 flex flex-col items-center text-center">
+    <img 
+      src="/UPF Flag Emblem.png" 
+      alt="UPF Waving Flag Emblem" 
+      className="w-72 h-44 mb-6 drop-shadow-[0_0_25px_rgba(255,255,255,0.3)] animate-flag-wave object-contain rounded-xl border border-slate-600 shadow-2xl"
+      onError={(e) => { e.target.style.display = 'none'; }}
+    />
+    <h2 className="text-3xl font-extrabold text-center text-white tracking-wide uppercase drop-shadow-md">
+      KMP SECURITY DATA MANAGEMENT SYSTEM
+    </h2>
+    <p className="text-blue-300 mt-3 text-sm font-bold bg-blue-900/50 px-4 py-1.5 rounded-full border border-blue-500/30 backdrop-blur-sm shadow-inner flex items-center justify-center">
+      <Lock size={14} className="mr-2" /> 
+      {/* 🟢 SPINNING GLOBE/INTERNET SYMBOL */}
+      <Globe size={14} className="mx-2 animate-spin text-yellow-400" style={{ animationDuration: '4s' }} /> 
+      KMP-CSDMS Standby Mode
+    </p>
+  </div>
 
           <div className="absolute bottom-4 w-full h-2 bg-[#dc2626]"></div> 
           <div className="absolute bottom-2 w-full h-2 bg-[#facc15]"></div> 

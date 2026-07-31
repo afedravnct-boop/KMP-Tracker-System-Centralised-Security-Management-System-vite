@@ -3664,7 +3664,7 @@ const DashboardLayout = ({
                 className="w-4 h-4 mr-0.5 object-contain contrast-200 brightness-75 drop-shadow-sm" 
                 onError={(e) => { e.target.style.display = 'none'; }} 
               />
-              <span className="font-bold text-0.5g tracking-wider">KMP TRACKER SYSTEM</span>
+              <span className="font-bold text-0.5g tracking-wider text-white">KMP TRACKER SYSTEM</span>
             </div>
           )}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 hover:bg-slate-500 rounded text-slate-150 transition-colors shrink-0">

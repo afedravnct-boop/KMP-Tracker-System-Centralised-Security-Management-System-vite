@@ -3094,44 +3094,6 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
   const [password, setPassword] = useState('');
   const [authMessage, setAuthMessage] = useState(null);
   
-    // 🟢 LOGIN SCREEN IDLE CURTAIN STATE
-  const [isLoginIdle, setIsLoginIdle] = useState(false);
-
-  useEffect(() => {
-    let timeout;
-    const IDLE_TIME = 30000; // Drops curtain after 30 seconds of idle time
-
-    const resetIdle = () => {
-      if (isLoginIdle) setIsLoginIdle(false);
-      clearTimeout(timeout);
-      timeout = setTimeout(() => setIsLoginIdle(true), IDLE_TIME);
-    };
-
-    window.addEventListener('mousemove', resetIdle);
-    window.addEventListener('keydown', resetIdle);
-    window.addEventListener('click', resetIdle);
-    window.addEventListener('scroll', resetIdle);
-
-    resetIdle(); 
-
-    return () => {
-      window.removeEventListener('mousemove', resetIdle);
-      window.removeEventListener('keydown', resetIdle);
-      window.removeEventListener('click', resetIdle);
-      window.removeEventListener('scroll', resetIdle);
-      clearTimeout(timeout);
-    };
-  }, [isLoginIdle]);
-
-  useEffect(() => {
-    if (!lockoutEnd) return;
-    const interval = setInterval(() => {
-      const remaining = Math.ceil((lockoutEnd - Date.now()) / 1000);
-      if (remaining <= 0) { setLockoutEnd(null); setAttempts(0); setTimeLeft(0); } else { setTimeLeft(remaining); }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [lockoutEnd]);
-
   const [signupData, setSignupData] = useState({
     fnum: '', ipps: '', name: '', rank: '', sex: 'MALE', region: 'KMP NORTH', station: 'KAWEMPE', position: '', email: '', phone: '', password: '', profile_photo_path: ''
   });
@@ -3144,6 +3106,50 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
   const [attempts, setAttempts] = useState(0);
   const [lockoutEnd, setLockoutEnd] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
+
+  // 🟢 LOGIN SCREEN IDLE CURTAIN STATE
+  const [isLoginIdle, setIsLoginIdle] = useState(false);
+  const idleTimerRef = useRef(null);
+
+  useEffect(() => {
+    const IDLE_TIME = 30000; // 30 seconds of idle time
+
+    const resetIdle = () => {
+      setIsLoginIdle(false);
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => {
+        setIsLoginIdle(true);
+      }, IDLE_TIME);
+    };
+
+    // Start the clock on load
+    resetIdle();
+
+    // Attach global listeners to window with capture phase
+    window.addEventListener('mousemove', resetIdle, true);
+    window.addEventListener('keydown', resetIdle, true);
+    window.addEventListener('click', resetIdle, true);
+    window.addEventListener('scroll', resetIdle, true);
+    window.addEventListener('touchstart', resetIdle, true);
+
+    return () => {
+      clearTimeout(idleTimerRef.current);
+      window.removeEventListener('mousemove', resetIdle, true);
+      window.removeEventListener('keydown', resetIdle, true);
+      window.removeEventListener('click', resetIdle, true);
+      window.removeEventListener('scroll', resetIdle, true);
+      window.removeEventListener('touchstart', resetIdle, true);
+    };
+  }, []); // 🟢 Empty array ensures the timer never resets prematurely!
+
+  useEffect(() => {
+    if (!lockoutEnd) return;
+    const interval = setInterval(() => {
+      const remaining = Math.ceil((lockoutEnd - Date.now()) / 1000);
+      if (remaining <= 0) { setLockoutEnd(null); setAttempts(0); setTimeLeft(0); } else { setTimeLeft(remaining); }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutEnd]);
 
   const handleSignupChange = (e) => {
     const { name, value } = e.target;

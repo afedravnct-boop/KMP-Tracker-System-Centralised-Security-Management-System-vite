@@ -3994,17 +3994,24 @@ const WorkspaceSecurityCurtain = () => {
         </div>
       </div>
 
-      {/* 🟢 FULL-SCREEN STANDBY CURTAIN WITH SPINNING GLOBE */}
+{/* 🟢 FULL-SCREEN STANDBY CURTAIN WITH SPINNING GLOBE */}
       <div 
-        className={`security-curtain-overlay transition-opacity duration-700 ease-in-out ${
+        className={`security-curtain-overlay transition-opacity duration-700 ease-in-out relative overflow-hidden ${
           isWorkspaceIdle && !isReadingMode ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
+        {/* 🟢 National Flag Watermark Stripes (Black, Yellow, Red) */}
+        <div className="absolute inset-0 opacity-20 pointer-events-none flex flex-col justify-between z-0">
+          <div className="h-1/3 w-full bg-black"></div>
+          <div className="h-1/3 w-full bg-[#FCD116]"></div> {/* Official Ugandan Flag Yellow */}
+          <div className="h-1/3 w-full bg-[#D91B23]"></div> {/* Official Ugandan Flag Red */}
+        </div>
+
         {/* Light Blue Tinted Flag Background */}
-        <div className="idle-backdrop-emblem"></div>
+        <div className="idle-backdrop-emblem z-10"></div>
 
         {/* 75% Centered Orbital Container */}
-        <div className="idle-center-container">
+        <div className="idle-center-container relative z-20">
           
           {/* Map Globe (Spins Clockwise). Image passed directly via style */}
           <div 

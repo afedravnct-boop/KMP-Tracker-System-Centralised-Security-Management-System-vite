@@ -3948,54 +3948,66 @@ return (
       {/* MAIN CARD CONTAINER */}
       <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden relative z-10">
         
-{/* 🟢 THE FULL-SCREEN LOGIN CURTAIN */}
+{/* 🟢 THE FULL-SCREEN CURTAIN (Uses your index.css .security-curtain-overlay class) */}
 <div 
-  className={`fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center transition-opacity duration-700 ease-in-out ${
+  className={`security-curtain-overlay transition-opacity duration-700 ease-in-out ${
     isLoginIdle ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
   }`}
 >
-  {/* Top Flag Stripes */}
-  <div className="absolute top-0 w-full h-2 bg-black"></div>
-  <div className="absolute top-2 w-full h-2 bg-[#FCD116]"></div>
-  <div className="absolute top-4 w-full h-2 bg-[#D91B23]"></div>
+  {/* Top Stripes */}
+  <div className="absolute top-0 w-full h-2 bg-[#000000]"></div>
+  <div className="absolute top-2 w-full h-2 bg-[#facc15]"></div>
+  <div className="absolute top-4 w-full h-2 bg-[#dc2626]"></div>
 
-  {/* Faded Background Emblem Watermark */}
+  {/* Faded Background Pattern */}
   <div 
-    className="absolute inset-0 opacity-15 bg-center bg-no-repeat bg-contain pointer-events-none" 
-    style={{ backgroundImage: `url('/upf_badge.png')` }}
+    className="absolute inset-0 opacity-10 bg-center bg-no-repeat bg-cover mt-10" 
+    style={{ backgroundImage: `url('/UPF Flag Emblem.png')` }}
   ></div>
 
-  <div className="relative z-10 flex flex-col items-center text-center p-6 max-w-3xl">
-    {/* Central Emblem Badge */}
-    <img 
-      src="/upf_badge.png" 
-      alt="UPF Emblem" 
-      className="w-28 h-28 mb-6 object-contain contrast-200 brightness-75 drop-shadow-[0_0_15px_rgba(252,209,22,0.4)] animate-pulse" 
-    />
+  <div className="relative z-10 flex flex-col items-center text-center">
+    <div className="upf-css-globe mb-6 border border-slate-600/50"></div>
     
-    {/* Title */}
-    <h2 className="text-2xl sm:text-3xl font-extrabold text-center text-white tracking-widest uppercase drop-shadow-lg leading-relaxed">
-      KMP CENTRALISED SECURITY DATA MANAGEMENT SYSTEM
-    </h2>
-
-    {/* Subtitle Badge */}
-    <div className="mt-6 inline-flex items-center space-x-2 bg-slate-900/90 px-5 py-2.5 rounded-full border border-cyan-500/30 shadow-xl backdrop-blur-md">
-      <Lock size={16} className="text-yellow-400 animate-bounce" />
-      <span className="text-xs sm:text-sm font-bold text-blue-200 tracking-wider">
-        SECURE COMMAND PORTAL • IDLE STANDBY MODE
-      </span>
-      <Globe size={18} className="text-cyan-400 animate-spin" />
+    {/* Sweep-and-Settle Animated Title */}
+    <div className="curtain-title-container">
+      <h2 className="text-3xl font-bold text-center text-white tracking-wide uppercase drop-shadow-md flex justify-center flex-wrap">
+        {"KMP CENTRALISED SECURITY DATA MANAGEMENT SYSTEM".split("").map((char, index) => {
+          const delay = Math.pow(index, 1.2) * 0.025; 
+          
+          return (
+            <span
+              key={index}
+              className="animate-sweep-letter"
+              style={{ 
+                animationDelay: `${delay}s`,
+                whiteSpace: "pre" 
+              }}
+            >
+              {char === " " ? "\u00A0" : char}
+            </span>
+          );
+        })}
+      </h2>
     </div>
 
-    <p className="text-xs text-slate-400 mt-4 font-medium tracking-wide">
-      Move your mouse, click, or press any key to return to the login interface.
+    {/* Sparkling Globe Badge */}
+    <p className="text-blue-200 mt-3 text-sm font-bold bg-yellow-900/50 px-4 py-1.5 rounded-full border border-cyan-600/30 backdrop-blur-sm shadow-inner flex items-center justify-center">
+      <Lock size={14} className="mr-2" /> 
+      
+      <span className="relative inline-flex items-center justify-center mx-2">
+        <span className="absolute -inset-1 rounded-full bg-yellow-600/20 blur-sm animate-pulse-spin"></span>
+        <Globe size={28} className="relative z-10 animate-spin-globe" />
+        <span className="absolute -top-1 -right-1.5 text-[10px] animate-pulse text-white/90">✨</span>
+      </span>
+
+      KMP-CSDMS-TRACKER SYSTEM
     </p>
   </div>
 
-  {/* Bottom Flag Stripes */}
-  <div className="absolute bottom-4 w-full h-2 bg-[#D91B23]"></div> 
-  <div className="absolute bottom-2 w-full h-2 bg-[#FCD116]"></div> 
-  <div className="absolute bottom-0 w-full h-2 bg-black"></div> 
+  {/* Bottom Stripes */}
+  <div className="absolute bottom-4 w-full h-2 bg-[#dc2626]"></div> 
+  <div className="absolute bottom-2 w-full h-2 bg-[#facc15]"></div> 
+  <div className="absolute bottom-0 w-full h-2 bg-[#000000]"></div> 
 </div>
 
         {/* 🟢 LOGIN / SIGNUP FORM AREA */}
@@ -4544,7 +4556,7 @@ const navItems = [
     }
   };
 
-const IdleWarningModal = () => (showIdleWarning || isTimedOut) && (
+  const IdleWarningModal = () => (showIdleWarning || isTimedOut) && (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border-2 border-slate-800 text-left font-sans">
         
@@ -4574,18 +4586,20 @@ const IdleWarningModal = () => (showIdleWarning || isTimedOut) && (
             <button 
               type="button"
               onClick={() => {
-                // 🟢 Force wipe local session storage and trigger full application reload to return to login
                 setIsTimedOut(false);
                 setShowIdleWarning(false);
                 localStorage.removeItem('kmp_authToken');
                 localStorage.removeItem('kmp_currentUser');
                 localStorage.removeItem('kmp_currentPage');
                 
-                if (typeof onLogout === 'function') {
-                  onLogout();
-                } else {
-                  window.location.reload();
+                if (latestOnLogout.current) {
+                  try {
+                    latestOnLogout.current();
+                  } catch (err) {
+                    console.error(err);
+                  }
                 }
+                window.location.href = '/';
               }}
               className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-4 py-3 rounded-xl shadow-md transition-all cursor-pointer uppercase tracking-wider"
             >

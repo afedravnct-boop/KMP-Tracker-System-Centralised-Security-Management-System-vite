@@ -1,9 +1,7 @@
 /* =========================================================
    MANDATORY TAILWIND DIRECTIVES (DO NOT REMOVE)
    ========================================================= */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* =========================================================
    1. GLOBAL UTILITIES & SCROLLBARS

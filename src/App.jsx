@@ -5454,41 +5454,68 @@ text-slate-400 font-medium animate-pulse text-xs">Syncing user database roster..
         }
       };
 
-      const handleViewHRReport = async () => {
-        try {
-          const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-          const res = await authFetch(`${API_URL}/api/v1/reports/establishments-json`);
-          if (!res.ok) throw new Error("Security clearance rejected or server error.");
-          const data = await res.json(); setHrLedgerData(data); setIsViewingHR(true);
-        } catch (err) { alert("Cannot load HR ledger data. Ensure your session is active and you have network connectivity."); }
-      };
+@app.get("/api/v1/reports/establishments-json")
+@app.get("/api/v1/reports/hr-establishments-json")
+def get_hr_summary_json(db: Session = Depends(get_db), current_user: models.Users = Depends(get_current_user)):
+    try:
+        # 🟢 Query live nominal roll directly from NeonDB with jurisdictional boundaries
+        hr_query = db.query(models.NominalRoll)
+        if current_user.role not in ["SUPER_ADMIN", "ADMIN", "RPC"]:
+            hr_query = hr_query.filter(models.NominalRoll.station == current_user.station)
+        elif current_user.role in ["ADMIN", "RPC"]:
+            hr_query = hr_query.filter(models.NominalRoll.region == current_user.region)
+            
+        hr_records = hr_query.all()
+        grouped_hr = {}
+        
+        for r in hr_records:
+            region = getattr(r, 'region', 'GENERAL / HQ') or 'GENERAL / HQ'
+            station = getattr(r, 'station', 'N/A') or 'N/A'
+            rank = getattr(r, 'rank', 'UNRANKED') or 'UNRANKED'
+            
+            key = (region.strip().upper(), station.strip().upper())
+            if key not in grouped_hr:
+                grouped_hr[key] = {"total_personnel": 0, "ranks": {}}
+            
+            grouped_hr[key]["total_personnel"] += 1
+            grouped_hr[key]["ranks"][rank] = grouped_hr[key]["ranks"].get(rank, 0) + 1
+            
+        hr_list = []
+        for (region, station), data in grouped_hr.items():
+            hr_list.append({
+                "region": region,
+                "station": station,
+                "total_personnel": data["total_personnel"],
+                "rank_breakdown": data["ranks"]
+            })
 
-      const handleViewConsolidated = async () => {
-          setIsViewingHR(false);
-          const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0];
-          const lastWeek = new Date(); lastWeek.setDate(lastWeek.getDate() - 7);
-          const start = lastWeek.toISOString().split('T')[0];
+        # 🟢 Query physical unit Establishments metrics
+        est_query = db.query(models.Establishments)
+        if current_user.role not in ["SUPER_ADMIN", "ADMIN", "RPC"]:
+            est_query = est_query.filter(models.Establishments.station == current_user.station)
+        elif current_user.role in ["ADMIN", "RPC"]:
+            est_query = est_query.filter(models.Establishments.region == current_user.region)
+            
+        est_records = est_query.all()
+        est_list = []
+        for e in est_records:
+            pers_stn = getattr(e, 'personnel_in_station', 0) or 0
+            pers_post = getattr(e, 'personnel_in_post', 0) or 0
+            pers_booth = getattr(e, 'personnel_in_booth', getattr(e, 'booths', 0)) or 0
+            est_list.append({
+                "region": getattr(e, 'region', '-'), 
+                "division": getattr(e, 'division', '-'), 
+                "station": getattr(e, 'station', '-'),
+                "pers_stn": pers_stn, 
+                "sub_station": getattr(e, 'sub_station', '-'), 
+                "post": getattr(e, 'post', '-'),
+                "pers_post": pers_post, 
+                "sub_total": pers_stn + pers_post + pers_booth
+            })
 
-          try {
-              const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-              const response = await authFetch(`${API_URL}/api/v1/reports/consolidated-ledger?start_date=${start}&end_date=${today}`);
-              if (!response.ok) throw new Error("Backend failed to compile ledger.");
-              const data = await response.json(); setConsolidatedData(data); setIsViewingConsolidated(true);
-          } catch (err) { alert("Failed to load Consolidated Ledger. Check Python terminal for errors."); }
-      };
-
-      if (isInitializing) return <h2 style={{ textAlign: 'center', marginTop: '20vh' }}>Verifying Officer Clearance...</h2>;
-
-      if (currentUser && !currentUser.region) {
-        localStorage.removeItem('kmp_currentUser'); localStorage.removeItem('kmp_authToken');
-        return (
-          <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-            <h2 className="text-2xl font-bold text-red-600 mb-2">Ghost Session Detected</h2>
-            <p className="text-slate-600 mb-6">Corrupted local data is blocking the dashboard. Click below to wipe it.</p>
-            <button onClick={() => window.location.reload()} className="px-6 py-3 bg-blue-700 text-white font-bold rounded-lg shadow-md hover:bg-blue-800">Force Clear & Restart App</button>
-          </div>
-        );
-      }
+        return {"hr": hr_list, "establishments": est_list}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load HR aggregate data: {str(e)}")
 
      if (!currentUser) return <LoginScreen 
         onLogin={(user) => {

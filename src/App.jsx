@@ -3055,12 +3055,11 @@ const handleApproveUser = async (fnum) => {
       const token = localStorage.getItem('kmp_authToken');
       const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
       
-      // 🟢 Safely encode the force number to preserve slashes like Q/1 -> Q%2F1
+      // Safely encode the force number to handle slashes like Q/1 -> Q%2F1
       const safeFnum = encodeURIComponent(fnum);
 
-      // 🟢 Use PATCH or POST matching your backend route definition
       const response = await fetch(`${API_URL}/api/v1/admin/approve-user/${safeFnum}`, {
-        method: "POST", // Match this to your FastAPI decorator (@app.post or @app.patch)
+        method: "PATCH", // 🟢 Must be PATCH to match your FastAPI backend decorator
         headers: { 
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
@@ -3072,9 +3071,11 @@ const handleApproveUser = async (fnum) => {
 
       alert(`Success: ${data.message}`);
       
-      // Refresh your pending users state list here
+      // Refresh pending list state or reload
       if (typeof fetchPendingUsers === 'function') {
         fetchPendingUsers();
+      } else {
+        window.location.reload();
       }
     } catch (err) {
       alert(`Approval Error: ${err.message}`);

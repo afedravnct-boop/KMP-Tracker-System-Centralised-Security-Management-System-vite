@@ -516,7 +516,7 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
     });
   };
 
-  const filteredReports = useMemo(() => {
+const filteredReports = useMemo(() => {
     if (!Array.isArray(reports)) return [];
     return reports.filter(r => {
       const dbRegion = (r.region || '').trim().toUpperCase();
@@ -524,8 +524,17 @@ const CrimeIncidentRegistry = ({ currentUser, reports, setReports, setSidebarOpe
       const selectedRegion = (filterRegion || '').trim().toUpperCase();
       const selectedStation = (filterStation || '').trim().toUpperCase();
 
-      if (selectedRegion !== 'ALL REGIONS' && selectedRegion !== '' && dbRegion !== selectedRegion) return false;
-      if (selectedStation !== 'ALL STATIONS' && selectedStation !== '' && dbStation !== selectedStation) return false;
+      // 🟢 Region Filter Check
+      if (selectedRegion && selectedRegion !== 'ALL REGIONS' && dbRegion !== selectedRegion) {
+        return false;
+      }
+
+      // 🟢 Strict Station Filter Check: If a specific station is chosen, it MUST match exactly.
+      if (selectedStation && selectedStation !== 'ALL STATIONS') {
+        if (dbStation !== selectedStation) {
+          return false;
+        }
+      }
       
       if (searchQuery) {
         const query = searchQuery.toLowerCase().trim();

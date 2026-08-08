@@ -1345,14 +1345,9 @@ const filteredReports = useMemo(() => {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-white p-6 border border-slate-200 shadow-sm rounded-lg">
                 <div className="border-l-4 border-blue-600 pl-3">
-                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">System Audit SN</div>
-                  <div className="text-sm font-black text-slate-900">
-                    {/* 🟢 Shows Station List SN + Permanent NeonDB ID */}
-                    {isStationSpecific 
-                      ? `SN: ${filteredReports.findIndex(r => (r.id || r.sn) === (selectedCase.id || selectedCase.sn)) + 1} (Audit: ${selectedCase.id || selectedCase.sn || '—'})` 
-                      : (selectedCase.id || selectedCase.sn || '—')}
-                  </div>
-                </div>  
+                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Database SN (ID)</div>
+                  <div className="text-sm font-black text-slate-900">{selectedCase.id || selectedCase.sn}</div>
+                </div>
                 <div className="border-l-4 border-slate-600 pl-3">
                   <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Time & Date Logged</div>
                   <div className="text-sm font-bold text-slate-900">{selectedCase.date} <span className="text-slate-500 font-medium">@ {selectedCase.time}</span></div>

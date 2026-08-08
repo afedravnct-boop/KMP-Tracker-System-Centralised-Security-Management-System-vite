@@ -4758,7 +4758,7 @@ text-slate-400 font-medium animate-pulse text-xs">Syncing user database roster..
                 style={{ backgroundImage: `url('/upf_kmp_map.png')` }}
               ></div>
             
-{/* 🟢 Orbiting Text Layer (Forced Light Blue Hex Color + Mobile Wrap Fix) */}
+{/* Orbiting Text Layer */}
 <div className="absolute inset-0 pointer-events-none" style={{ transformStyle: 'preserve-3d', animation: 'spin-orbit-y 20s linear infinite' }}>
   {"KMP CENTRALISED SECURITY DATA MANAGEMENT SYSTEM • KMP CENTRALISED SECURITY DATA MANAGEMENT SYSTEM • ".split('').map((char, i, arr) => (
     <span 
@@ -4767,7 +4767,8 @@ text-slate-400 font-medium animate-pulse text-xs">Syncing user database roster..
       style={{ 
         transform: `translate(-50%, -50%) rotateY(${i * (360 / arr.length)}deg) translateZ(34vmin)`,
         whiteSpace: 'nowrap',
-        color: '#38bdf8' // 🟢 Hardcoded light blue hex code overrides any white inherited styles
+        color: '#38bdf8', // 🟢 Forces the light blue color
+        textShadow: '0px 0px 8px rgba(56, 189, 248, 0.6)' // 🟢 Optional: Tints the drop shadow light blue to match
       }}
     >
       {char === ' ' ? '\u00A0' : char}

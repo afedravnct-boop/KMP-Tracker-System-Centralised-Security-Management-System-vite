@@ -3871,7 +3871,7 @@ const handlePhotoUpload = async (e) => {
 
 
 // ====================================================================
-// --- GLOBAL WORKSPACE SECURITY IDLE CURTAIN COMPONENT ---
+// --- GLOBAL WORKSPACE SECURITY IDLE CURTAIN COMPONENT (3D ORBIT RESTORED) ---
 // ====================================================================
 const WorkspaceSecurityCurtain = () => {
   const [isWorkspaceIdle, setIsWorkspaceIdle] = useState(false);
@@ -3943,7 +3943,7 @@ const WorkspaceSecurityCurtain = () => {
         </div>
       </div>
 
-      {/* 🟢 FULL-SCREEN STANDBY CURTAIN WITH SPINNING GLOBE & ALTERNATING COLORS */}
+      {/* 🟢 FULL-SCREEN STANDBY CURTAIN WITH SPINNING GLOBE & 3D ORBITAL TEXT */}
       <div 
         className={`security-curtain-overlay idle-curtain-bg transition-opacity duration-700 ease-in-out fixed inset-0 flex flex-col items-center justify-center overflow-hidden z-50 ${
           isWorkspaceIdle && !isReadingMode ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -3959,7 +3959,7 @@ const WorkspaceSecurityCurtain = () => {
         {/* Light Tinted Flag Background Emblem */}
         <div className="idle-backdrop-emblem z-10 pointer-events-none"></div>
 
-        {/* 75% Centered Orbital Container */}
+        {/* 75% Centered Orbital Container with 3D Perspective */}
         <div className="idle-center-container relative z-20" style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}>
           
           {/* Map Globe (Static center at Z:0) */}
@@ -3968,15 +3968,15 @@ const WorkspaceSecurityCurtain = () => {
             style={{ backgroundImage: `url('/upf_kmp_map.png')`, transform: 'translateZ(0)' }}
           ></div>
 
-          {/* 🟢 3D EQUATORIAL TEXT RING WITH AUTO-CONTRAST */}
+          {/* 🟢 RESTORED 3D SPHERICAL EQUATORIAL TEXT RING WITH AUTO-CONTRAST */}
           <div className="absolute inset-0 z-30 pointer-events-none" style={{ transformStyle: 'preserve-3d', animation: 'spin-orbit-y 20s linear infinite' }}>
             {"KMP CENTRALISED SECURITY DATA MANAGEMENT SYSTEM • KMP CENTRALISED SECURITY DATA MANAGEMENT SYSTEM • ".split('').map((char, i, arr) => (
               <span 
                 key={i} 
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white mix-blend-difference font-black text-xs sm:text-sm tracking-widest"
                 style={{
-                  /* Increased radius to 38vmin to prevent letters from smashing together */
-                  transform: `rotateY(${i * (360 / arr.length)}deg) translateZ(38vmin)`
+                  /* Restored 3D rotational vector with a safe 40vmin radius to eliminate bunching */
+                  transform: `rotateY(${i * (360 / arr.length)}deg) translateZ(40vmin)`
                 }}
               >
                 {char === ' ' ? '\u00A0' : char}

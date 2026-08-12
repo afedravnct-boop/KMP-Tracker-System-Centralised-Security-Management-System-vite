@@ -4304,34 +4304,6 @@ const GrandTotalBreakdownModal = ({ isOpen, onClose, allSubmissions, grandTotals
                                   currentUser?.permissions?.upload_hr || 
                                   currentUser?.permissions?.system_admin;
 
-{currentUser?.role?.toUpperCase() === 'SUPER_ADMIN' && (
-  <div className="bg-amber-50 border border-amber-300 p-4 rounded-xl mb-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-    <div className="flex items-center space-x-2">
-      <span className="text-amber-800 font-extrabold text-xs uppercase tracking-wide">🛡️ Command Jurisdiction Override (Super Admin Mode):</span>
-    </div>
-    
-    <div className="flex items-center space-x-3 w-full md:w-auto">
-      <select 
-        value={overrideRegion} 
-        onChange={(e) => setOverrideRegion(e.target.value)}
-        className="bg-white border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500"
-      >
-        <option value="KMP HEADQUARTERS">KMP HEADQUARTERS</option>
-        <option value="KMP NORTH">KMP NORTH</option>
-        <option value="KMP SOUTH">KMP SOUTH</option>
-        <option value="KMP EAST">KMP EAST</option>
-      </select>
-
-      <input 
-        type="text" 
-        value={overrideStation} 
-        onChange={(e) => setOverrideStation(e.target.value.toUpperCase())}
-        placeholder="TARGET STATION (e.g. KATWE)"
-        className="bg-white border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-800 uppercase"
-      />
-    </div>
-  </div>
-)}   
 
       const navItems = [
         { 

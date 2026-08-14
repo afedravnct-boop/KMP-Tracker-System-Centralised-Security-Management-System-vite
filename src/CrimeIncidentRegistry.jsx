@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { 
   Shield, Users, PlusCircle, Edit, Search, X, AlertTriangle, CheckCircle, Lock, Camera 
 } from 'lucide-react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 // ==========================================
 // REGIONAL HIERARCHY MAPPING

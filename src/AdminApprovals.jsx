@@ -104,8 +104,18 @@ const AdminApprovals = ({ currentUser, authFetch: propAuthFetch }) => {
   });
 
   // Global Filter States for Super Admin / RPC capabilities
-  const [filterRegion, setFilterRegion] = useState(currentUser?.role === 'SUPER_ADMIN' ? 'ALL REGIONS' : currentUser?.region || '');
-  const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander', 'ASSISTANT_SUPER_ADMIN'].includes(currentUser?.role)) ? 'ALL STATIONS' : currentUser?.station || '');
+  const userRoleClean = (currentUser?.role || '').toUpperCase();
+  const userPosClean = (currentUser?.position || '').toUpperCase();
+  const isSuperAdminOrTopCommand = (
+    userRoleClean === 'SUPER_ADMIN' ||
+    userPosClean.includes('KMP COMMANDER') ||
+    userPosClean.includes('DEPUTY KMP COMMANDER') ||
+    userPosClean.includes('STAFF OFFICER ADMIN') ||
+    userPosClean.includes('SO ADMIN')
+  );
+
+  const [filterRegion, setFilterRegion] = useState(isSuperAdminOrTopCommand ? 'ALL REGIONS' : currentUser?.region || '');
+  const [filterStation, setFilterStation] = useState((['SUPER_ADMIN', 'RPC', 'Deputy Commander', 'ASSISTANT_SUPER_ADMIN'].includes(currentUser?.role) || isSuperAdminOrTopCommand) ? 'ALL STATIONS' : currentUser?.station || '');
 
   const isRPC = currentUser && ['RPC', 'Deputy Commander'].includes(currentUser.role);
   const isSystemAdmin = currentUser && ['ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN', 'ASSISTANT_SUPER_ADMIN'].includes(currentUser.role);
@@ -206,6 +216,25 @@ const AdminApprovals = ({ currentUser, authFetch: propAuthFetch }) => {
     });
   }, [resetRequests, filterRegion, filterStation]);
 
+  // 🟢 FILTERED SYSTEM USERS BASED ON REGION & STATION FOR THE MATRIX TAB
+  const filteredSystemUsers = useMemo(() => {
+    return allSystemUsers.filter(u => {
+      const uReg = (u.region || '').trim().toUpperCase();
+      const uStat = (u.station || '').trim().toUpperCase();
+      
+      const activeReg = (filterRegion || '').trim().toUpperCase();
+      const activeStat = (filterStation || '').trim().toUpperCase();
+
+      if (activeReg && activeReg !== 'ALL REGIONS' && uReg !== activeReg) {
+        return false;
+      }
+      if (activeStat && activeStat !== 'ALL STATIONS' && uStat !== activeStat) {
+        return false;
+      }
+      return true;
+    });
+  }, [allSystemUsers, filterRegion, filterStation]);
+
   // 🟢 FILTERED AUDIT LOGS BASED ON REGION & STATION
   const filteredLogs = useMemo(() => {
     return audit_logs.filter(log => {
@@ -225,16 +254,6 @@ const AdminApprovals = ({ currentUser, authFetch: propAuthFetch }) => {
     if (!targetUser) return;
 
     let locks = targetUser.permissions?.super_admin_locks || {};
-    
-    const userRoleClean = (currentUser?.role || '').toUpperCase();
-    const userPosClean = (currentUser?.position || '').toUpperCase();
-    const isSuperAdminOrTopCommand = (
-      userRoleClean === 'SUPER_ADMIN' ||
-      userPosClean.includes('KMP COMMANDER') ||
-      userPosClean.includes('DEPUTY KMP COMMANDER') ||
-      userPosClean.includes('STAFF OFFICER ADMIN') ||
-      userPosClean.includes('SO ADMIN')
-    );
 
     if (value === false && isSuperAdminOrTopCommand) {
       locks[permissionKey] = true;
@@ -274,16 +293,6 @@ const AdminApprovals = ({ currentUser, authFetch: propAuthFetch }) => {
 
     let updatedPermissions = { ...(targetUser.permissions || {}) };
 
-    const userRoleClean = (currentUser?.role || '').toUpperCase();
-    const userPosClean = (currentUser?.position || '').toUpperCase();
-    const isSuperAdminOrTopCommand = (
-      userRoleClean === 'SUPER_ADMIN' ||
-      userPosClean.includes('KMP COMMANDER') ||
-      userPosClean.includes('DEPUTY KMP COMMANDER') ||
-      userPosClean.includes('STAFF OFFICER ADMIN') ||
-      userPosClean.includes('SO ADMIN')
-    );
-
     if (newRole === 'REVOKED') {
       updatedPermissions.revoke_reason = reason;
       updatedPermissions.revoked_by = isSuperAdminOrTopCommand ? 'SUPER_ADMIN' : currentUser?.role;
@@ -320,16 +329,6 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
 
   const targetUser = allSystemUsers.find(u => u.fnum === fnum);
   if (!targetUser) return;
-
-  const userRoleClean = (currentUser?.role || '').toUpperCase();
-  const userPosClean = (currentUser?.position || '').toUpperCase();
-  const isSuperAdminOrTopCommand = (
-    userRoleClean === 'SUPER_ADMIN' ||
-    userPosClean.includes('KMP COMMANDER') ||
-    userPosClean.includes('DEPUTY KMP COMMANDER') ||
-    userPosClean.includes('STAFF OFFICER ADMIN') ||
-    userPosClean.includes('SO ADMIN')
-  );
 
   // STRICT TOP COMMAND REINSTATEMENT LOCK (Blocks standard users/RPCs from unlocking Super Admin locks)
   if (value === true && !isSuperAdminOrTopCommand && targetUser.permissions?.super_admin_locks?.[permissionKey]) {
@@ -394,16 +393,6 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
 
     const targetUser = allSystemUsers.find(u => u.fnum === fnum);
     if (!targetUser) return;
-
-    const userRoleClean = (currentUser?.role || '').toUpperCase();
-    const userPosClean = (currentUser?.position || '').toUpperCase();
-    const isSuperAdminOrTopCommand = (
-      userRoleClean === 'SUPER_ADMIN' ||
-      userPosClean.includes('KMP COMMANDER') ||
-      userPosClean.includes('DEPUTY KMP COMMANDER') ||
-      userPosClean.includes('STAFF OFFICER ADMIN') ||
-      userPosClean.includes('SO ADMIN')
-    );
 
     // STRICT SUPER ADMIN EXCLUSIVE REINSTATEMENT LOCK (Blocks non-Super Admins)
     if (newRole !== 'REVOKED' && targetUser.role === 'REVOKED' && !isSuperAdminOrTopCommand && targetUser.permissions?.revoked_by === 'SUPER_ADMIN') {
@@ -557,10 +546,10 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
         <select 
           value={filterRegion} 
           onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); }} 
-          disabled={!['SUPER_ADMIN', 'ASSISTANT_SUPER_ADMIN'].includes(currentUser?.role)} 
+          disabled={!isSuperAdminOrTopCommand} 
           className="border border-slate-300 rounded-xl px-4 py-2 text-xs shadow-xs bg-white disabled:bg-slate-100 font-bold text-blue-800 outline-none focus:border-blue-500 cursor-pointer"
         >
-          {['SUPER_ADMIN', 'ASSISTANT_SUPER_ADMIN'].includes(currentUser?.role) ? (
+          {isSuperAdminOrTopCommand ? (
             <><option value="ALL REGIONS">ALL REGIONS (GLOBAL)</option>{Object.keys(REGIONAL_HIERARCHY || {}).map(reg => <option key={reg} value={reg}>{reg}</option>)}</>
           ) : <option value={currentUser?.region}>{currentUser?.region}</option>}
         </select>
@@ -568,10 +557,10 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
         <select 
           value={filterStation} 
           onChange={(e) => setFilterStation(e.target.value)} 
-          disabled={!(['SUPER_ADMIN', 'RPC', 'Deputy Commander', 'ASSISTANT_SUPER_ADMIN'].includes(currentUser?.role))} 
+          disabled={!isSuperAdminOrTopCommand && !['RPC', 'Deputy Commander'].includes(currentUser?.role)} 
           className="border border-slate-300 rounded-xl px-4 py-2 text-xs shadow-xs bg-white disabled:bg-slate-100 font-bold text-blue-800 outline-none focus:border-blue-500 cursor-pointer"
         >
-          {['SUPER_ADMIN', 'RPC', 'Deputy Commander', 'ASSISTANT_SUPER_ADMIN'].includes(currentUser?.role) ? (
+          {isSuperAdminOrTopCommand || ['RPC', 'Deputy Commander'].includes(currentUser?.role) ? (
             <><option value="ALL STATIONS">ALL STATIONS / DIVISIONS</option>{filterRegion !== 'ALL REGIONS' && REGIONAL_HIERARCHY?.[filterRegion] ? REGIONAL_HIERARCHY[filterRegion].map(stat => <option key={stat} value={stat}>{stat}</option>) : null}</>
           ) : <option value={currentUser?.station}>{currentUser?.station}</option>}
         </select>
@@ -580,7 +569,7 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
       {/* Navigation Tabs */}
       <div className="flex space-x-2 border-b border-slate-200 mb-6 bg-white/50 backdrop-blur rounded-t-xl px-4 pt-4 overflow-x-auto custom-scrollbar">
         <button onClick={() => setActiveTab('approvals')} className={`pb-3 px-4 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'approvals' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>New Account Authorizations ({loadingPending ? '...' : filteredPending.length})</button>
-        <button onClick={() => setActiveTab('matrix')} className={`pb-3 px-4 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'matrix' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Active Roster & Clearance Matrix ({allSystemUsers.length})</button>
+        <button onClick={() => setActiveTab('matrix')} className={`pb-3 px-4 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'matrix' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Active Roster & Clearance Matrix ({filteredSystemUsers.length})</button>
         <button onClick={() => setActiveTab('requests')} className={`pb-3 px-4 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'requests' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>HR Modification Requests ({filteredRequests.length})</button>
         <button onClick={() => setActiveTab('logs')} className={`pb-3 px-4 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'logs' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Audit Logs ({filteredLogs.length})</button>
         <button onClick={() => setActiveTab('resets')} className={`pb-3 px-4 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${activeTab === 'resets' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>Password Resets ({filteredResets.length})</button>
@@ -591,7 +580,7 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
         <div className="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden max-w-[1500px] mx-auto">
           <div className="bg-slate-900 text-white p-4 text-xs font-extrabold uppercase tracking-wider flex items-center justify-between">
             <span className="flex items-center">
-              <Shield className="w-4 h-4 mr-2 text-indigo-400" /> Active Roster & Granular Clearance Matrix
+              <Shield className="w-4 h-4 mr-2 text-indigo-400" /> Active Roster & Clearance Matrix ({filterRegion} {filterStation !== 'ALL STATIONS' ? `/ ${filterStation}` : ''})
             </span>
             <span className="text-[10px] text-slate-400 font-mono">
               6-Tier Tiers: USER | ADMIN_USER | STATION_ADMIN | SYSTEM_ADMIN | SUPER_ADMIN_USER | SUPER_ADMIN | REVOKED
@@ -599,8 +588,8 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
           </div>
           {loadingUsers ? (
             <div className="p-12 text-center text-slate-400 font-medium animate-pulse text-xs">Syncing user database roster...</div>
-          ) : allSystemUsers.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 text-xs font-medium">No registered system users found.</div>
+          ) : filteredSystemUsers.length === 0 ? (
+            <div className="p-12 text-center text-slate-400 text-xs font-medium">No registered system users found for this regional filter.</div>
           ) : (
             <div className="overflow-x-auto w-full">
               <table className="min-w-full divide-y divide-slate-200 text-xs">
@@ -616,7 +605,7 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {allSystemUsers.map(u => {
+                  {filteredSystemUsers.map(u => {
                     const p = u.permissions || {};
                     const isSuperAdmin = u.role === 'SUPER_ADMIN';
                     const isRevoked = u.role === 'REVOKED';
@@ -669,20 +658,9 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
                           { key: 'export_data', color: 'red', bg: 'bg-red-50/20' },
                           { key: 'can_view_analytics', color: 'emerald', bg: 'bg-emerald-50/20' }
                         ].map((col, idx) => {
-                          const userRoleClean = (currentUser?.role || '').toUpperCase();
-                          const userPosClean = (currentUser?.position || '').toUpperCase();
-
-                          const isSuperAdminOrTopCommand = (
-                            userRoleClean === 'SUPER_ADMIN' ||
-                            userPosClean.includes('KMP COMMANDER') ||
-                            userPosClean.includes('DEPUTY KMP COMMANDER') ||
-                            userPosClean.includes('STAFF OFFICER ADMIN') ||
-                            userPosClean.includes('SO ADMIN')
-                          );
-
                           const isLocked = !isSuperAdminOrTopCommand && p.super_admin_locks?.[col.key];
                           
-                          // 🟢 FIXED: Removed `isSuperAdmin` from blocking checks so Super Admin & Top Command can always check/uncheck
+                          // 🟢 FIXED: Super Admin and Top Command are never locked out of checking/unchecking
                           const isDisabled = (currentUser?.role === 'SYSTEM_ADMIN') || (isLocked && !isSuperAdminOrTopCommand) || isRevoked;
 
                           return (

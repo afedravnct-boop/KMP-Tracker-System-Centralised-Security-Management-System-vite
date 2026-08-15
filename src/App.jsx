@@ -535,7 +535,13 @@ const Statistics = ({ currentUser, stats, setStats, setSidebarOpen }) => {
       if (!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) && s.region !== currentUser.region) return false;
       if (updateSearch) {
         const query = updateSearch.toLowerCase();
-        return s.sn.toString().includes(query) || s.station.toLowerCase().includes(query) || s.date.includes(query);
+        
+        // 🟢 SAFEGUARDED WITH String() & Optional Chaining:
+        const snStr = String(s.sn || '').toLowerCase();
+        const stationStr = String(s.station || '').toLowerCase();
+        const dateStr = String(s.date || '').toLowerCase();
+
+        return snStr.includes(query) || stationStr.includes(query) || dateStr.includes(query);
       }
       return true;
     });

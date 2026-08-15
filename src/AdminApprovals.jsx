@@ -41,7 +41,7 @@ const POSITIONS = {
   ADMIN: [
     "System Manager", "IGP", "DIGP", "Director OPS", "Director CT", "Director CI", 
     "Director CID", "Director HRM & A", "Director logistics & engineering", 
-    "KMP Commander", "Deputy KMP Commander",
+    "KMP Commander", "Deputy KMP Commander", "KMP Staff Officer Admin",
     "KMP CID Commander", "KMP CI Commander", "KMP Operations Commander", 
     "KMP Traffic & Road Safety Commander", "KMP 999 eru commander", 
     "999 ERU Regional Data Officer", "Regional HR Officer", "KMP SFC Coordinator",
@@ -226,9 +226,19 @@ const AdminApprovals = ({ currentUser, authFetch: propAuthFetch }) => {
 
     let locks = targetUser.permissions?.super_admin_locks || {};
     
-    if (value === false && currentUser?.role === 'SUPER_ADMIN') {
+    const userRoleClean = (currentUser?.role || '').toUpperCase();
+    const userPosClean = (currentUser?.position || '').toUpperCase();
+    const isSuperAdminOrTopCommand = (
+      userRoleClean === 'SUPER_ADMIN' ||
+      userPosClean.includes('KMP COMMANDER') ||
+      userPosClean.includes('DEPUTY KMP COMMANDER') ||
+      userPosClean.includes('STAFF OFFICER ADMIN') ||
+      userPosClean.includes('SO ADMIN')
+    );
+
+    if (value === false && isSuperAdminOrTopCommand) {
       locks[permissionKey] = true;
-    } else if (value === true && currentUser?.role === 'SUPER_ADMIN') {
+    } else if (value === true && isSuperAdminOrTopCommand) {
       locks[permissionKey] = false;
     }
 
@@ -264,10 +274,20 @@ const AdminApprovals = ({ currentUser, authFetch: propAuthFetch }) => {
 
     let updatedPermissions = { ...(targetUser.permissions || {}) };
 
+    const userRoleClean = (currentUser?.role || '').toUpperCase();
+    const userPosClean = (currentUser?.position || '').toUpperCase();
+    const isSuperAdminOrTopCommand = (
+      userRoleClean === 'SUPER_ADMIN' ||
+      userPosClean.includes('KMP COMMANDER') ||
+      userPosClean.includes('DEPUTY KMP COMMANDER') ||
+      userPosClean.includes('STAFF OFFICER ADMIN') ||
+      userPosClean.includes('SO ADMIN')
+    );
+
     if (newRole === 'REVOKED') {
       updatedPermissions.revoke_reason = reason;
-      updatedPermissions.revoked_by = currentUser?.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : currentUser?.role;
-    } else if (currentUser?.role === 'SUPER_ADMIN') {
+      updatedPermissions.revoked_by = isSuperAdminOrTopCommand ? 'SUPER_ADMIN' : currentUser?.role;
+    } else if (isSuperAdminOrTopCommand) {
       delete updatedPermissions.revoked_by;
       delete updatedPermissions.revoke_reason;
     }
@@ -301,14 +321,24 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
   const targetUser = allSystemUsers.find(u => u.fnum === fnum);
   if (!targetUser) return;
 
-  // STRICT SUPER ADMIN EXCLUSIVE REINSTATEMENT LOCK (Blocks non-Super Admins)
-  if (value === true && currentUser?.role !== 'SUPER_ADMIN' && targetUser.permissions?.super_admin_locks?.[permissionKey]) {
-    alert("SECURITY OVERRIDE DENIED: This clearance was explicitly revoked by a Global Super Admin. Only the Super Admin has the exclusive authority to reinstate it.");
+  const userRoleClean = (currentUser?.role || '').toUpperCase();
+  const userPosClean = (currentUser?.position || '').toUpperCase();
+  const isSuperAdminOrTopCommand = (
+    userRoleClean === 'SUPER_ADMIN' ||
+    userPosClean.includes('KMP COMMANDER') ||
+    userPosClean.includes('DEPUTY KMP COMMANDER') ||
+    userPosClean.includes('STAFF OFFICER ADMIN') ||
+    userPosClean.includes('SO ADMIN')
+  );
+
+  // STRICT TOP COMMAND REINSTATEMENT LOCK (Blocks standard users/RPCs from unlocking Super Admin locks)
+  if (value === true && !isSuperAdminOrTopCommand && targetUser.permissions?.super_admin_locks?.[permissionKey]) {
+    alert("SECURITY OVERRIDE DENIED: This clearance was explicitly locked. Only High Command or Super Admin has the authority to reinstate it.");
     return;
   }
 
   // COMPELLED REASON FOR REMOVING CLEARANCE (For non-Super Admins)
-  if (value === false && currentUser?.role !== 'SUPER_ADMIN') {
+  if (value === false && !isSuperAdminOrTopCommand) {
     setRevokePrompt({
       isOpen: true,
       fnum,
@@ -322,7 +352,7 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
 
   // 🟢 Cleanly manage locks: Set lock to true if disabling, clear/false if enabling
   let locks = { ...(targetUser.permissions?.super_admin_locks || {}) };
-  if (currentUser?.role === 'SUPER_ADMIN') {
+  if (isSuperAdminOrTopCommand) {
     if (value === false) {
       locks[permissionKey] = true; // Lock down
     } else {
@@ -365,8 +395,18 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
     const targetUser = allSystemUsers.find(u => u.fnum === fnum);
     if (!targetUser) return;
 
+    const userRoleClean = (currentUser?.role || '').toUpperCase();
+    const userPosClean = (currentUser?.position || '').toUpperCase();
+    const isSuperAdminOrTopCommand = (
+      userRoleClean === 'SUPER_ADMIN' ||
+      userPosClean.includes('KMP COMMANDER') ||
+      userPosClean.includes('DEPUTY KMP COMMANDER') ||
+      userPosClean.includes('STAFF OFFICER ADMIN') ||
+      userPosClean.includes('SO ADMIN')
+    );
+
     // STRICT SUPER ADMIN EXCLUSIVE REINSTATEMENT LOCK (Blocks non-Super Admins)
-    if (newRole !== 'REVOKED' && targetUser.role === 'REVOKED' && currentUser?.role !== 'SUPER_ADMIN' && targetUser.permissions?.revoked_by === 'SUPER_ADMIN') {
+    if (newRole !== 'REVOKED' && targetUser.role === 'REVOKED' && !isSuperAdminOrTopCommand && targetUser.permissions?.revoked_by === 'SUPER_ADMIN') {
       alert("SECURITY OVERRIDE DENIED: This officer's access was revoked by a Global Super Admin. Only the Super Admin has the exclusive authority to reinstate them.");
       return;
     }
@@ -381,7 +421,7 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
     }
 
     // COMPELLED REASON FOR SUSPENDING ACCOUNT
-    if (newRole === 'REVOKED' && currentUser?.role !== 'SUPER_ADMIN') {
+    if (newRole === 'REVOKED' && !isSuperAdminOrTopCommand) {
       setRevokePrompt({
         isOpen: true,
         fnum,
@@ -394,7 +434,7 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
     }
 
     let updatedPermissions = { ...(targetUser.permissions || {}) };
-    if (newRole !== 'REVOKED' && currentUser?.role === 'SUPER_ADMIN') {
+    if (newRole !== 'REVOKED' && isSuperAdminOrTopCommand) {
       delete updatedPermissions.revoked_by;
       delete updatedPermissions.revoke_reason;
     }
@@ -629,29 +669,32 @@ const handleGranularPermissionChange = async (fnum, permissionKey, value) => {
                           { key: 'export_data', color: 'red', bg: 'bg-red-50/20' },
                           { key: 'can_view_analytics', color: 'emerald', bg: 'bg-emerald-50/20' }
                         ].map((col, idx) => {
-                          const allowedRoles = ['SUPER_ADMIN', 'ASSISTANT_SUPER_ADMIN', 'RPC', 'DEPUTY COMMANDER', 'KMP COMMANDER'];
+                          const userRoleClean = (currentUser?.role || '').toUpperCase();
+                          const userPosClean = (currentUser?.position || '').toUpperCase();
 
-const userRoleClean = (currentUser?.role || '').toUpperCase();
-const userPosClean = (currentUser?.position || '').toUpperCase();
+                          const isSuperAdminOrTopCommand = (
+                            userRoleClean === 'SUPER_ADMIN' ||
+                            userPosClean.includes('KMP COMMANDER') ||
+                            userPosClean.includes('DEPUTY KMP COMMANDER') ||
+                            userPosClean.includes('STAFF OFFICER ADMIN') ||
+                            userPosClean.includes('SO ADMIN')
+                          );
 
-const isAuthorizedCommander = 
-  allowedRoles.includes(userRoleClean) || 
-  allowedRoles.some(role => userPosClean.includes(role));
-
-const isSuperAdmin = userRoleClean === 'SUPER_ADMIN';
-                          const isLocked = !isSuperAdmin && p.super_admin_locks?.[col.key];
-                          const isDisabled = isSuperAdmin || currentUser?.role === 'SYSTEM_ADMIN' || isLocked || isRevoked;
+                          const isLocked = !isSuperAdminOrTopCommand && p.super_admin_locks?.[col.key];
+                          
+                          // 🟢 FIXED: Removed `isSuperAdmin` from blocking checks so Super Admin & Top Command can always check/uncheck
+                          const isDisabled = (currentUser?.role === 'SYSTEM_ADMIN') || (isLocked && !isSuperAdminOrTopCommand) || isRevoked;
 
                           return (
                             <td key={idx} className={`p-3 text-center ${col.bg || ''}`}>
                               <div className="relative inline-flex items-center justify-center">
-<input 
-  type="checkbox" 
-  checked={isSuperAdmin || Boolean(p[col.key])} // Ensures false is handled properly when unchecked
-  disabled={isDisabled}
-  onChange={e => handleGranularPermissionChange(u.fnum, col.key, e.target.checked)} 
-  className={`w-4 h-4 rounded cursor-pointer disabled:opacity-40 text-${col.color}-600`} 
-/>
+                                <input 
+                                  type="checkbox" 
+                                  checked={isSuperAdmin || Boolean(p[col.key])} 
+                                  disabled={isDisabled}
+                                  onChange={e => handleGranularPermissionChange(u.fnum, col.key, e.target.checked)} 
+                                  className={`w-4 h-4 rounded cursor-pointer disabled:opacity-40 text-${col.color}-600`} 
+                                />
                                 {isLocked && <Lock size={10} className="absolute -top-1.5 -right-2 text-red-600 drop-shadow-sm" />}
                               </div>
                             </td>

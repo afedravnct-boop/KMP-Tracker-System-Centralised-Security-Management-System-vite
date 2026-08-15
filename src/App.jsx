@@ -3743,7 +3743,7 @@ const IdleWarningModal = () => {
                 ))}
               </nav>
 
-              {sidebarOpen && (['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) || currentUser.permissions?.system_admin) && (
+              {sidebarOpen && (['ADMIN', 'SUPER_ADMIN'].includes(currentUser?.role) || currentUser?.permissions?.system_admin || ['KMP COMMANDER', 'DEPUTY KMP COMMANDER', 'STAFF OFFICER ADMIN', 'SO ADMIN'].some(title => (currentUser?.position || '').toUpperCase().includes(title))) && (
                 <div className="px-4 space-y-3 min-w-max">
                   <div className={`rounded-lg p-3 transition-colors ${currentPage === 'approvals' ? 'bg-slate-700 border border-slate-600' : 'bg-slate-800'}`}>
                     <div className="text-sm font-bold mb-2 flex items-center"><UserPlus size={16} className="mr-2"/> Access & Approvals</div>
@@ -3754,6 +3754,7 @@ const IdleWarningModal = () => {
                       Manage Pending Users & Logs
                     </button>
                   </div>
+                </div>
 
                   <div className="rounded-lg p-4 bg-slate-800">
                     <button type="button" onClick={() => setShowOnline(!showOnline)} className="w-full flex justify-between items-center text-sm font-bold text-green-400">

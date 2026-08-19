@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { BarChart3, TrendingUp, TrendingDown, Calendar, Shield, Filter, ArrowUpRight, ArrowDownRight, PieChart, Clock, Users, Award, MapPin, Zap, CheckCircle2, GitCommit, Network } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { BarChart3, TrendingUp, TrendingDown, Calendar, Shield, Filter, ArrowUpRight, ArrowDownRight, PieChart, Clock, Users, Award, MapPin, Zap, CheckCircle2, GitCommit, Network, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { authFetch } from './api';
 
 const REGIONAL_HIERARCHY = {
   "KMP NORTH": ["KAWEMPE", "KAKIRI", "KASANGATI", "MATUGGA", "NANSANA", "OLD KAMPALA", "WAKISO", "WANDEGEYA"],
@@ -65,11 +66,51 @@ const AnalyticsDashboard = ({
   currentUser, 
   canViewGlobal = false 
 }) => {
-  // 🟢 Robust fallbacks to ensure data is captured regardless of prop naming conventions from parent
-  const resolvedNominalRolls = nominalRolls.length > 0 ? nominalRolls : nominal_rolls;
-  const resolvedCrimeRegistry = crimeRegistry.length > 0 ? crimeRegistry : reports;
-  const resolvedSuccessStories = successStories;
-  const resolvedOperationalStats = operationalStats.length > 0 ? operationalStats : stats;
+  const [fetchedRolls, setFetchedRolls] = useState([]);
+  const [fetchedCrime, setFetchedCrime] = useState([]);
+  const [fetchedSuccess, setFetchedSuccess] = useState([]);
+  const [fetchedOps, setFetchedOps] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // 🟢 Fetch live data straight from NeonDB endpoints if parent props are empty
+  useEffect(() => {
+    let isMounted = true;
+    const fetchNeonData = async () => {
+      setLoading(true);
+      try {
+        const [rollRes, crimeRes, storyRes, statsRes] = await Promise.all([
+          authFetch('/api/v1/nominal-roll').catch(() => null),
+          authFetch('/api/v1/reports').catch(() => null),
+          authFetch('/api/v1/stories').catch(() => null),
+          authFetch('/api/v1/stats').catch(() => null)
+        ]);
+
+        const rollData = rollRes && rollRes.ok ? await rollRes.json() : [];
+        const crimeData = crimeRes && crimeRes.ok ? await crimeRes.json() : [];
+        const storyData = storyRes && storyRes.ok ? await storyRes.json() : [];
+        const statsData = statsRes && statsRes.ok ? await statsRes.json() : [];
+
+        if (isMounted) {
+          setFetchedRolls(Array.isArray(rollData) ? rollData : []);
+          setFetchedCrime(Array.isArray(crimeData) ? crimeData : []);
+          setFetchedSuccess(Array.isArray(storyData) ? storyData : []);
+          setFetchedOps(Array.isArray(statsData) ? statsData : []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch analytics data from NeonDB:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchNeonData();
+    return () => { isMounted = false; };
+  }, []);
+
+  const resolvedNominalRolls = nominalRolls.length ? nominalRolls : (nominal_rolls.length ? nominal_rolls : fetchedRolls);
+  const resolvedCrimeRegistry = crimeRegistry.length ? crimeRegistry : (reports.length ? reports : fetchedCrime);
+  const resolvedSuccessStories = successStories.length ? successStories : fetchedSuccess;
+  const resolvedOperationalStats = operationalStats.length ? operationalStats : (stats.length ? stats : fetchedOps);
 
   const [activeDomain, setActiveDomain] = useState('CRIME');
   const [metricCategory, setMetricCategory] = useState('CATEGORY');
@@ -428,6 +469,12 @@ const AnalyticsDashboard = ({
           <span>📥 Download Relational Audit Report (Excel)</span>
         </button>
       </div>
+
+      {loading && (
+        <div className="flex items-center justify-center p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 font-bold">
+          <Loader2 className="w-4 h-4 mr-2 animate-spin text-amber-600" /> Fetching live analytics data streams from NeonDB...
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         {[

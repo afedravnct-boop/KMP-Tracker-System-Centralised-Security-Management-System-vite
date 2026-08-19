@@ -906,6 +906,8 @@ const Establishments = ({ currentUser, establishments, setEstablishments, setSid
     booths: 0, location: '', personnel_in_booth: 0, installed_by: '', status: 'OPERATIONAL', comment: ''
   });
 
+const canViewGlobal = propCanViewGlobal !== undefined ? propCanViewGlobal : (currentUser?.role === 'SUPER_ADMIN' || currentUser?.permissions?.view_global_roster === true);
+
   const filteredEstablishments = useMemo(() => {
     return (Array.isArray(establishments) ? establishments : []).filter(e => {
       if (filterRegion !== 'ALL REGIONS' && e.region !== filterRegion) return false;

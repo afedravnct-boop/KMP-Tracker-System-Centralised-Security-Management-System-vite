@@ -2273,77 +2273,66 @@ const App = () => {
     if (!currentUser?.fnum || !hasValidSession()) return; 
     const controller = new AbortController();
     
-    const fetchAllData = async () => {
-      // 🟢 1. Validate session token without touching localStorage
-      if (!hasValidSession() || !currentUser?.fnum) return;
-
+const fetchAllData = async () => {
       try {
-        // 🟢 2. Use relative endpoints (authFetch handles BASE_URL and Bearer headers automatically)
-        const [resReports, resGeneralDocs, resStats, resStories, resNom, resComms, resEst, resArchives, resUsers] = await Promise.all([
-          authFetch('/api/v1/reports', { signal: controller.signal }), 
-          authFetch('/api/v1/general-documents', { signal: controller.signal }),
-          authFetch('/api/v1/stats', { signal: controller.signal }),
-          authFetch('/api/v1/stories', { signal: controller.signal }), 
-          authFetch('/api/v1/nominal-roll', { signal: controller.signal }),
-          authFetch('/api/v1/Admin_Communication', { signal: controller.signal }), 
-          authFetch('/api/v1/establishments', { signal: controller.signal }),
-          authFetch('/api/v1/nominal-roll-archive', { signal: controller.signal }), 
-          authFetch('/api/v1/users', { signal: controller.signal })
-        ]);
+        // ... your fetch requests (resUsers, etc.) ...
 
-        if (!controller.signal.aborted) {
-          // 🟢 3. Update active data states
-          if (resReports.ok) setReports(await resReports.json());
-          if (resGeneralDocs.ok) setGeneralDocs(await resGeneralDocs.json());
-          if (resStats.ok) setStats(await resStats.json());
-          if (resStories.ok) setStories(await resStories.json());
-          if (resNom.ok) setNominal_Rolls(await resNom.json());
-          if (resComms.ok) setAdminCommsData(await resComms.json());
-          if (resEst.ok) setEstablishments(await resEst.json());
-          if (resArchives.ok) setNominal_Roll_archives(await resArchives.json());
+        // 🟢 4. Sync dynamic matrix permissions in RAM only
+        if (resUsers && resUsers.ok) {
+          const allUsers = await resUsers.json();
+          setUsers(allUsers);
           
-// 🟢 4. Sync dynamic matrix permissions in RAM only (Permanent Stale-Closure Fix)
-          if (resUsers && resUsers.ok) {
-            const allUsers = await resUsers.json();
-            setUsers(allUsers);
-            
-            const myFnum = currentUser?.fnum;
-            const me = allUsers.find(u => u.fnum === myFnum);
+          const myFnum = currentUser?.fnum;
+          const me = allUsers.find(u => u.fnum === myFnum);
 
-            if (me) {
-              setCurrentUser(prev => {
-                if (!prev) return prev;
+          if (me) {
+            setCurrentUser(prev => {
+              if (!prev) return prev;
 
-                const isSuperAdmin = prev.role === 'SUPER_ADMIN' || me.role === 'SUPER_ADMIN';
-                const hasGlobalRoster = isSuperAdmin || me.permissions?.view_global_roster === true || prev.permissions?.view_global_roster === true;
-                const hasGlobalObserver = isSuperAdmin || me.permissions?.global_observer === true || prev.permissions?.global_observer === true;
+              const isSuperAdmin = prev.role === 'SUPER_ADMIN' || me.role === 'SUPER_ADMIN';
+              const hasGlobalRoster = isSuperAdmin || me.permissions?.view_global_roster === true || prev.permissions?.view_global_roster === true;
+              const hasGlobalObserver = isSuperAdmin || me.permissions?.global_observer === true || prev.permissions?.global_observer === true;
 
-                const mergedPermissions = {
-                  ...(prev.permissions || {}),
-                  ...(me.permissions || {}),
-                  view_global_roster: hasGlobalRoster,
-                  global_observer: hasGlobalObserver
-                };
+              const mergedPermissions = {
+                ...(prev.permissions || {}),
+                ...(me.permissions || {}),
+                view_global_roster: hasGlobalRoster,
+                global_observer: hasGlobalObserver
+              };
 
-                const resolvedRole = isSuperAdmin ? 'SUPER_ADMIN' : (me.role || prev.role);
+              const resolvedRole = isSuperAdmin ? 'SUPER_ADMIN' : (me.role || prev.role);
 
-                // Exact equality check against live state to avoid unnecessary renders
-                const permissionsUnchanged = JSON.stringify(mergedPermissions) === JSON.stringify(prev.permissions);
-                const roleUnchanged = resolvedRole === prev.role;
+              const permissionsUnchanged = JSON.stringify(mergedPermissions) === JSON.stringify(prev.permissions);
+              const roleUnchanged = resolvedRole === prev.role;
 
-                if (permissionsUnchanged && roleUnchanged) {
-                  return prev; // No state mutation, prevents flickering
-                }
+              if (permissionsUnchanged && roleUnchanged) {
+                return prev;
+              }
 
-                console.log("🛡️ Sovereign permissions securely synchronized live.");
-                return {
-                  ...prev,
-                  permissions: mergedPermissions,
-                  role: resolvedRole
-                };
-              });
-            }
+              return {
+                ...prev,
+                permissions: mergedPermissions,
+                role: resolvedRole
+              };
+            });
           }
+        }
+      } catch (error) { 
+        if (error.name !== 'AbortError' && error.message !== 'UNAUTHORIZED') {
+          console.error("Data Sync Error:", error);
+        }
+      } 
+    };    
+
+    fetchAllData();
+    
+    const pollingInterval = setInterval(fetchAllData, 5000);
+
+    return () => {
+      controller.abort();
+      clearInterval(pollingInterval);
+    };
+  }, [currentUser?.fnum]);
 
   const handleMasterExport = async (scope, value) => {
     let url = `/api/v1/reports/export?timeframe=all`; 

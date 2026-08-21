@@ -1576,7 +1576,7 @@ const WorkspaceSecurityCurtain = () => {
         }
         @keyframes continuous-globe-spin {
           0% { background-position-x: 0px; }
-          100% { background-position-x: -400px; }
+          100% { background-position-x: -800px; }
         }
       `}</style>
 

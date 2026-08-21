@@ -1469,7 +1469,6 @@ const WorkspaceSecurityCurtain = () => {
     const SESSION_TIMEOUT_MS = 29 * 60 * 1000;  // 29 Minutes to Warning
 
     const handleUserActivity = () => {
-      // 🟢 Never reset timers if the warning countdown or timeout modal is active
       if (showIdleWarning || isTimedOut) return;
 
       setIsWorkspaceIdle(false);
@@ -1502,7 +1501,7 @@ const WorkspaceSecurityCurtain = () => {
     };
   }, [isReadingMode, showIdleWarning, isTimedOut]);
 
-  // 🟢 2. DEDICATED 60-SECOND COUNTDOWN (Isolated from activity listener loop)
+  // 🟢 2. DEDICATED 60-SECOND COUNTDOWN
   useEffect(() => {
     if (!showIdleWarning || isTimedOut) return;
 
@@ -1512,7 +1511,7 @@ const WorkspaceSecurityCurtain = () => {
       setIdleCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(countdownInterval);
-          setIsTimedOut(true); // 🟢 Hits 0 and triggers the red "Acknowledge & Return to Login" view
+          setIsTimedOut(true);
           return 0;
         }
         return prev - 1;
@@ -1568,50 +1567,63 @@ const WorkspaceSecurityCurtain = () => {
         isolation: 'isolate'
       }}
     >
-{/* 🟢 CSS Animation Keyframes */}
+      {/* 🟢 CSS Animations */}
       <style>{`
         @keyframes spin-orbit-y {
           0% { transform: rotateY(0deg); }
           100% { transform: rotateY(360deg); }
         }
-        @keyframes globe-texture-pan {
-          0% { background-position: 0% center; }
-          100% { background-position: 200% center; }
+        @keyframes continuous-globe-spin {
+          0% { background-position-x: 0px; }
+          100% { background-position-x: -800px; }
         }
       `}</style>
 
-      {/* Visual Background */}
+      {/* Visual Background Layer */}
       <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center pointer-events-none">
-        {/* ... existing radar rings ... */}
+        
+        {/* 🟢 Uganda Flag Tristriped Background */}
+        <div className="absolute inset-0 opacity-20 pointer-events-none flex flex-col justify-between z-0">
+          <div className="h-1/3 w-full bg-black"></div>
+          <div className="h-1/3 w-full bg-[#FCD116]"></div>
+          <div className="h-1/3 w-full bg-[#D91B23]"></div>
+        </div>
+
+        {/* Tactical Radar Rings */}
+        <div className="absolute w-[600px] h-[600px] rounded-full border border-slate-800/60 animate-[spin_30s_linear_infinite] flex items-center justify-center pointer-events-none z-5">
+          <div className="w-[450px] h-[450px] rounded-full border border-dashed border-slate-700/40 animate-[spin_20s_linear_infinite_reverse] flex items-center justify-center">
+            <div className="w-[300px] h-[300px] rounded-full border border-slate-800/80"></div>
+          </div>
+        </div>
 
         {/* 3D Container */}
         <div 
           className="relative z-10 flex items-center justify-center w-72 h-72 rounded-full overflow-visible pointer-events-none"
           style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
         >
-          {/* 🟢 True 360-Degree Continuous Panning Globe Sphere */}
+          {/* 🟢 Fast, True 360-Degree Continuous Panning Globe Sphere */}
           <div 
-            className="w-56 h-56 rounded-full shadow-[inset_-25px_-20px_40px_rgba(0,0,0,0.9),0_0_40px_rgba(0,0,0,0.8)] border-2 border-slate-700/60 overflow-hidden flex items-center justify-center bg-slate-900"
+            className="w-56 h-56 rounded-full shadow-[inset_-25px_-20px_45px_rgba(0,0,0,0.95),0_0_50px_rgba(0,0,0,0.85)] border-2 border-slate-700/60 overflow-hidden flex items-center justify-center bg-slate-900"
             style={{ 
               backgroundImage: `url('/upf_kmp_map.png')`,
-              backgroundSize: 'auto 100%',
+              backgroundSize: '800px 100%',
               backgroundRepeat: 'repeat-x',
-              animation: 'globe-texture-pan 25s linear infinite'
+              animation: 'continuous-globe-spin 14s linear infinite'
             }}
           />
            
-          {/* Light Blue 3D Orbiting Text Ring */}
+          {/* 🟢 Light Blue 3D Orbiting Text Ring */}
           <div 
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ 
               transformStyle: 'preserve-3d', 
-              animation: 'spin-orbit-y 20s linear infinite' 
+              animation: 'spin-orbit-y 18s linear infinite' 
             }}
           >
             {orbitText.map((char, i, arr) => (
               <span 
                 key={i} 
-                className="absolute text-sky-400 font-extrabold text-[11px] uppercase tracking-widest drop-shadow-[0_0_6px_rgba(56,189,248,0.8)]"
+                className="absolute text-sky-400 font-extrabold text-[11px] uppercase tracking-widest drop-shadow-[0_0_6px_rgba(56,189,248,0.9)]"
                 style={{ 
                   transform: `rotateY(${i * (360 / arr.length)}deg) translateZ(160px)` 
                 }}
@@ -1642,9 +1654,7 @@ const WorkspaceSecurityCurtain = () => {
               </p>
               <button 
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
+                onClick={() => {
                   localStorage.removeItem('kmp_authToken');
                   localStorage.removeItem('kmp_currentUser');
                   localStorage.removeItem('kmp_currentPage');
@@ -1670,9 +1680,7 @@ const WorkspaceSecurityCurtain = () => {
               </p>
               <button 
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
+                onClick={() => {
                   setShowIdleWarning(false);
                   setIsWorkspaceIdle(false);
                 }}

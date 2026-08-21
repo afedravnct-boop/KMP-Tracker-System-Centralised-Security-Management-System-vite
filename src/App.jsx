@@ -1555,6 +1555,8 @@ const WorkspaceSecurityCurtain = () => {
     );
   }
 
+  const orbitText = "KAMPALA METROPOLITAN POLICE • CENTRAL SECURITY DATA MANAGEMENT SYSTEM • ".split('');
+
   return (
     <div 
       className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
@@ -1566,6 +1568,18 @@ const WorkspaceSecurityCurtain = () => {
         isolation: 'isolate'
       }}
     >
+      {/* 🟢 CSS Animations for Globe & Orbit Text */}
+      <style>{`
+        @keyframes spin-orbit-y {
+          0% { transform: rotateY(0deg); }
+          100% { transform: rotateY(360deg); }
+        }
+        @keyframes globe-spin-y {
+          0% { transform: rotateY(0deg); }
+          100% { transform: rotateY(360deg); }
+        }
+      `}</style>
+
       {/* Visual Background */}
       <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center pointer-events-none">
         <div className="absolute w-[600px] h-[600px] rounded-full border border-slate-800/60 animate-[spin_30s_linear_infinite] flex items-center justify-center pointer-events-none">
@@ -1577,6 +1591,49 @@ const WorkspaceSecurityCurtain = () => {
           <div className="h-1/3 w-full bg-black"></div>
           <div className="h-1/3 w-full bg-[#FCD116]"></div>
           <div className="h-1/3 w-full bg-[#D91B23]"></div>
+        </div>
+
+        {/* 3D Map Globe & Floating Orbit Ring */}
+        <div 
+          className="relative z-10 flex items-center justify-center w-72 h-72 rounded-full overflow-visible pointer-events-none"
+          style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
+        >
+          {/* 🟢 Rotating Central Globe Map */}
+          <div 
+            className="w-56 h-56 rounded-full shadow-[0_0_40px_rgba(0,0,0,0.8)] border-2 border-slate-700/60 overflow-hidden flex items-center justify-center bg-slate-900"
+            style={{ 
+              transformStyle: 'preserve-3d', 
+              animation: 'globe-spin-y 20s linear infinite' 
+            }}
+          >
+            <img 
+              src="/upf_kmp_map.png" 
+              alt="KMP Map" 
+              className="w-full h-full object-cover"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          </div>
+           
+          {/* 🟢 Orbiting Text Ring in Light Blue */}
+          <div 
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ 
+              transformStyle: 'preserve-3d', 
+              animation: 'spin-orbit-y 20s linear infinite' 
+            }}
+          >
+            {orbitText.map((char, i, arr) => (
+              <span 
+                key={i} 
+                className="absolute text-sky-400 font-extrabold text-[11px] uppercase tracking-widest drop-shadow-[0_0_6px_rgba(56,189,248,0.8)]"
+                style={{ 
+                  transform: `rotateY(${i * (360 / arr.length)}deg) translateZ(160px)` 
+                }}
+              >
+                {char === ' ' ? '\u00A0' : char}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1645,6 +1702,8 @@ const WorkspaceSecurityCurtain = () => {
     </div>
   );
 };
+
+export default WorkspaceSecurityCurtain;
 
 // ====================================================================
 // --- MAIN LAYOUT COMPONENT ---

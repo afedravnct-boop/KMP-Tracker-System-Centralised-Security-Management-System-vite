@@ -1568,53 +1568,39 @@ const WorkspaceSecurityCurtain = () => {
         isolation: 'isolate'
       }}
     >
-      {/* 🟢 CSS Animations for Globe & Orbit Text */}
+{/* 🟢 CSS Animation Keyframes */}
       <style>{`
         @keyframes spin-orbit-y {
           0% { transform: rotateY(0deg); }
           100% { transform: rotateY(360deg); }
         }
-        @keyframes globe-spin-y {
-          0% { transform: rotateY(0deg); }
-          100% { transform: rotateY(360deg); }
+        @keyframes globe-texture-pan {
+          0% { background-position: 0% center; }
+          100% { background-position: 200% center; }
         }
       `}</style>
 
       {/* Visual Background */}
       <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center pointer-events-none">
-        <div className="absolute w-[600px] h-[600px] rounded-full border border-slate-800/60 animate-[spin_30s_linear_infinite] flex items-center justify-center pointer-events-none">
-          <div className="w-[450px] h-[450px] rounded-full border border-dashed border-slate-700/40 animate-[spin_20s_linear_infinite_reverse] flex items-center justify-center">
-            <div className="w-[300px] h-[300px] rounded-full border border-slate-800/80"></div>
-          </div>
-        </div>
-        <div className="absolute inset-0 opacity-10 pointer-events-none flex flex-col justify-between z-0">
-          <div className="h-1/3 w-full bg-black"></div>
-          <div className="h-1/3 w-full bg-[#FCD116]"></div>
-          <div className="h-1/3 w-full bg-[#D91B23]"></div>
-        </div>
+        {/* ... existing radar rings ... */}
 
-        {/* 3D Map Globe & Floating Orbit Ring */}
+        {/* 3D Container */}
         <div 
           className="relative z-10 flex items-center justify-center w-72 h-72 rounded-full overflow-visible pointer-events-none"
           style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
         >
-          {/* 🟢 Rotating Central Globe Map */}
+          {/* 🟢 True 360-Degree Continuous Panning Globe Sphere */}
           <div 
-            className="w-56 h-56 rounded-full shadow-[0_0_40px_rgba(0,0,0,0.8)] border-2 border-slate-700/60 overflow-hidden flex items-center justify-center bg-slate-900"
+            className="w-56 h-56 rounded-full shadow-[inset_-25px_-20px_40px_rgba(0,0,0,0.9),0_0_40px_rgba(0,0,0,0.8)] border-2 border-slate-700/60 overflow-hidden flex items-center justify-center bg-slate-900"
             style={{ 
-              transformStyle: 'preserve-3d', 
-              animation: 'globe-spin-y 20s linear infinite' 
+              backgroundImage: `url('/upf_kmp_map.png')`,
+              backgroundSize: 'auto 100%',
+              backgroundRepeat: 'repeat-x',
+              animation: 'globe-texture-pan 25s linear infinite'
             }}
-          >
-            <img 
-              src="/upf_kmp_map.png" 
-              alt="KMP Map" 
-              className="w-full h-full object-cover"
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
-          </div>
+          />
            
-          {/* 🟢 Orbiting Text Ring in Light Blue */}
+          {/* Light Blue 3D Orbiting Text Ring */}
           <div 
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ 

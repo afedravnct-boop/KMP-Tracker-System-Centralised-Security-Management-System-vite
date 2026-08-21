@@ -1703,7 +1703,6 @@ const WorkspaceSecurityCurtain = () => {
   );
 };
 
-export default WorkspaceSecurityCurtain;
 
 // ====================================================================
 // --- MAIN LAYOUT COMPONENT ---

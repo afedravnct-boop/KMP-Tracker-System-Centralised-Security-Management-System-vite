@@ -2234,6 +2234,7 @@ const App = () => {
     };
   }, []);
 
+// 🟢 REAL-TIME LISTENER & SYNC: Polls server every 5s ONLY when user is active
   useEffect(() => {
     if (!currentUser?.fnum || !hasValidSession()) return; 
     const controller = new AbortController();
@@ -2264,6 +2265,7 @@ const App = () => {
         if (resComms && resComms.ok) setAdminCommsData(await resComms.json());
         if (resDocs && resDocs.ok) setGeneralDocs(await resDocs.json());
 
+        // Sync dynamic matrix permissions in RAM only
         if (resUsers && resUsers.ok) {
           const allUsers = await resUsers.json();
           setUsers(allUsers);

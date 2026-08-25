@@ -17,17 +17,31 @@ const MetricCard = ({ title, value, colorClass }) => (
   </div>
 );
 
+// 🟢 FIX: Added logic to actually hide/show the children and default to expanded
 const ExpandableTableCard = ({ title, children, onToggle }) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true); // Default to true so data is visible
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
       <div className="bg-slate-900 px-4 py-3 flex justify-between items-center">
         <h3 className="font-extrabold text-white text-sm uppercase tracking-wider">{title}</h3>
-        <button onClick={() => { const nextState = !expanded; setExpanded(nextState); if (onToggle) onToggle(nextState); }} className="text-xs text-blue-400 hover:text-white font-bold cursor-pointer">
+        <button 
+          onClick={(e) => { 
+            e.stopPropagation();
+            const nextState = !expanded; 
+            setExpanded(nextState); 
+            if (onToggle) onToggle(nextState); 
+          }} 
+          className="text-xs text-blue-400 hover:text-white font-bold cursor-pointer transition-colors"
+        >
           {expanded ? 'Collapse ↙' : 'Expand ↗'}
         </button>
       </div>
-      <div className="w-full">{children}</div>
+      {/* Conditionally render children based on expanded state */}
+      {expanded && (
+        <div className="w-full animate-in fade-in slide-in-from-top-2 duration-300">
+          {children}
+        </div>
+      )}
     </div>
   );
 };
@@ -218,7 +232,7 @@ const Statistics = ({ currentUser, canViewGlobal = false, stats = [], agricStats
         if (filterStation !== 'ALL STATIONS' && s.station !== filterStation) return false;
       }
 
-// 1. Calculate the day difference ONCE to save memory
+      // 1. Calculate the day difference ONCE to save memory
       const diffDays = Math.ceil(Math.abs(new Date() - new Date(s.date)) / (1000 * 60 * 60 * 24));
       
       // 2. Apply the filters cleanly
@@ -236,7 +250,8 @@ const Statistics = ({ currentUser, canViewGlobal = false, stats = [], agricStats
       
       return true;
     });
-  }, [stories, filterRegion, filterStation, dateFilter, canViewGlobalActive]);
+  // 🟢 FIX: Changed `stories` to `currentDomainStats` below to stop the reference crash
+  }, [currentDomainStats, filterRegion, filterStation, dateFilter, canViewGlobalActive]);
 
   const availableUpdateStats = useMemo(() => {
     return (Array.isArray(currentDomainStats) ? currentDomainStats : []).filter(s => {

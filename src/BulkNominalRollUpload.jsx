@@ -52,7 +52,6 @@ if (response.ok) {
         if (hasArchived || hasBlanks) {
           setMessage(
             <div className="flex flex-col space-y-3 w-full">
-              {/* 🟢 Added Flex Header with Dismiss Button */}
               <div className="flex justify-between items-start border-b pb-1 border-amber-300 dark:border-amber-700">
                 <p className="font-bold text-amber-900 dark:text-amber-300 text-xs pr-4">{data.message}</p>
                 <button 
@@ -92,7 +91,6 @@ if (response.ok) {
             </div>
           );
         } else {
-          // 🟢 Only auto-refresh if the upload was 100% clean
           setMessage(data.message || "Bulk upload completed successfully.");
           if (onUploadSuccess) {
             onUploadSuccess();
@@ -102,6 +100,15 @@ if (response.ok) {
         setMessage(data.detail || data.message || "An error occurred during upload. Check your column headers.");
         setStatus('error');
       }
+    } catch (error) {
+      setMessage(`Upload error: ${error.message}`);
+      setStatus('error');
+    } finally {
+      setUploading(false);
+      setFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <div className="space-y-4 w-full">

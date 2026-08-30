@@ -230,6 +230,10 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
 const handleFormSubmit = async (e) => {
     e.preventDefault();
 
+    const cleanedNarrative = formData.narrative
+      ? formData.narrative.replace(/color:\s*(white|#fff|#ffffff);?/gi, '')
+      : '';
+
     const activeRegion = (canViewGlobalActive && filterRegion !== 'ALL REGIONS') ? filterRegion : formData.region;
     const activeStation = (canViewGlobalActive && filterStation !== 'ALL STATIONS') ? filterStation : formData.station;
 

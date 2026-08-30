@@ -83,11 +83,6 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
   );
 };
 
-const authFetch = async (url, options = {}) => {
-  const token = localStorage.getItem('kmp_authToken');
-  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-  return fetch(`${API_URL}${url}`, { ...options, headers: { ...options.headers, "Authorization": `Bearer ${token}` } });
-};
 
 const autoCapitalize = (text) => {
   if (!text) return text;

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Users, PlusCircle, Edit, AlertTriangle, CheckCircle, Upload, 
-  BarChart3, PieChart, ArrowRight, Eye, Archive, RefreshCw, Search, X 
+  BarChart3, PieChart, ArrowRight 
 } from 'lucide-react';
 import { authFetch } from './api';
 import BulkNominalRollUpload from './BulkNominalRollUpload';
@@ -143,14 +143,13 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   const [archiveReason, setArchiveReason] = useState('TRANSFERRED');
   const [archiveDetail, setArchiveDetail] = useState('');
   const [corrRef, setCorrRef] = useState('');
-  const [isImportExpanded, setIsImportExpanded] = useState(true);
   
   const [formData, setFormData] = useState({
     sn: null, fnum: '', rank: '', name: '', sex: 'MALE', position: '',
     dob: '', doe: '', dopost: '', dopro: '', contact: '', educlevel: '',
     ipps: '', tin: '', nin: '', homedist: '', tribe: '', accno: '', bankbranch: '',
     station: currentUser?.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '', 
-    district: '', region: currentUser?.region || '', section: '', dir: '', status: 'ACTIVE'
+    district: '', region: currentUser?.region, section: '', dir: '', status: 'ACTIVE'
   });
 
   const populateUpdateForm = (data) => setFormData({ ...data, fnum: data.fnum || data.f_num || '' });
@@ -172,7 +171,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         dob: '', doe: '', dopost: '', dopro: '', contact: '', educlevel: '',
         ipps: '', tin: '', nin: '', homedist: '', tribe: '', accno: '', bankbranch: '',
         station: currentUser?.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '', 
-        district: '', region: currentUser?.region || '', section: '', dir: '', status: 'ACTIVE'
+        district: '', region: currentUser?.region, section: '', dir: '', status: 'ACTIVE'
       });
       setUpdateSearch('');
       setIsArchivedReturnee(false);
@@ -280,7 +279,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       setBulkArchiveDetail('');
       setBulkCorrRef('');
       setBulkSelectMode(false);
-    } catch (err) {
+    } catch (err) { 
       setNotification(`❌ Bulk Archive Error: ${err.message}`);
     } finally {
       setIsBulkArchiving(false);
@@ -526,14 +525,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         <h1 className="text-3xl font-extrabold text-gray-700 dark:text-slate-100 tracking-tight">Master Nominal Roll</h1>
         <h3 className="text-lg text-indigo-500 dark:text-indigo-400 mt-2 font-medium">Man-Power Auditing & Deployment Registry</h3>
       </div>
-        
-      {notification && (
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded-lg font-bold flex justify-between items-center shadow-sm">
-          <span>{notification}</span>
-          <button onClick={() => setNotification(null)} className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 font-bold">✕</button>
-        </div>
-      )}
-
+       
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-4 border-b border-gray-200 dark:border-slate-700 pb-2">
           <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center">
@@ -561,136 +553,226 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Form & Batch Operations */}
         <div className="lg:col-span-5 space-y-5">
           {canEditRecords && (
             <>
-              {/* Batch Upload Section */}
               <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-2 overflow-hidden">
-                <div className="flex justify-between items-center">
+                <div>
                   <h4 className="font-bold text-gray-800 dark:text-slate-100 text-sm flex items-center">
                     <Upload className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400 shrink-0" /> Batch Excel / Multi-File Import
                   </h4>
-                  <button onClick={() => setIsImportExpanded(!isImportExpanded)} className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline">
-                    {isImportExpanded ? 'Hide ▲' : 'Show ▼'}
-                  </button>
                 </div>
                  
-                {isImportExpanded && (
-                  <>
-                    <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-mono text-slate-700 dark:text-slate-300 flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-                      {['sn', 'f_num', 'rank', 'name', 'sex', 'position', 'dob', 'doe', 'do_post', 'do_pro', 'contact', 'educ_level', 'ipps', 'tin', 'nin', 'home_dist', 'tribe', 'acc_no', 'bank_branch', 'station', 'district', 'region', 'section', 'dir'].map(col => (
-                        <span key={col} className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">{col}</span>
-                      ))}
-                    </div>
-                    <BulkNominalRollUpload setNominal_Rolls={setNominal_Rolls} currentUser={currentUser} />
-                  </>
-                )}
+                <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-[10px] font-mono text-slate-700 dark:text-slate-300 flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">sn</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">f_num</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">rank</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">name</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">sex</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">position</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">dob</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">doe</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">do_post</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">do_pro</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">contact</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">educ_level</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">ipps</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">tin</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">nin</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">home_dist</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">tribe</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">acc_no</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">bank_branch</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">station</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">district</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">region</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">section</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">dir</span>
+                  <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-700 shadow-sm font-bold">status</span>
+                </div>
+                <BulkNominalRollUpload multiple onUploadSuccess={() => window.location.reload()} />
               </div>
 
-              {/* Form Input Container */}
               <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-                <div className="flex border-b border-gray-200 dark:border-slate-700">
-                  <button onClick={() => handleOperationToggle('new')} className={`flex-1 py-2.5 text-xs font-bold transition-colors ${operation === 'new' ? 'bg-blue-600 text-white' : 'bg-gray-50 dark:bg-slate-900 text-gray-600 dark:text-slate-400 hover:bg-gray-100'}`}>+ New Entry</button>
-                  <button onClick={() => handleOperationToggle('update')} className={`flex-1 py-2.5 text-xs font-bold transition-colors ${operation === 'update' ? 'bg-blue-600 text-white' : 'bg-gray-50 dark:bg-slate-900 text-gray-600 dark:text-slate-400 hover:bg-gray-100'}`}>✎ Update Record</button>
+                <div className="bg-slate-900 dark:bg-slate-950 px-4 py-2.5 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center">
+                  <h3 className="text-white text-sm font-semibold flex items-center"><Users className="w-4 h-4 mr-2 text-blue-400" /> ⚙️ Log Personnel</h3>
                 </div>
+                <div className="p-4 space-y-4">
+                  <div className="flex space-x-2 bg-gray-100 dark:bg-slate-900 p-1 rounded-lg">
+                    <button type="button" onClick={() => handleOperationToggle('new')} className={`flex-1 py-1.5 text-xs font-bold rounded transition-all cursor-pointer ${operation === 'new' ? 'bg-white dark:bg-slate-800 shadow text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'}`}><PlusCircle className="w-3.5 h-3.5 inline mr-1" /> Register New</button>
+                    <button type="button" onClick={() => handleOperationToggle('update')} className={`flex-1 py-1.5 text-xs font-bold rounded transition-all cursor-pointer ${operation === 'update' ? 'bg-white dark:bg-slate-800 shadow text-blue-700 dark:text-blue-400' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'}`}><Edit className="w-3.5 h-3.5 inline mr-1" /> Update Existing</button>
+                  </div>
 
-                <div className="p-4">
+                  {notification && <div className={`px-3 py-2 rounded-lg flex items-center text-xs ${notification.includes('Error') || notification.includes('❌') ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-green-50 border border-green-200 text-green-800'}`}>{notification.includes('Error') || notification.includes('❌') ? <AlertTriangle className="w-4 h-4 mr-2 text-red-500 shrink-0" /> : <CheckCircle className="w-4 h-4 mr-2 text-green-500 shrink-0" />}<span className="font-medium">{notification}</span></div>}
+
                   {operation === 'update' && (
-                    <div className="mb-4 space-y-2">
-                      <label className="text-xs font-bold text-gray-600 dark:text-slate-400 uppercase">Search Officer to Update</label>
-                      <input type="text" placeholder="Search by Force No, Name, or IPPS..." value={updateSearch} onChange={(e) => setUpdateSearch(e.target.value)} className="w-full text-xs p-2 rounded-lg border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                      {updateSearch && (
-                        <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-slate-700 rounded-lg divide-y divide-gray-100 dark:divide-slate-700">
-                          {availableUpdateRolls.map(rec => (
-                            <div key={rec.sn || rec.fnum || rec.f_num} onClick={() => populateUpdateForm(rec)} className="p-2 text-xs hover:bg-blue-50 dark:hover:bg-slate-700 cursor-pointer flex justify-between items-center">
-                              <span className="font-bold">{rec.rank} {rec.name}</span>
-                              <span className="text-[10px] text-gray-400">{rec.fnum || rec.f_num}</span>
+                    <div className="bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-slate-700 rounded-lg p-2.5">
+                      <label className="block text-[11px] font-bold text-blue-800 dark:text-blue-400 mb-1.5">🔍 Search & Select Officer to Update</label>
+                      <input type="text" placeholder="Search by Force No, Name, IPPS..." value={updateSearch} onChange={e => setUpdateSearch(e.target.value)} className="w-full text-xs p-1.5 mb-1.5 border border-blue-200 dark:border-slate-700 rounded outline-none focus:ring-1 focus:ring-blue-400 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" />
+                      <div className="max-h-32 overflow-y-auto bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 rounded custom-scrollbar">
+                        {availableUpdateRolls.length === 0 ? <div className="p-2 text-[11px] text-gray-500 dark:text-slate-400 text-center">No personnel found.</div> : availableUpdateRolls.map(n => (
+                            <div key={n.sn || n.fnum} onClick={() => populateUpdateForm(n)} className={`p-1.5 text-[11px] border-b dark:border-slate-700 cursor-pointer transition-colors ${formData.sn === n.sn ? 'bg-blue-600 text-white font-bold' : 'hover:bg-blue-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200'}`}>
+                              <span className={formData.sn === n.sn ? 'text-blue-200' : 'text-gray-400 dark:text-slate-400'}>F/NO: {n.fnum || n.f_num}</span> | <span className={formData.sn === n.sn ? 'text-white' : 'font-bold text-blue-700 dark:text-blue-400'}>{n.name}</span>
                             </div>
                           ))}
-                        </div>
-                      )}
+                      </div>
                     </div>
                   )}
-
+                   
                   <form onSubmit={handleFormSubmit} className="space-y-3">
-                    {/* Section 1: Identifiers */}
-                    <div className="space-y-2">
-                      <h4 className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider">1. Basic Identifiers</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="text" name="fnum" placeholder="Force Number *" value={formData.fnum} onChange={handleInputChange} required className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                        <input type="text" name="rank" placeholder="Rank (e.g. PC, ASP)" value={formData.rank} onChange={handleInputChange} required className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                      </div>
-                      <input type="text" name="name" placeholder="Full Official Name *" value={formData.name} onChange={handleInputChange} required className="w-full text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                      <div className="grid grid-cols-2 gap-2">
-                        <select name="sex" value={formData.sex} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
-                          <option value="MALE">MALE</option>
-                          <option value="FEMALE">FEMALE</option>
-                        </select>
-                        <input type="text" name="contact" placeholder="Phone Contact" value={formData.contact} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                      </div>
-                    </div>
+                    {operation === 'update' && (formData.sn || formData.fnum) && (
+                      <div className="bg-red-50 dark:bg-red-950/40 p-3 rounded-lg border border-red-200 dark:border-red-900 space-y-2.5 mb-4 shadow-sm">
+                        <h4 className="text-[11px] font-bold text-red-700 dark:text-red-400 uppercase border-b border-red-200 dark:border-red-900 pb-1 flex items-center"><AlertTriangle size={12} className="mr-1.5"/> Archive / Remove</h4>
+                        
+                        <div className="space-y-2">
+                            <div>
+                                <label className="block text-[10px] font-bold text-red-800 dark:text-red-300 mb-0.5">Removal Reason *</label>
+                                <select value={archiveReason} onChange={(e) => setArchiveReason(e.target.value)} className="w-full text-xs border-red-300 dark:border-red-900 rounded shadow-sm border py-1.5 px-2 font-bold text-red-700 dark:text-red-400 outline-none focus:ring-1 focus:ring-red-400 bg-white dark:bg-slate-800">
+                                    <option value="TRANSFERRED">Transferred</option>
+                                    <option value="DEATH">Death</option>
+                                    <option value="DISMISSAL">Dismissal</option>
+                                    <option value="DESERTION">Desertion</option>
+                                    <option value="RETIREMENT">Retirement</option>
+                                </select>
+                            </div>
 
-                    {/* Section 2: Service & Placement */}
-                    <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-slate-700">
-                      <h4 className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider">2. Service & Placement</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <select name="region" value={formData.region} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
-                          {Object.keys(REGIONAL_HIERARCHY).map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
-                        <select name="station" value={formData.station} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
-                          {(REGIONAL_HIERARCHY[formData.region] || []).map(st => <option key={st} value={st}>{st}</option>)}
-                        </select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="text" name="position" placeholder="Position / Duty" value={formData.position} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                        <input type="text" name="section" placeholder="Section / Branch" value={formData.section} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                      </div>
-                    </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-red-800 dark:text-red-300 mb-0.5">Destination / Date Context *</label>
+                                <input 
+                                    type="text"
+                                    placeholder={archiveReason === 'TRANSFERRED' ? "e.g. CPS Kampala to Arua" : "e.g. 15/08/2026 at Mulago"}
+                                    value={archiveDetail}
+                                    onChange={(e) => setArchiveDetail(e.target.value)}
+                                    className="w-full text-xs border border-red-300 dark:border-red-900 rounded p-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
+                                    required
+                                />
+                            </div>
 
-                    {/* Section 3: Demographics & Legal */}
-                    <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-slate-700">
-                      <h4 className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider">3. Personal & Legal Details</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="text" name="nin" placeholder="NIN (CM.../CF...)" value={formData.nin} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                        <input type="text" name="educlevel" placeholder="Education Level" value={formData.educlevel} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="text" name="homedist" placeholder="Home District" value={formData.homedist} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                        <input type="text" name="tribe" placeholder="Tribe" value={formData.tribe} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                      </div>
-                    </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-red-800 dark:text-red-300 mb-0.5">Correspondence Ref (Message / Letter) *</label>
+                                <input 
+                                    type="text"
+                                    placeholder="e.g. CR/123/2026 or POL/MSG/89"
+                                    value={corrRef}
+                                    onChange={(e) => setCorrRef(e.target.value)}
+                                    className="w-full text-xs border border-red-300 dark:border-red-900 rounded p-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-mono outline-none"
+                                    required
+                                />
+                            </div>
 
-                    {/* Section 4: Payroll Details */}
-                    <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-slate-700">
-                      <h4 className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider">4. Financial Records</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="text" name="ipps" placeholder="IPPS No" value={formData.ipps} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                        <input type="text" name="tin" placeholder="TIN No" value={formData.tin} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="text" name="accno" placeholder="Bank Acc No" value={formData.accno} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                        <input type="text" name="bankbranch" placeholder="Bank Branch" value={formData.bankbranch} onChange={handleInputChange} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100" />
-                      </div>
-                    </div>
-
-                    {isArchivedReturnee && (
-                      <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 rounded-lg space-y-2">
-                        <span className="text-xs font-bold text-amber-800 dark:text-amber-200">Authorized Re-Integration Reason</span>
-                        <input type="text" placeholder="Reason for re-entry into active service" value={customReason} onChange={(e) => setCustomReason(e.target.value)} required className="w-full text-xs p-2 rounded border border-amber-300" />
+                            <button type="button" onClick={handleArchivePersonnel} className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded font-bold text-xs shadow transition border border-red-800 cursor-pointer mt-1">Move to Archive</button>
+                        </div>
                       </div>
                     )}
 
-                    <div className="pt-2 flex gap-2">
-                      <button type="submit" className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer">
-                        {operation === 'new' ? 'Save Personnel Entry' : 'Update Personnel Data'}
-                      </button>
-                      {operation === 'update' && (
-                        <button type="button" onClick={handleArchivePersonnel} className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer">
-                          Archive
-                        </button>
-                      )}
+                    {operation === 'update' && (formData.sn || formData.fnum) && <div className="bg-slate-800 text-white text-[11px] font-bold px-2.5 py-1.5 rounded">Editing: {formData.fnum}</div>}
+                     
+                    <div className="bg-gray-50 dark:bg-slate-900 p-3 rounded-lg border border-gray-200 dark:border-slate-700 space-y-2.5">
+                      <h4 className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase border-b dark:border-slate-700 pb-0.5">1. Identifiers</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">F/NO. *</label><input type="text" name="fnum" value={formData.fnum} onChange={handleInputChange} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 uppercase bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">IPPS NO. *</label><input type="text" name="ipps" value={formData.ipps} onChange={handleInputChange} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div className="col-span-2"><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">NAME *</label><input type="text" name="name" value={formData.name} onChange={handleInputChange} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 uppercase bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">RANK *</label><input type="text" name="rank" value={formData.rank} onChange={handleInputChange} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">SEX</label><select name="sex" value={formData.sex} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"><option>MALE</option><option>FEMALE</option></select></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">TIN NO.</label><input type="text" name="tin" value={formData.tin} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">NIN</label><input type="text" name="nin" value={formData.nin} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                      </div>
                     </div>
+
+                    <div className="bg-gray-50 dark:bg-slate-900 p-3 rounded-lg border border-gray-200 dark:border-slate-700 space-y-2.5">
+                      <h4 className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase border-b dark:border-slate-700 pb-0.5">2. Service & Placement</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">REGION *</label><select name="region" value={formData.region} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500">{['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role) ? Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>) : <option value={currentUser.region}>{currentUser.region}</option>}</select></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">DUTY STATION *</label><select name="station" value={formData.station} onChange={handleInputChange} disabled={!['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role)} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500">{['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser.role) ? (REGIONAL_HIERARCHY[formData.region] || []).map(stat => <option key={stat} value={stat}>{stat}</option>) : (<option value={currentUser.station}>{currentUser.station}</option>)}</select></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">POSITION *</label><input type="text" name="position" value={formData.position} onChange={handleInputChange} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">DISTRICT</label><input type="text" name="district" value={formData.district} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">SECTION</label><input type="text" name="section" value={formData.section} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">DIR (Directorate)</label><input type="text" name="dir" value={formData.dir} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 dark:bg-slate-900 p-3 rounded-lg border border-gray-200 dark:border-slate-700 space-y-2.5">
+                      <h4 className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase border-b dark:border-slate-700 pb-0.5">3. Demographics</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">D.O.B</label><input type="date" name="dob" value={formData.dob} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">D.O.E</label><input type="date" name="doe" value={formData.doe} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">D.O. POST</label><input type="date" name="dopost" value={formData.dopost} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">D.O. PRO</label><input type="date" name="dopro" value={formData.dopro} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div className="col-span-2"><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">CONTACT</label><input type="text" name="contact" value={formData.contact} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">EDUC LEVEL</label><input type="text" name="educlevel" value={formData.educlevel} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">HOME DIST</label><input type="text" name="homedist" value={formData.homedist} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">TRIBE</label><input type="text" name="tribe" value={formData.tribe} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 dark:bg-slate-900 p-3 rounded-lg border border-gray-200 dark:border-slate-700 space-y-2.5">
+                      <h4 className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase border-b dark:border-slate-700 pb-0.5">4. Financial & Status</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">ACC. NO</label><input type="text" name="accno" value={formData.accno} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">BANK & BRANCH</label><input type="text" name="bankbranch" value={formData.bankbranch} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" /></div>
+                        <div className="col-span-2"><label className="block text-[10px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">STATUS</label><select name="status" value={formData.status} onChange={handleInputChange} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm border py-1.5 px-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold"><option>ACTIVE</option><option>ON LEAVE</option><option>SUSPENDED</option></select></div>
+                      </div>
+                    </div>
+
+                    {operation === 'new' && isArchivedReturnee && archiveDetails && (
+                      <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 p-3 rounded-lg mt-3 animate-in fade-in zoom-in-95 shadow-sm">
+                        <div className="flex items-start mb-2">
+                          <AlertTriangle className="text-amber-500 w-4 h-4 mr-1.5 mt-0.5 shrink-0" />
+                          <div>
+                            <h4 className="text-xs font-bold text-amber-900 dark:text-amber-300">Historical Record Match</h4>
+                            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                              Found in archives: 
+                              <span className="font-mono bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded mx-1 font-bold text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                                {archiveDetails.old_rank} {archiveDetails.old_fnum}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                         
+                        <div className="space-y-3 bg-white dark:bg-slate-800 p-3 rounded-md border border-amber-100 dark:border-amber-900">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">Re-integration Authority / Reason *</label>
+                            <input
+                              type="text"
+                              required
+                              value={customReason}
+                              onChange={(e) => setCustomReason(e.target.value)}
+                              placeholder="e.g., Deployed from HR HQs back to KMP..."
+                              className="w-full text-xs py-1.5 px-2 border border-slate-300 dark:border-slate-700 rounded shadow-sm focus:ring-1 focus:ring-amber-500 outline-none bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                            />
+                          </div>
+                           
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5 flex items-center">
+                              Previous Force No. <span className="text-slate-400 font-normal ml-1">(If promoted to Gazetted File No.)</span>
+                            </label>
+                            <div className="flex flex-col sm:flex-row sm:items-center space-y-1.5 sm:space-y-0 sm:space-x-1.5">
+                              <input
+                                type="text"
+                                value={previousFnum}
+                                onChange={(e) => setPreviousFnum(e.target.value)}
+                                placeholder="Leave blank if unchanged"
+                                className="flex-1 text-xs py-1.5 px-2 border border-slate-300 dark:border-slate-700 rounded shadow-sm focus:ring-1 focus:ring-amber-500 outline-none uppercase bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
+                              />
+                              {previousFnum && (
+                                <div className="flex items-center text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900 px-1.5 py-1 rounded border border-amber-200 dark:border-amber-800">
+                                  <span>{previousFnum}</span>
+                                  <ArrowRight className="w-2.5 h-2.5 mx-0.5" />
+                                  <span>{formData.fnum}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <button type="submit" className={`w-full transition-colors text-white py-2.5 font-bold rounded-lg shadow text-xs uppercase flex justify-center items-center cursor-pointer ${isArchivedReturnee ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-700 hover:bg-blue-800'}`}>
+                      {operation === 'new' 
+                        ? (isArchivedReturnee ? '⚠️ Execute Safe Re-integration' : '💾 Log Personnel Record') 
+                        : '💾 Save Updates'}
+                    </button>
                   </form>
                 </div>
               </div>
@@ -698,115 +780,263 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
           )}
         </div>
 
-        {/* Right Column: Dynamic Nominal Roll Table & Analytics */}
         <div className="lg:col-span-7 space-y-4">
-          {/* Table Controls / Filters Bar */}
-          <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap gap-2 justify-between items-center">
-            <div className="flex gap-2">
-              <select value={filterRegion} onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); }} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
-                {canViewGlobal && <option value="ALL REGIONS">ALL REGIONS</option>}
-                {Object.keys(REGIONAL_HIERARCHY).map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-              <select value={filterStation} onChange={(e) => setFilterStation(e.target.value)} className="text-xs p-2 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
-                <option value="ALL STATIONS">ALL STATIONS</option>
-                {(REGIONAL_HIERARCHY[filterRegion] || []).map(st => <option key={st} value={st}>{st}</option>)}
-              </select>
-            </div>
+          {viewMode === 'active' && canEditRecords && (
+            <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col justify-between items-stretch gap-3">
+              <div className="flex justify-between items-center">
+                  <button
+                      onClick={() => { setBulkSelectMode(!bulkSelectMode); setSelectedOfficers([]); }}
+                      className={`text-xs font-bold px-4 py-2 rounded-lg transition-colors border shadow-sm cursor-pointer ${bulkSelectMode ? 'bg-slate-800 text-white border-slate-900 dark:bg-slate-900' : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600'}`}
+                  >
+                      {bulkSelectMode ? 'Cancel Bulk Select' : '☑️ Enable Bulk Archive'}
+                  </button>
+                  {bulkSelectMode && selectedOfficers.length > 0 && (
+                      <span className="text-xs font-black text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 px-3 py-1 rounded">
+                        {selectedOfficers.length} Selected
+                      </span>
+                  )}
+              </div>
+               
+              {bulkSelectMode && selectedOfficers.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center gap-2 animate-in fade-in slide-in-from-left-4 bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm border border-red-200 dark:border-red-900">
+                      <select
+                          value={bulkArchiveReason}
+                          onChange={(e) => setBulkArchiveReason(e.target.value)}
+                          className="w-full sm:w-auto text-xs border border-slate-300 dark:border-slate-700 rounded p-1.5 outline-none font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 cursor-pointer"
+                      >
+                          <option value="TRANSFERRED">Transferred</option>
+                          <option value="DEATH">Death</option>
+                          <option value="AWOL">Awol</option>
+                          <option value="SUSPENDED">Suspended</option>
+                          <option value="INTERDICTED">Interdicted</option>
+                          <option value="DISMISSAL">Dismissal</option>
+                          <option value="DESERTION">Desertion</option>
+                          <option value="RETIREMENT">Retirement</option>
+                      </select>
 
-            {viewMode === 'active' && canEditRecords && (
-              <button onClick={() => setBulkSelectMode(!bulkSelectMode)} className={`px-3 py-1.5 text-xs font-bold rounded cursor-pointer ${bulkSelectMode ? 'bg-amber-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}`}>
-                {bulkSelectMode ? 'Cancel Selection' : 'Bulk Operations'}
-              </button>
-            )}
+                      <input 
+                          type="text"
+                          placeholder="Bulk destination/date context..."
+                          value={bulkArchiveDetail}
+                          onChange={(e) => setBulkArchiveDetail(e.target.value)}
+                          className="w-full sm:flex-1 text-xs border border-slate-300 dark:border-slate-700 rounded p-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                      />
+
+                      <input 
+                          type="text"
+                          placeholder="Correspondence Ref..."
+                          value={bulkCorrRef}
+                          onChange={(e) => setBulkCorrRef(e.target.value)}
+                          className="w-full sm:w-40 text-xs border border-slate-300 dark:border-slate-700 rounded p-1.5 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-mono"
+                      />
+
+                      <button
+                          onClick={handleBulkArchive}
+                          disabled={isBulkArchiving}
+                          className="w-full sm:w-auto text-xs font-bold bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                      >
+                          {isBulkArchiving ? 'Archiving...' : `Archive (${selectedOfficers.length})`}
+                      </button>
+                  </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <select value={filterRegion} onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); }} disabled={!canViewGlobal} className="border rounded-lg px-3 py-2 text-sm shadow-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer">
+              {canViewGlobal ? (
+                <><option value="ALL REGIONS">ALL REGIONS</option>{Array.from(new Set([...Object.keys(REGIONAL_HIERARCHY), ...(filteredRolls || []).map(n => n.region).filter(Boolean)])).sort().map(reg => <option key={reg} value={reg}>{reg}</option>)}</>
+              ) : <option value={currentUser?.region}>{currentUser?.region}</option>}
+            </select>
+            <select value={filterStation} onChange={(e) => setFilterStation(e.target.value)} disabled={!(isCommandOrHR || canViewGlobal)} className="border rounded-lg px-3 py-2 text-sm shadow-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer">
+              {(isCommandOrHR || canViewGlobal) ? (
+                <><option value="ALL STATIONS">ALL STATIONS</option>{Array.from(new Set([...(REGIONAL_HIERARCHY[filterRegion] || []), ...(filteredRolls || []).filter(n => filterRegion === 'ALL REGIONS' || n.region === filterRegion).map(n => n.station).filter(Boolean)])).sort().map(stat => <option key={stat} value={stat}>{stat}</option>)}</>
+              ) : <option value={currentUser?.station}>{currentUser?.station}</option>}
+            </select>
           </div>
 
-          {/* Analytics View */}
           {showAnalytics ? (
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-slate-700 pb-2">
-                <h3 className="font-bold text-sm text-gray-800 dark:text-slate-100">Demographic Breakdown</h3>
-                <select value={metricCategory} onChange={(e) => setMetricCategory(e.target.value)} className="text-xs p-1.5 rounded border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100">
-                  <option value="RANK">By Rank Structure</option>
-                  <option value="UNIT">By Deployment Station</option>
-                  <option value="SEX">By Gender</option>
-                  <option value="EDUCATION">By Education Standard</option>
-                  <option value="DISTRICT">By Home District</option>
-                  <option value="TRIBE">By Ethnic Grouping</option>
-                </select>
-              </div>
-              <div className="divide-y divide-gray-100 dark:divide-slate-700 max-h-[500px] overflow-y-auto">
-                {calculatedMetrics.map(item => (
-                  <div key={item.category} className="py-2 flex justify-between items-center text-xs">
-                    <span className="font-bold">{item.category}</span>
-                    <span className="px-2 py-0.5 bg-blue-50 dark:bg-slate-700 text-blue-700 dark:text-blue-300 rounded-full font-extrabold">{item.total}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-slate-700 pb-4">
+                    <h3 className="font-extrabold text-lg text-indigo-900 dark:text-indigo-300 flex items-center"><PieChart className="mr-2"/> {viewMode === 'archive' ? 'Archived Roll Analytics' : 'Active Roll Analytics'}</h3>
+                    <div className="flex items-center space-x-2 bg-indigo-50 dark:bg-slate-900 p-2 rounded-lg border border-indigo-100 dark:border-slate-700">
+                        <label className="text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase">Categorize By:</label>
+                        <select value={metricCategory} onChange={e => setMetricCategory(e.target.value)} className="border border-indigo-300 dark:border-slate-700 rounded p-1 text-sm font-bold text-indigo-700 dark:text-indigo-300 outline-none bg-white dark:bg-slate-800 cursor-pointer">
+                            <option value="RANK">Rank Breakdown</option>
+                            <option value="UNIT">Unit / Station Breakdown</option>
+                            <option value="SEX">Sex Distribution</option>
+                            <option value="DISTRICT">Home District Breakdown</option>
+                            <option value="BANK">Bank Branch Breakdown</option>
+                            <option value="TRIBE">Tribe Breakdown</option>
+                            <option value="EDUCATION">Education Level Breakdown</option>
+                            <option value="AGE">Age Demographics Breakdown</option>
+                        </select>
+                    </div>
+                </div>
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                    <thead className="bg-indigo-50 dark:bg-slate-900">
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase">{metricCategory}</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase">Total Personnel</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase">Male</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase">Female</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700">
+                        {calculatedMetrics.map(m => (
+                            <tr key={m.category} className="hover:bg-indigo-50/30 dark:hover:bg-slate-700/50 transition-colors">
+                                <td className="px-4 py-3 text-sm font-bold text-gray-800 dark:text-slate-100">{m.category}</td>
+                                <td className="px-4 py-3 text-sm text-center font-extrabold text-indigo-600 dark:text-indigo-400">{m.total}</td>
+                                <td className="px-4 py-3 text-sm text-center font-medium text-blue-600 dark:text-blue-400">{m.male}</td>
+                                <td className="px-4 py-3 text-sm text-center font-medium text-pink-600 dark:text-pink-400">{m.female}</td>
+                            </tr>
+                        ))}
+                        {calculatedMetrics.length === 0 && <tr><td colSpan="4" className="text-center p-4 text-gray-500 dark:text-slate-400 font-medium">No data available for this filter constraint.</td></tr>}
+                    </tbody>
+                </table>
             </div>
           ) : (
-            /* Nominal Roll Master Table */
-            <ExpandableTableCard title={`${viewMode.toUpperCase()} PERSONNEL ROSTER (${currentRollDataset.length})`}>
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-extrabold uppercase">
-                    {bulkSelectMode && <th className="p-2 w-8">#</th>}
-                    <th className="p-2">Rank / Name</th>
-                    <th className="p-2">Force No</th>
-                    <th className="p-2">Station</th>
-                    <th className="p-2">Contact</th>
-                    <th className="p-2 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {currentRollDataset.map((officer) => {
-                    const fNum = officer.fnum || officer.f_num;
-                    return (
-                      <tr key={fNum || officer.sn} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        {bulkSelectMode && (
-                          <td className="p-2">
-                            <input type="checkbox" checked={selectedOfficers.includes(fNum)} onChange={(e) => {
-                              if (e.target.checked) setSelectedOfficers([...selectedOfficers, fNum]);
-                              else setSelectedOfficers(selectedOfficers.filter(id => id !== fNum));
-                            }} />
-                          </td>
-                        )}
-                        <td className="p-2">
-                          <div className="font-bold text-slate-800 dark:text-slate-100">{officer.rank} {officer.name}</div>
-                          <div className="text-[10px] text-slate-400">{officer.position || 'General Duty'}</div>
-                        </td>
-                        <td className="p-2 font-mono text-slate-600 dark:text-slate-300">{fNum}</td>
-                        <td className="p-2 text-slate-600 dark:text-slate-300">{officer.station}</td>
-                        <td className="p-2 text-slate-600 dark:text-slate-300">{officer.contact || 'N/A'}</td>
-                        <td className="p-2 text-right space-x-1">
-                          <button onClick={() => setSelectedOfficer(officer)} className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 rounded" title="View Dossier">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          {canEditRecords && viewMode === 'active' && (
-                            <button onClick={() => { populateUpdateForm(officer); setOperation('update'); }} className="p-1 text-amber-600 hover:bg-amber-50 dark:hover:bg-slate-700 rounded" title="Edit Record">
-                              <Edit className="w-4 h-4" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {currentRollDataset.length === 0 && (
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+              <div className="p-3 border-b border-slate-200 dark:border-slate-700 font-bold text-xs text-slate-800 dark:text-slate-200">
+                {viewMode === 'active' ? "Active Nominal Roll (Full Screen Mode)" : "Archived Personnel Ledger"}
+              </div>
+              <div className="overflow-x-auto w-full">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                  <thead className="bg-gray-50 dark:bg-slate-900 sticky top-0 z-10">
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-gray-400">No personnel records found for the current filter criteria.</td>
+                      {bulkSelectMode && viewMode === 'active' && canEditRecords && (
+                        <th className="px-3 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">
+                           <input 
+                             type="checkbox" 
+                             checked={selectedOfficers.length === filteredRolls.length && filteredRolls.length > 0}
+                             onChange={(e) => {
+                                 if (e.target.checked) setSelectedOfficers(filteredRolls.map(n => n.f_num || n.fnum));
+                                 else setSelectedOfficers([]);
+                             }}
+                             className="w-4 h-4 cursor-pointer accent-red-600"
+                           />
+                        </th>
+                      )}
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">S/No</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">F/NO</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Rank</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Name</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Sex</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Position</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">DOB</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">DOE</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">D.O. Post</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">D.O. Pro</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Contact</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Educ Level</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">IPPS</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">TIN</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">NIN</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Home Dist</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Tribe</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Acc No</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Bank Branch</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Station</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">District</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Region</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Section</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Dir</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Status</th>
+                      <th className="px-3 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap">Last Updated By</th>
+                      {viewMode === 'archive' && (
+                        <>
+                          <th className="px-3 py-3 text-left text-xs font-bold text-red-600 dark:text-red-400 uppercase whitespace-nowrap bg-red-50 dark:bg-red-950">Archive Reason</th>
+                          <th className="px-3 py-3 text-left text-xs font-bold text-red-600 dark:text-red-400 uppercase whitespace-nowrap bg-red-50 dark:bg-red-950">Archive Date</th>
+                        </>
+                      )}
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </ExpandableTableCard>
+                  </thead>
+                  <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
+                    {(viewMode === 'active' ? filteredRolls : filteredNominal_Roll_archives).map((n, index) => (
+                      <tr 
+                        key={n.sn || n.id || n.f_num || n.fnum} 
+                        className={`${viewMode === 'archive' ? 'bg-slate-50 dark:bg-slate-900/50 opacity-80' : bulkSelectMode && selectedOfficers.includes(n.f_num || n.fnum) ? 'bg-red-50 dark:bg-red-950/40' : 'hover:bg-blue-50 dark:hover:bg-slate-700'} transition-colors ${canEditRecords ? 'cursor-pointer' : ''}`} 
+                        onClick={() => {
+                            if (!canEditRecords) return;
+                             
+                            if (bulkSelectMode && viewMode === 'active') {
+                              const target = n.f_num || n.fnum;
+                              if (selectedOfficers.includes(target)) {
+                                  setSelectedOfficers(prev => prev.filter(id => id !== target));
+                              } else {
+                                  setSelectedOfficers(prev => [...prev, target]);
+                              }
+                            } else {
+                              setSelectedOfficer(n);
+                            }
+                        }}
+                      >
+                        {bulkSelectMode && viewMode === 'active' && canEditRecords && (
+                            <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                              <input 
+                                type="checkbox" 
+                                checked={selectedOfficers.includes(n.f_num || n.fnum)}
+                                onChange={(e) => {
+                                  const target = n.f_num || n.fnum;
+                                  if (e.target.checked) setSelectedOfficers(prev => [...prev, target]);
+                                  else setSelectedOfficers(prev => prev.filter(id => id !== target));
+                                }}
+                                className="w-4 h-4 cursor-pointer accent-red-600"
+                              />
+                            </td>
+                        )}
+                        <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-gray-900 dark:text-slate-100">{index + 1}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-blue-800 dark:text-blue-400">{n.f_num || n.fnum || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-slate-800 dark:text-slate-100">{n.rank || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs font-medium uppercase text-slate-800 dark:text-slate-100">{n.name || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.sex || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700 dark:text-slate-300">{n.position || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">{n.dob || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">{n.doe || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">{n.do_post || n.dopost || n.dop || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">{n.do_pro || n.dopro || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.contact || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.educ_level || n.educlevel || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs font-mono text-slate-700 dark:text-slate-300">{n.ipps || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.tin || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.nin || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.home_dist || n.homedist || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.tribe || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.acc_no || n.accno || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.bank_branch || n.bankbranch || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-blue-700 dark:text-blue-400">{n.station || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.district || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.region || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.section || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{n.dir || ''}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-green-700 dark:text-green-400">{n.status || 'ACTIVE'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">{n.last_updated_by || ''}</td>
+                        {viewMode === 'archive' && (
+                          <>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-red-700 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20">{n.archive_reason || ''}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-xs text-red-500 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20">{n.archive_date || ''}</td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                    {(viewMode === 'active' ? filteredRolls : filteredNominal_Roll_archives).length === 0 && (
+                      <tr><td colSpan={viewMode === 'archive' ? "28" : (bulkSelectMode ? "27" : "26")} className="text-center py-6 text-gray-500 dark:text-slate-400 font-medium">No personnel records found in this view.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Dossier Detail Modal */}
       {selectedOfficer && (
-        <OfficerDossierModal officer={selectedOfficer} onClose={() => setSelectedOfficer(null)} />
+        <OfficerDossierModal 
+          officer={selectedOfficer} 
+          onClose={() => setSelectedOfficer(null)} 
+        />
       )}
-    </div>
+    </div>  
   );
 };
 

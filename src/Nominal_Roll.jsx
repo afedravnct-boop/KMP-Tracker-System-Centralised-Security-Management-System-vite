@@ -619,7 +619,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         <div className="lg:col-span-5 space-y-4">
           {canEditRecords && (
             <div className="space-y-4">
-              <div className="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 space-y-2.5 overflow-hidden">
+              <div className="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 space-y-2.5 overflow-visible">
                 <div className="border-b border-slate-100 pb-1.5 flex justify-between items-center">
                   <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider flex items-center">
                     <Upload className="w-3.5 h-3.5 mr-1.5 text-blue-600 shrink-0" /> Batch Excel / Multi-File Import
@@ -630,42 +630,43 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                 </div>
                  
                 {/* 🟢 HOVER-TRIGGERED TOOLTIP POPUP FOR FULL NEONDB HEADERS */}
-                <div className="relative group">
+                <div className="relative group inline-block w-full">
                   <div className="w-full">
                     <BulkNominalRollUpload multiple onUploadSuccess={() => window.location.reload()} />
                   </div>
 
-                  {/* Tooltip box that appears only on hover */}
-                  <div className="absolute left-0 right-0 bottom-full mb-2 hidden group-hover:block z-50 bg-slate-900 text-white p-3 rounded-xl shadow-2xl border border-slate-700 animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                    <p className="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-2">
-                      📋 Required NeonDB Column Headers (Full Length):
+                  {/* Wide tooltip box that centers above the upload block */}
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-50 bg-slate-900 text-white p-4 rounded-xl shadow-2xl border border-slate-700 animate-in fade-in zoom-in-95 duration-150 pointer-events-none w-[460px] sm:w-[520px]">
+                    <p className="text-xs font-extrabold text-blue-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1.5 flex items-center justify-between">
+                      <span>📋 Required NeonDB Column Headers</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Exact match required</span>
                     </p>
-                    <div className="flex flex-wrap gap-1 text-[10px] font-mono">
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">sn</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">f_num</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">rank</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">name</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">sex</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">position</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">dob</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">doe</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">do_post</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">do_pro</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">contact</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">educ_level</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">ipps</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">tin</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">nin</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">home_dist</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">tribe</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">acc_no</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">bank_branch</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">station</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">district</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">region</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">section</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">dir</span>
-                      <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">status</span>
+                    <div className="flex flex-wrap gap-1.5 text-xs font-mono">
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">sn</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">f_num</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">rank</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">name</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">sex</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">position</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">dob</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">doe</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">do_post</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">do_pro</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">contact</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">educ_level</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">ipps</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">tin</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">nin</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">home_dist</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">tribe</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">acc_no</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">bank_branch</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">station</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">district</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">region</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">section</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">dir</span>
+                      <span className="bg-slate-800 px-2 py-1 rounded text-slate-100 border border-slate-700 font-bold">status</span>
                     </div>
                   </div>
                 </div>

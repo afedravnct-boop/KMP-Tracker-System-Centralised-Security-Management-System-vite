@@ -637,10 +637,10 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
 
                   {/* Tooltip box that appears only on hover */}
                   <div className="absolute left-0 right-0 bottom-full mb-2 hidden group-hover:block z-50 bg-slate-900 text-white p-3 rounded-xl shadow-2xl border border-slate-700 animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                    <p className="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider mb-1.5 border-b border-slate-800 pb-1">
+                    <p className="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-2">
                       📋 Required NeonDB Column Headers (Full Length):
                     </p>
-                    <div className="flex flex-wrap gap-4 text-[10px] font-mono">
+                    <div className="flex flex-wrap gap-1 text-[10px] font-mono">
                       <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">sn</span>
                       <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">f_num</span>
                       <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 border border-slate-700">rank</span>

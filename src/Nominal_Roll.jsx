@@ -86,8 +86,8 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
   };
 
   return (
-    <div className={`bg-white shadow-xl border border-slate-200 overflow-hidden flex flex-col transition-all duration-300 ${
-      expanded ? 'fixed inset-0 z-[999] rounded-none h-screen w-screen bg-white' : 'rounded-xl w-full'
+    <div className={`bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col transition-all duration-300 ${
+      expanded ? 'fixed inset-0 z-[99999] rounded-none h-screen w-screen m-0 p-0 bg-white' : 'rounded-xl w-full'
     }`}>
       <div className="bg-slate-900 px-4 py-3 flex justify-between items-center shrink-0">
         <h3 className="font-extrabold text-white text-xs sm:text-sm uppercase tracking-wider flex items-center">
@@ -101,7 +101,7 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
           {expanded ? 'Collapse ↙' : 'Expand ↗'}
         </button>
       </div>
-      <div className={`w-full flex-1 bg-white overflow-auto ${expanded ? 'max-h-[calc(100vh-52px)]' : 'max-h-[500px]'}`}>{children}</div>
+      <div className={`w-full bg-white overflow-auto flex-1 ${expanded ? 'h-[calc(100vh-52px)] max-h-none' : 'max-h-[500px]'}`}>{children}</div>
     </div>
   );
 };
@@ -792,7 +792,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                       <div className="grid grid-cols-2 gap-2">
                         <div><label className="block text-[10px] font-bold text-gray-700 mb-0.5">ACC. NO</label><input type="text" name="accno" value={formData.accno} onChange={handleInputChange} className="w-full text-xs border-gray-300 rounded shadow-xs border py-1.5 px-2 bg-white text-slate-800" /></div>
                         <div><label className="block text-[10px] font-bold text-gray-700 mb-0.5">BANK & BRANCH</label><input type="text" name="bankbranch" value={formData.bankbranch} onChange={handleInputChange} className="w-full text-xs border-gray-300 rounded shadow-xs border py-1.5 px-2 bg-white text-slate-800" /></div>
-                        <div className="col-span-2"><label className="block text-[10px] font-bold text-gray-700 mb-0.5">STATUS</label><select name="status" value={formData.status} onChange={handleInputChange} className="w-full text-xs border-gray-300 rounded shadow-xs border py-1.5 px-2 bg-white text-slate-800 font-bold"><option>ACTIVE</option><option>ON LEAVE</option><option>SUSPENDED</option></select></div>
+                        <div className="col-span-2"><label className="block text-[10px] font-bold text-gray-700 mb-0.5">STATUS</label><select name="status" value={formData.status} onChange={handleInputChange} className="w-full text-xs border-gray-300 rounded shadow-xs border py-1.5 px-2 bg-white text-slate-800 font-bold"><option>ACTIVE</option><option>AWOL</option><option>SICK</option><option>ON MISSION</option><option>ON LEAVE</option><option>ON COURSE</option><option>DUTY OUT</option><option>SUSPENDED</option><option>DISCHARGED</option><option>DESERTED</option><option>DISMISSED</option><option>INTERDICTED</option></select></div>
                       </div>
                     </div>
 

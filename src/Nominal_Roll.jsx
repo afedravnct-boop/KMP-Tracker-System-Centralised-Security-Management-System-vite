@@ -87,9 +87,9 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
 
   return (
     <div className={`bg-white shadow-xl border border-slate-200 overflow-hidden flex flex-col transition-all duration-300 ${
-      expanded ? 'fixed inset-0 z-[999] rounded-none h-screen w-screen p-3 sm:p-5 bg-slate-900/40 backdrop-blur-xs' : 'rounded-xl w-full'
+      expanded ? 'fixed inset-0 z-[999] rounded-none h-screen w-screen bg-white' : 'rounded-xl w-full'
     }`}>
-      <div className={`bg-slate-900 px-4 py-3 flex justify-between items-center shrink-0 ${expanded ? 'rounded-t-xl' : ''}`}>
+      <div className="bg-slate-900 px-4 py-3 flex justify-between items-center shrink-0">
         <h3 className="font-extrabold text-white text-xs sm:text-sm uppercase tracking-wider flex items-center">
           {title} {expanded && <span className="ml-2 text-[10px] bg-blue-600 px-2 py-0.5 rounded text-white font-mono">FULL SCREEN VIEW</span>}
         </h3>
@@ -101,7 +101,7 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
           {expanded ? 'Collapse ↙' : 'Expand ↗'}
         </button>
       </div>
-      <div className={`w-full flex-1 bg-white overflow-auto ${expanded ? 'rounded-b-xl shadow-2xl max-h-[calc(100vh-80px)]' : 'max-h-[500px]'}`}>{children}</div>
+      <div className={`w-full flex-1 bg-white overflow-auto ${expanded ? 'max-h-[calc(100vh-52px)]' : 'max-h-[500px]'}`}>{children}</div>
     </div>
   );
 };

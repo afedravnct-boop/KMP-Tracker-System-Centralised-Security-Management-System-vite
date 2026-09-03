@@ -187,29 +187,44 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 OPENS MICROSOFT OFFICE ONLINE VIEWER DIRECTLY IN A NEW TAB/PAGE
+  // 🟢 INDEPENDENT READ PATH: Fetches blob via authFetch and renders natively in browser tab
   const handleReadDoc = async (docId, isTemplate = false, docName = 'Document') => {
+    setActionLoading(`read-${docId}`);
     try {
       const endpoint = isTemplate ? `/api/v1/templates/download/${docId}` : `/api/v1/reports/download/${docId}`;
-      const targetApiUrl = import.meta.env.VITE_API_URL || "https://kmp-tracker-system-centralised-security.onrender.com";
-      const publicFileUrl = `${targetApiUrl}${endpoint}`;
+      const response = await authFetch(endpoint, { method: "GET" });
       
-      const lowerName = (docName || '').toLowerCase();
-      
-      // If it's a PDF or Image, open raw file directly in a new tab
-      if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
-        window.open(publicFileUrl, '_blank');
-        return;
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.detail || "Could not retrieve file stream for preview.");
       }
 
-      // For Word (.docx) and Excel (.xlsx), open in Microsoft Office Online Viewer in a new tab
-      const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(publicFileUrl)}`;
-      window.open(officeViewerUrl, '_blank');
+      const blob = await response.blob();
+      if (blob.size === 0) throw new Error("Retrieved document is empty (0 bytes).");
+
+      const lowerName = (docName || '').toLowerCase();
+      let mimeType = blob.type;
+      if (lowerName.endsWith('.pdf')) mimeType = 'application/pdf';
+      else if (lowerName.endsWith('.txt')) mimeType = 'text/plain';
+      else if (lowerName.endsWith('.png')) mimeType = 'image/png';
+      else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) mimeType = 'image/jpeg';
+      else if (lowerName.endsWith('.docx') || lowerName.endsWith('.xlsx')) {
+        mimeType = 'application/octet-stream';
+      }
+
+      const typedBlob = new Blob([blob], { type: mimeType });
+      const blobUrl = window.URL.createObjectURL(typedBlob);
+      
+      window.open(blobUrl, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
     } catch (err) {
-      alert(`Viewer Error: ${err.message}`);
+      alert(`Read Error: ${err.message}`);
+    } finally {
+      setActionLoading(null);
     }
   };
 
+  // 🟢 INDEPENDENT DOWNLOAD PATH: Forces local file attachment download
   const handleDownloadDoc = async (docId, isTemplate = false, fileName = 'document') => {
     if (!hasDownloadClearance) {
       return alert("Security Restriction: You do not have command clearance to download documents.");
@@ -222,20 +237,24 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Requested document not found.");
+        throw new Error(errorData.detail || "Requested document not found on server.");
       }
 
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
 
       const link = document.createElement('a');
+      link.style.display = 'none';
       link.href = blobUrl;
       link.setAttribute('download', fileName);
+      
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-
-      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 15000);
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      }, 15000);
     } catch (err) {
       alert(`Download Error: ${err.message}`);
     } finally {
@@ -499,17 +518,19 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
                       
                     <td className="px-4 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end space-x-2">
-                        {/* 🟢 REDIRECTS & OPENS MICROSOFT VIEWER IN A NEW TAB */}
+                        {/* 🟢 INDEPENDENT READ ACTION */}
                         <button 
                           onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name)}
-                          className="text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer"
+                          disabled={actionLoading === `read-${doc.id}`}
+                          className="text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50"
                         >
-                          <ExternalLink className="w-3 h-3 mr-1 text-blue-600" />
+                          {actionLoading === `read-${doc.id}` ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <ExternalLink className="w-3 h-3 mr-1 text-blue-600" />}
                           Read
                         </button>
 
                         {hasDownloadClearance ? (
                           <>
+                            {/* 🟢 INDEPENDENT DOWNLOAD ACTION */}
                             <button 
                               onClick={() => handleDownloadDoc(doc.id, doc.isTemplate, doc.name)}
                               disabled={actionLoading === `download-${doc.id}`}

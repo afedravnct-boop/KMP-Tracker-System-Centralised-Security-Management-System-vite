@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {  
   UploadCloud, FileText, Download, CheckCircle, AlertTriangle,  
-  Loader2, FolderOpen, Clock, FileArchive, Eye, Lock, Server, Trash2, Filter, X, Table, Maximize2
+  Loader2, FolderOpen, Clock, FileArchive, Eye, Lock, Server, Trash2, Filter, X, Table, ExternalLink
 } from 'lucide-react';
 import { authFetch } from './api';
 import * as mammoth from 'mammoth';
@@ -45,17 +45,16 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
   const [templateCustomName, setTemplateCustomName] = useState('');
 
-  // 🟢 FULL-SCREEN LIVE READER MODAL STATE
-  const [previewModal, setPreviewModal] = useState({ 
-    isOpen: false, 
-    title: '', 
-    content: '', 
-    isHtml: false, 
-    isExcel: false, 
-    excelSheets: {}, 
-    activeSheet: '', 
-    loading: false 
+  // 🟢 NEW TAB LIVE VIEWER STATE
+  const [previewTabState, setPreviewTabState] = useState({
+    title: '',
+    content: '',
+    isHtml: false,
+    isExcel: false,
+    excelSheets: {},
+    loading: false
   });
+  const [isReaderMode, setIsReaderMode] = useState(false);
 
   const canViewGlobalActive = canViewGlobal || 
     ['SUPER_ADMIN', 'ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser?.role) || 
@@ -201,108 +200,107 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 UNIFIED FULL-SCREEN LIVE READER HANDLER (SUPPORTS WORD, EXCEL, PDF & TEXT)
+  // 🟢 LIVE VIEWER LAUNCHED ON A NEW PAGE/TAB
   const handleReadDoc = async (docId, isTemplate = false, docName = 'Document') => {
-    setPreviewModal({ 
-      isOpen: true, 
-      title: docName, 
-      content: '', 
-      isHtml: false, 
-      isExcel: false, 
-      excelSheets: {}, 
-      activeSheet: '', 
-      loading: true 
+    setIsReaderMode(true);
+    setPreviewTabState({
+      title: docName,
+      content: 'Loading and decoding document structure...',
+      isHtml: false,
+      isExcel: false,
+      excelSheets: {},
+      loading: true
     });
-    
+
     try {
       const endpoint = isTemplate ? `/api/v1/templates/download/${docId}` : `/api/v1/reports/download/${docId}`;
       const response = await authFetch(endpoint, { method: "GET" });
-      if (!response.ok) throw new Error("Could not retrieve file content for reading.");
+      
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.detail || "Could not retrieve file content for reading.");
+      }
 
       const blob = await response.blob();
+      if (blob.size === 0) throw new Error("Retrieved file is empty (0 bytes).");
+
       const lowerName = (docName || '').toLowerCase();
       const arrayBuffer = await blob.arrayBuffer();
 
-      // 1. NATIVE BROWSER SUPPORT (PDFs, Images)
+      // 1. PDF / IMAGES
       if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
         const viewType = lowerName.endsWith('.pdf') ? 'application/pdf' : (lowerName.endsWith('.png') ? 'image/png' : 'image/jpeg');
         const finalBlob = new Blob([blob], { type: viewType });
         const blobUrl = window.URL.createObjectURL(finalBlob);
-        
         window.open(blobUrl, '_blank');
-        setPreviewModal(prev => ({ ...prev, isOpen: false, loading: false }));
+        setIsReaderMode(false);
         setTimeout(() => window.URL.revokeObjectURL(blobUrl), 15000);
       } 
-      // 2. EXCEL SPREADSHEETS (.XLSX, .XLS, .CSV) - FULL SHEETJS TABLE PARSING
+      // 2. EXCEL SPREADSHEETS
       else if (['xlsx', 'xls', 'csv'].some(ext => lowerName.endsWith(ext)) || blob.type.includes('spreadsheet') || blob.type.includes('excel')) {
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+          throw new Error("Could not find workbook structure in file.");
+        }
+
         const sheetsData = {};
-        
         workbook.SheetNames.forEach(name => {
           const worksheet = workbook.Sheets[name];
           let htmlTable = XLSX.utils.sheet_to_html(worksheet, { header: '' });
-          htmlTable = htmlTable.replace('<table', '<table class="border-collapse w-full text-xs font-sans shadow-sm"');
+          htmlTable = htmlTable.replace('<table', '<table class="border-collapse w-full text-xs font-sans shadow-sm bg-white"');
           htmlTable = htmlTable.replace(/<th/g, '<th class="bg-slate-900 text-white font-bold p-2.5 border border-slate-300 text-left sticky top-0 z-10"');
           htmlTable = htmlTable.replace(/<td/g, '<td class="p-2 border border-slate-200 text-slate-800 bg-white"');
           sheetsData[name] = htmlTable;
         });
 
-        setPreviewModal({
-          isOpen: true,
+        setPreviewTabState({
           title: docName,
           content: '',
           isHtml: false,
           isExcel: true,
           excelSheets: sheetsData,
-          activeSheet: workbook.SheetNames[0],
           loading: false
         });
       }
-      // 3. WORD DOCUMENTS (.DOCX) - MAMMOTH HTML CONVERSION WITH CLEAN STYLING
+      // 3. WORD DOCUMENTS
       else if (lowerName.endsWith('.docx') || blob.type.includes('word')) {
         const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
         let cleanHtml = result.value || "<p>Document is empty or cannot be rendered.</p>";
         
-        cleanHtml = cleanHtml.replace(/<table/g, '<table class="border-collapse w-full border border-slate-300 my-4 text-slate-800"');
+        cleanHtml = cleanHtml.replace(/<table/g, '<table class="border-collapse w-full border border-slate-300 my-4 text-slate-800 bg-white shadow-sm"');
         cleanHtml = cleanHtml.replace(/<th/g, '<th class="bg-slate-100 border border-slate-300 p-2 font-bold text-left"');
         cleanHtml = cleanHtml.replace(/<td/g, '<td class="border border-slate-300 p-2"');
 
-        setPreviewModal({ 
-          isOpen: true, 
-          title: docName, 
-          content: cleanHtml, 
-          isHtml: true, 
+        setPreviewTabState({
+          title: docName,
+          content: cleanHtml,
+          isHtml: true,
           isExcel: false,
           excelSheets: {},
-          activeSheet: '',
-          loading: false 
+          loading: false
         });
       } 
-      // 4. PLAIN TEXT FALLBACK
+      // 4. TEXT FALLBACK
       else {
         const textDecoder = new TextDecoder('utf-8');
         const textContent = textDecoder.decode(arrayBuffer);
-        setPreviewModal({
-          isOpen: true,
+        setPreviewTabState({
           title: docName,
           content: textContent,
           isHtml: false,
           isExcel: false,
           excelSheets: {},
-          activeSheet: '',
           loading: false
         });
       }
     } catch (err) {
-      setPreviewModal({ 
-        isOpen: true, 
-        title: docName, 
-        content: `Error loading document preview: ${err.message}`, 
-        isHtml: false, 
-        isExcel: false, 
-        excelSheets: {}, 
-        activeSheet: '', 
-        loading: false 
+      setPreviewTabState({
+        title: docName,
+        content: `Error loading document preview: ${err.message}`,
+        isHtml: false,
+        isExcel: false,
+        excelSheets: {},
+        loading: false
       });
     }
   };
@@ -359,81 +357,80 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     });
   }, [documents, activeCategory, filterRegion, filterStation, canViewGlobalActive]);
 
+  // 🟢 IF READER MODE IS ACTIVE, RENDER THE DEDICATED FULL PAGE VIEWER
+  if (isReaderMode) {
+    return (
+      <div className="fixed inset-0 z-[99999] bg-slate-900 flex flex-col font-sans overflow-hidden animate-in fade-in duration-200">
+        <div className="bg-slate-950 text-white px-6 py-4 flex justify-between items-center border-b border-slate-800 shrink-0 shadow-lg">
+          <div className="flex items-center space-x-3">
+            {previewTabState.isExcel ? <Table className="text-emerald-400 shrink-0" size={22} /> : <FileText className="text-blue-400 shrink-0" size={22} />}
+            <div className="overflow-hidden">
+              <h2 className="font-extrabold text-sm sm:text-base uppercase tracking-wider text-slate-100 truncate">
+                LIVE VIEWER: {previewTabState.title}
+              </h2>
+              <p className="text-[11px] text-slate-400 font-mono">Secure Document Matrix • Dedicated View Page</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3 shrink-0">
+            <button 
+              onClick={() => setIsReaderMode(false)} 
+              className="bg-slate-800 hover:bg-red-600 text-slate-200 hover:text-white px-4 py-2 rounded-xl transition-colors border border-slate-700 font-bold text-xs uppercase tracking-wider cursor-pointer flex items-center shadow"
+            >
+              <X size={16} className="mr-1.5" /> Close Viewer Page
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto bg-slate-900 p-4 sm:p-12 flex justify-center custom-scrollbar">
+          {previewTabState.loading ? (
+            <div className="flex flex-col items-center justify-center text-slate-300 space-y-4">
+              <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs font-bold uppercase tracking-wider">Parsing Document Stream...</p>
+            </div>
+          ) : previewTabState.isExcel ? (
+            <div className="w-full max-w-[1500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-700">
+              {Object.keys(previewTabState.excelSheets).length > 1 && (
+                <div className="bg-slate-100 px-6 py-3 border-b border-slate-300 flex space-x-2 overflow-x-auto shrink-0">
+                  {Object.keys(previewTabState.excelSheets).map(sheetName => (
+                    <button
+                      key={sheetName}
+                      onClick={() => setPreviewTabState(prev => ({ ...prev, activeSheet: sheetName }))}
+                      className={`px-4 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer ${
+                        (prev => prev.activeSheet)(previewTabState) === sheetName 
+                          ? 'bg-emerald-600 text-white shadow-md' 
+                          : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-300'
+                      }`}
+                    >
+                      📊 {sheetName}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div 
+                className="flex-1 overflow-auto p-6 sm:p-10 bg-white text-slate-900 custom-scrollbar"
+                dangerouslySetInnerHTML={{ __html: previewTabState.excelSheets[Object.keys(previewTabState.excelSheets)[0]] || '<p class="p-6 text-gray-500">Empty Sheet</p>' }}
+              />
+            </div>
+          ) : previewTabState.isHtml ? (
+            <div className="w-full max-w-5xl bg-white shadow-2xl rounded-xl p-8 sm:p-16 text-slate-900 font-serif leading-relaxed min-h-[90vh] border border-slate-300 overflow-y-auto">
+              <div className="prose prose-sm max-w-none prose-slate font-sans text-xs sm:text-sm" dangerouslySetInnerHTML={{ __html: previewTabState.content }} />
+            </div>
+          ) : (
+            <div className="w-full max-w-5xl bg-white shadow-2xl rounded-xl p-8 sm:p-16 text-slate-900 font-serif leading-relaxed min-h-[90vh] border border-slate-300 overflow-y-auto">
+              <div className="font-mono text-xs sm:text-sm whitespace-pre-wrap leading-relaxed select-text text-slate-800">
+                {previewTabState.content}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 font-sans mb-8">
       
-      {/* 🟢 FULL-SCREEN LIVE READER MODAL */}
-      {previewModal.isOpen && (
-        <div className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex flex-col animate-in fade-in duration-200">
-          {/* Header Command Bar */}
-          <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center border-b border-slate-800 shrink-0 shadow-md">
-            <div className="flex items-center space-x-3">
-              {previewModal.isExcel ? <Table className="text-emerald-400 shrink-0" size={20} /> : <FileText className="text-blue-400 shrink-0" size={20} />}
-              <div className="overflow-hidden">
-                <h3 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-100 truncate">
-                  LIVE VIEWER: {previewModal.title}
-                </h3>
-                <p className="text-[10px] text-slate-400 font-mono">Secure Document Matrix • Full Screen Mode</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3 shrink-0">
-              <button 
-                onClick={() => setPreviewModal({ isOpen: false, title: '', content: '', isHtml: false, isExcel: false, excelSheets: {}, activeSheet: '', loading: false })} 
-                className="bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white p-2 rounded-lg transition-colors border border-slate-700 cursor-pointer"
-                title="Close Reader"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Canvas Viewer Container */}
-          <div className="flex-1 overflow-auto bg-slate-900/50 p-2 sm:p-8 flex justify-center custom-scrollbar">
-            {previewModal.loading ? (
-              <div className="flex flex-col items-center justify-center text-slate-400 space-y-3">
-                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-xs font-bold uppercase tracking-wider">Rendering Document Structure...</p>
-              </div>
-            ) : previewModal.isExcel ? (
-              <div className="w-full max-w-7xl bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border border-slate-700">
-                {Object.keys(previewModal.excelSheets).length > 1 && (
-                  <div className="bg-slate-100 px-4 py-2 border-b border-slate-300 flex space-x-2 overflow-x-auto shrink-0">
-                    {Object.keys(previewModal.excelSheets).map(sheetName => (
-                      <button
-                        key={sheetName}
-                        onClick={() => setPreviewModal(prev => ({ ...prev, activeSheet: sheetName }))}
-                        className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                          previewModal.activeSheet === sheetName 
-                            ? 'bg-emerald-600 text-white shadow' 
-                            : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-300'
-                        }`}
-                      >
-                        📊 {sheetName}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div 
-                  className="flex-1 overflow-auto p-4 sm:p-6 bg-white text-slate-900 custom-scrollbar"
-                  dangerouslySetInnerHTML={{ __html: previewModal.excelSheets[previewModal.activeSheet] || '<p class="p-6 text-gray-500">Empty Sheet</p>' }}
-                />
-              </div>
-            ) : previewModal.isHtml ? (
-              <div className="w-full max-w-4xl bg-white shadow-2xl rounded-sm p-6 sm:p-16 text-slate-900 font-serif leading-relaxed min-h-[85vh] border border-slate-300 overflow-y-auto">
-                <div className="prose prose-sm max-w-none prose-slate font-sans text-xs sm:text-sm" dangerouslySetInnerHTML={{ __html: previewModal.content }} />
-              </div>
-            ) : (
-              <div className="w-full max-w-4xl bg-white shadow-2xl rounded-sm p-6 sm:p-16 text-slate-900 font-serif leading-relaxed min-h-[85vh] border border-slate-300 overflow-y-auto">
-                <div className="font-mono text-xs sm:text-sm whitespace-pre-wrap leading-relaxed select-text text-slate-800">
-                  {previewModal.content}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="bg-slate-900 text-white px-6 py-4 rounded-xl shadow-md flex items-center">
         <div>
           <h2 className="text-lg font-extrabold uppercase tracking-wider flex items-center">
@@ -668,12 +665,12 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
                       
                     <td className="px-4 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end space-x-2">
-                        {/* 🟢 DEDICATED IN-APP FULL SCREEN READ BUTTON */}
+                        {/* 🟢 LAUNCHES VIEWER ON A NEW DEDICATED PAGE */}
                         <button 
                           onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name)}
                           className="text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer"
                         >
-                          <Eye className="w-3 h-3 mr-1 text-blue-600" />
+                          <ExternalLink className="w-3 h-3 mr-1 text-blue-600" />
                           Read
                         </button>
 

@@ -43,14 +43,6 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
   const [templateCustomName, setTemplateCustomName] = useState('');
 
-  // 🟢 MICROSOFT OFFICE ONLINE VIEWER STATE
-  const [msViewerState, setMsViewerState] = useState({
-    active: false,
-    url: '',
-    title: '',
-    loading: false
-  });
-
   const canViewGlobalActive = canViewGlobal || 
     ['SUPER_ADMIN', 'ADMIN', 'RPC', 'Deputy Commander'].includes(currentUser?.role) || 
     currentUser?.permissions?.view_global_roster === true || 
@@ -195,54 +187,26 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 MICROSOFT OFFICE ONLINE VIEWER INTEGRATION
+  // 🟢 OPENS MICROSOFT OFFICE ONLINE VIEWER DIRECTLY IN A NEW TAB/PAGE
   const handleReadDoc = async (docId, isTemplate = false, docName = 'Document') => {
-    setMsViewerState({
-      active: true,
-      url: '',
-      title: docName,
-      loading: true
-    });
-
     try {
       const endpoint = isTemplate ? `/api/v1/templates/download/${docId}` : `/api/v1/reports/download/${docId}`;
-      const response = await authFetch(endpoint, { method: "GET" });
-      
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.detail || "Could not retrieve file stream for viewing.");
-      }
-
-      const blob = await response.blob();
-      if (blob.size === 0) throw new Error("Retrieved file is empty (0 bytes).");
-
-      const blobUrl = window.URL.createObjectURL(blob);
-      
-      // If it's a PDF or Image, open directly in browser tab
-      const lowerName = (docName || '').toLowerCase();
-      if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
-        window.open(blobUrl, '_blank');
-        setMsViewerState({ active: false, url: '', title: '', loading: false });
-        return;
-      }
-
-      // For Word (.docx) and Excel (.xlsx), use Microsoft Office Online Viewer or Google Docs Viewer fallback
-      // Note: Microsoft Office Online Viewer requires a publicly accessible URL. If hosted locally/render, we use Google Docs Viewer iframe wrapper which works seamlessly for cloud-hosted files:
       const targetApiUrl = import.meta.env.VITE_API_URL || "https://kmp-tracker-system-centralised-security.onrender.com";
       const publicFileUrl = `${targetApiUrl}${endpoint}`;
       
-      // Google Docs / Microsoft Office Viewer iframe URL
-      const officeViewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicFileUrl)}`;
+      const lowerName = (docName || '').toLowerCase();
+      
+      // If it's a PDF or Image, open raw file directly in a new tab
+      if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+        window.open(publicFileUrl, '_blank');
+        return;
+      }
 
-      setMsViewerState({
-        active: true,
-        url: officeViewerUrl,
-        title: docName,
-        loading: false
-      });
+      // For Word (.docx) and Excel (.xlsx), open in Microsoft Office Online Viewer in a new tab
+      const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(publicFileUrl)}`;
+      window.open(officeViewerUrl, '_blank');
     } catch (err) {
       alert(`Viewer Error: ${err.message}`);
-      setMsViewerState({ active: false, url: '', title: '', loading: false });
     }
   };
 
@@ -301,326 +265,285 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 font-sans mb-8">
       
-      {/* 🟢 MICROSOFT / BROWSER VIEWER EMBEDDED FRAME */}
-      {msViewerState.active ? (
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-300 overflow-hidden animate-in fade-in duration-300">
-          <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center border-b border-slate-800">
-            <div className="flex items-center space-x-3">
-              <FileText className="text-blue-400" size={20} />
-              <div>
-                <h3 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-100">
-                  OFFICE VIEWER: {msViewerState.title}
-                </h3>
-                <p className="text-[10px] text-slate-400 font-mono">Microsoft Office Online Document Rendering Engine</p>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setMsViewerState({ active: false, url: '', title: '', loading: false })}
-              className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors border border-slate-600 cursor-pointer flex items-center shadow"
-            >
-              <X size={16} className="mr-1.5" /> Close Viewer & Return to Ledger
-            </button>
-          </div>
-
-          <div className="w-full h-[80vh] bg-slate-100 relative">
-            {msViewerState.loading ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white text-slate-600">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-2" />
-                <p className="text-xs font-bold uppercase tracking-wider">Connecting to Office Online Viewer...</p>
-              </div>
-            ) : (
-              <iframe 
-                src={msViewerState.url} 
-                title={msViewerState.title}
-                className="w-full h-full border-0"
-              />
-            )}
-          </div>
+      <div className="bg-slate-900 text-white px-6 py-4 rounded-xl shadow-md flex items-center">
+        <div>
+          <h2 className="text-lg font-extrabold uppercase tracking-wider flex items-center">
+            <Server className="w-5 h-5 mr-2 text-blue-400" />
+            Central Data Repository & Universal Templates
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">Universal secure intake hub supporting Word, Excel, PowerPoint, PDF, and multiple file uploads simultaneously.</p>
         </div>
-      ) : (
-        <>
-          <div className="bg-slate-900 text-white px-6 py-4 rounded-xl shadow-md flex items-center">
+      </div>
+
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs font-bold text-slate-500 uppercase flex items-center">
+            <Filter size={14} className="mr-1 text-blue-600" /> Jurisdiction Filters:
+          </span>
+
+          <select 
+            value={filterRegion} 
+            onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); }}
+            disabled={!canViewGlobalActive}
+            className="border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-800 bg-white outline-none cursor-pointer disabled:bg-slate-100 disabled:text-slate-500"
+          >
+            {canViewGlobalActive ? (
+              <>
+                <option value="ALL REGIONS">ALL REGIONS</option>
+                {Object.keys(REGIONAL_HIERARCHY).map(reg => (
+                  <option key={reg} value={reg}>{reg}</option>
+                ))}
+              </>
+            ) : (
+              <option value={currentUser?.region || ''}>{currentUser?.region || 'UNKNOWN'}</option>
+            )}
+          </select>
+
+          <select 
+            value={filterStation} 
+            onChange={(e) => setFilterStation(e.target.value)}
+            disabled={!canViewGlobalActive}
+            className="border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-800 bg-white outline-none cursor-pointer disabled:bg-slate-100 disabled:text-slate-500"
+          >
+            {canViewGlobalActive ? (
+              <>
+                <option value="ALL STATIONS">ALL STATIONS</option>
+                {filterRegion !== 'ALL REGIONS' && (REGIONAL_HIERARCHY[filterRegion] || []).map(stn => (
+                  <option key={stn} value={stn}>{stn}</option>
+                ))}
+              </>
+            ) : (
+              <option value={currentUser?.station || ''}>{currentUser?.station || 'UNKNOWN'}</option>
+            )}
+          </select>
+        </div>
+
+        <span className="text-xs font-extrabold text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+          Showing: {filterRegion} {filterStation !== 'ALL STATIONS' ? `➔ ${filterStation}` : ''}
+        </span>
+      </div>
+
+      <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+        
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <div className="border-b border-slate-100 pb-4 mb-6">
+            <h3 className="font-extrabold text-sm text-slate-900 uppercase">Universal File Intake Hub</h3>
+            <p className="text-xs text-slate-500 mt-1">Upload multiple files simultaneously across any format directly into command storage.</p>
+          </div>
+
+          {!hasUploadClearance ? (
+            <div className="p-6 text-center bg-amber-50 border border-amber-200 rounded-xl">
+              <Lock className="w-6 h-6 text-amber-600 mx-auto mb-2" />
+              <h3 className="text-amber-900 font-bold text-xs uppercase">Upload Restricted</h3>
+              <p className="text-xs text-amber-700 mt-1">You have viewing access to view and read documents, but require specific command clearance or upload privileges to submit files.</p>
+            </div>
+          ) : (
+            <form onSubmit={handleUpload} className="max-w-3xl space-y-4">
+
+              <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200 flex flex-col sm:flex-row gap-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('weekly_report')}
+                  className={`flex-1 py-2 px-2 text-xs font-bold rounded shadow-sm transition-colors cursor-pointer ${activeCategory === 'weekly_report' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`}
+                >
+                  Weekly Reports
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('general_doc')}
+                  className={`flex-1 py-2 px-2 text-xs font-bold rounded shadow-sm transition-colors cursor-pointer ${activeCategory === 'general_doc' ? 'bg-slate-700 text-white' : 'text-slate-600 hover:bg-slate-200'}`}
+                >
+                  General Docs / Statements
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory('templates')}
+                  className={`flex-1 py-2 px-2 text-xs font-bold rounded shadow-sm transition-colors cursor-pointer ${activeCategory === 'templates' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`}
+                >
+                  Command Templates
+                </button>
+              </div>
+
+              <div className="space-y-4 mt-4 animate-in fade-in">
+
+                {activeCategory === 'templates' && (
+                  <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 space-y-2">
+                    <label className="block text-xs font-bold text-amber-900">Custom Template Title / Designation *</label>
+                    <input 
+                      type="text" 
+                      value={templateCustomName} 
+                      onChange={(e) => setTemplateCustomName(e.target.value)} 
+                      placeholder="e.g. NOMINAL ROLL SUBMISSION TEMPLATE" 
+                      required 
+                      className="w-full border border-amber-300 rounded-lg p-2.5 text-sm font-bold text-slate-800 outline-none focus:border-amber-500 bg-white uppercase"
+                    />
+                  </div>
+                )}
+
+                <div className={`border-2 border-dashed rounded-xl p-4 text-center transition cursor-pointer relative ${activeCategory === 'templates' ? 'border-amber-300 bg-amber-50/50 hover:bg-amber-100' : 'border-slate-300 bg-slate-50 hover:bg-blue-50'}`}>
+                  <input 
+                    type="file" 
+                    multiple 
+                    onChange={handleFileChange} 
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <UploadCloud className={`w-8 h-5 mx-auto mb-2 ${activeCategory === 'templates' ? 'text-amber-500' : 'text-slate-400'}`} />
+                  <p className="text-sm font-bold text-slate-600">Click or drop multiple files here</p>
+                </div>
+
+                {files.length > 0 && (
+                  <div className="space-y-2">
+                    {files.map((f, idx) => (
+                      <div key={idx} className="text-xs font-mono text-blue-800 bg-blue-50 p-3 rounded-lg border border-blue-200 flex justify-between items-center">
+                        <span className="flex items-center"><FileText className="w-4 h-4 mr-2 shrink-0" /> <strong className="truncate max-w-[450px]">{f.name}</strong></span>
+                        <span className="text-blue-500 font-bold shrink-0 ml-2">{Math.round(f.size / 1024)} KB</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {feedback && (
+                  <div className={`p-4 rounded-xl text-xs font-bold flex items-center ${feedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                    {feedback.type === 'success' ? <CheckCircle className="w-4 h-4 mr-2 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 mr-2 text-red-600 shrink-0" />}
+                    {feedback.message}
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  disabled={files.length === 0 || uploading}
+                  className={`w-full py-3 flex justify-center items-center text-white font-bold rounded-xl shadow-md text-xs uppercase tracking-wider transition disabled:bg-slate-300 cursor-pointer ${activeCategory === 'templates' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-900 hover:bg-black'}`}
+                >
+                  {uploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading Files...</> : activeCategory === 'templates' ? `Upload ${files.length || ''} Template(s)` : `Upload ${files.length || ''} Document(s)`}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50">
             <div>
-              <h2 className="text-lg font-extrabold uppercase tracking-wider flex items-center">
-                <Server className="w-5 h-5 mr-2 text-blue-400" />
-                Central Data Repository & Universal Templates
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">Universal secure intake hub supporting Word, Excel, PowerPoint, PDF, and multiple file uploads simultaneously.</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xs font-bold text-slate-500 uppercase flex items-center">
-                <Filter size={14} className="mr-1 text-blue-600" /> Jurisdiction Filters:
-              </span>
-
-              <select 
-                value={filterRegion} 
-                onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); }}
-                disabled={!canViewGlobalActive}
-                className="border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-800 bg-white outline-none cursor-pointer disabled:bg-slate-100 disabled:text-slate-500"
-              >
-                {canViewGlobalActive ? (
-                  <>
-                    <option value="ALL REGIONS">ALL REGIONS</option>
-                    {Object.keys(REGIONAL_HIERARCHY).map(reg => (
-                      <option key={reg} value={reg}>{reg}</option>
-                    ))}
-                  </>
-                ) : (
-                  <option value={currentUser?.region || ''}>{currentUser?.region || 'UNKNOWN'}</option>
-                )}
-              </select>
-
-              <select 
-                value={filterStation} 
-                onChange={(e) => setFilterStation(e.target.value)}
-                disabled={!canViewGlobalActive}
-                className="border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-800 bg-white outline-none cursor-pointer disabled:bg-slate-100 disabled:text-slate-500"
-              >
-                {canViewGlobalActive ? (
-                  <>
-                    <option value="ALL STATIONS">ALL STATIONS</option>
-                    {filterRegion !== 'ALL REGIONS' && (REGIONAL_HIERARCHY[filterRegion] || []).map(stn => (
-                      <option key={stn} value={stn}>{stn}</option>
-                    ))}
-                  </>
-                ) : (
-                  <option value={currentUser?.station || ''}>{currentUser?.station || 'UNKNOWN'}</option>
-                )}
-              </select>
+              <h3 className="font-extrabold text-slate-900 uppercase flex items-center">
+                <FileArchive className="w-5 h-5 mr-2 text-emerald-600" /> 
+                System Records Ledger ({activeCategory.replace('_', ' ').toUpperCase()})
+              </h3>
             </div>
 
-            <span className="text-xs font-extrabold text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
-              Showing: {filterRegion} {filterStation !== 'ALL STATIONS' ? `➔ ${filterStation}` : ''}
-            </span>
+            <div className="flex flex-wrap bg-slate-200 p-1 rounded-lg border border-slate-300 w-full lg:w-auto">
+              <button
+                type="button"
+                onClick={() => setActiveCategory('weekly_report')}
+                className={`flex-1 px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-md transition-colors cursor-pointer ${activeCategory === 'weekly_report' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-700 hover:text-black'}`}
+              >
+                Weekly Reports
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('general_doc')}
+                className={`flex-1 px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-md transition-colors cursor-pointer ${activeCategory === 'general_doc' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-700 hover:text-black'}`}
+              >
+                General Docs
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('templates')}
+                className={`flex-1 px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-md transition-colors cursor-pointer ${activeCategory === 'templates' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-700 hover:text-black'}`}
+              >
+                Templates
+              </button>
+            </div>
           </div>
-
-          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
             
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <div className="border-b border-slate-100 pb-4 mb-6">
-                <h3 className="font-extrabold text-sm text-slate-900 uppercase">Universal File Intake Hub</h3>
-                <p className="text-xs text-slate-500 mt-1">Upload multiple files simultaneously across any format directly into command storage.</p>
-              </div>
+          <div className="overflow-x-auto w-full">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Document Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Type / Designation</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Date Logged</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Size</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-100">
+                {loadingDocs ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-10 text-center text-slate-500 text-sm font-medium">
+                      <Loader2 className="w-5 h-5 mx-auto animate-spin mb-2 text-blue-500" /> Fetching documents...
+                    </td>
+                  </tr>
+                ) : filteredDocuments.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-4 py-10 text-center text-slate-500 text-sm font-medium">
+                      No documents found under this category for the selected jurisdiction.
+                    </td>
+                  </tr>
+                ) : filteredDocuments.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-slate-800 flex items-center">
+                      <FolderOpen className="w-4 h-4 mr-2 text-amber-500 shrink-0" />
+                      {doc.name}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-xs">
+                      <span className="px-2 py-1 rounded font-bold uppercase tracking-wide bg-slate-100 text-slate-700 border border-slate-200">
+                        {doc.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-xs text-slate-500 flex items-center">
+                      <Clock className="w-3 h-3 mr-1" /> {doc.date}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-xs text-slate-500 font-mono">
+                      {doc.size}
+                    </td>
+                      
+                    <td className="px-4 py-4 whitespace-nowrap text-right">
+                      <div className="flex justify-end space-x-2">
+                        {/* 🟢 REDIRECTS & OPENS MICROSOFT VIEWER IN A NEW TAB */}
+                        <button 
+                          onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name)}
+                          className="text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer"
+                        >
+                          <ExternalLink className="w-3 h-3 mr-1 text-blue-600" />
+                          Read
+                        </button>
 
-              {!hasUploadClearance ? (
-                <div className="p-6 text-center bg-amber-50 border border-amber-200 rounded-xl">
-                  <Lock className="w-6 h-6 text-amber-600 mx-auto mb-2" />
-                  <h3 className="text-amber-900 font-bold text-xs uppercase">Upload Restricted</h3>
-                  <p className="text-xs text-amber-700 mt-1">You have viewing access to view and read documents, but require specific command clearance or upload privileges to submit files.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleUpload} className="max-w-3xl space-y-4">
-
-                  <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200 flex flex-col sm:flex-row gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setActiveCategory('weekly_report')}
-                      className={`flex-1 py-2 px-2 text-xs font-bold rounded shadow-sm transition-colors cursor-pointer ${activeCategory === 'weekly_report' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`}
-                    >
-                      Weekly Reports
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveCategory('general_doc')}
-                      className={`flex-1 py-2 px-2 text-xs font-bold rounded shadow-sm transition-colors cursor-pointer ${activeCategory === 'general_doc' ? 'bg-slate-700 text-white' : 'text-slate-600 hover:bg-slate-200'}`}
-                    >
-                      General Docs / Statements
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveCategory('templates')}
-                      className={`flex-1 py-2 px-2 text-xs font-bold rounded shadow-sm transition-colors cursor-pointer ${activeCategory === 'templates' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:bg-slate-200'}`}
-                    >
-                      Command Templates
-                    </button>
-                  </div>
-
-                  <div className="space-y-4 mt-4 animate-in fade-in">
-
-                    {activeCategory === 'templates' && (
-                      <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 space-y-2">
-                        <label className="block text-xs font-bold text-amber-900">Custom Template Title / Designation *</label>
-                        <input 
-                          type="text" 
-                          value={templateCustomName} 
-                          onChange={(e) => setTemplateCustomName(e.target.value)} 
-                          placeholder="e.g. NOMINAL ROLL SUBMISSION TEMPLATE" 
-                          required 
-                          className="w-full border border-amber-300 rounded-lg p-2.5 text-sm font-bold text-slate-800 outline-none focus:border-amber-500 bg-white uppercase"
-                        />
-                      </div>
-                    )}
-
-                    <div className={`border-2 border-dashed rounded-xl p-4 text-center transition cursor-pointer relative ${activeCategory === 'templates' ? 'border-amber-300 bg-amber-50/50 hover:bg-amber-100' : 'border-slate-300 bg-slate-50 hover:bg-blue-50'}`}>
-                      <input 
-                        type="file" 
-                        multiple 
-                        onChange={handleFileChange} 
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
-                      <UploadCloud className={`w-8 h-5 mx-auto mb-2 ${activeCategory === 'templates' ? 'text-amber-500' : 'text-slate-400'}`} />
-                      <p className="text-sm font-bold text-slate-600">Click or drop multiple files here</p>
-                    </div>
-
-                    {files.length > 0 && (
-                      <div className="space-y-2">
-                        {files.map((f, idx) => (
-                          <div key={idx} className="text-xs font-mono text-blue-800 bg-blue-50 p-3 rounded-lg border border-blue-200 flex justify-between items-center">
-                            <span className="flex items-center"><FileText className="w-4 h-4 mr-2 shrink-0" /> <strong className="truncate max-w-[450px]">{f.name}</strong></span>
-                            <span className="text-blue-500 font-bold shrink-0 ml-2">{Math.round(f.size / 1024)} KB</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {feedback && (
-                      <div className={`p-4 rounded-xl text-xs font-bold flex items-center ${feedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
-                        {feedback.type === 'success' ? <CheckCircle className="w-4 h-4 mr-2 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 mr-2 text-red-600 shrink-0" />}
-                        {feedback.message}
-                      </div>
-                    )}
-
-                    <button 
-                      type="submit" 
-                      disabled={files.length === 0 || uploading}
-                      className={`w-full py-3 flex justify-center items-center text-white font-bold rounded-xl shadow-md text-xs uppercase tracking-wider transition disabled:bg-slate-300 cursor-pointer ${activeCategory === 'templates' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-900 hover:bg-black'}`}
-                    >
-                      {uploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading Files...</> : activeCategory === 'templates' ? `Upload ${files.length || ''} Template(s)` : `Upload ${files.length || ''} Document(s)`}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50">
-                <div>
-                  <h3 className="font-extrabold text-slate-900 uppercase flex items-center">
-                    <FileArchive className="w-5 h-5 mr-2 text-emerald-600" /> 
-                    System Records Ledger ({activeCategory.replace('_', ' ').toUpperCase()})
-                  </h3>
-                </div>
-
-                <div className="flex flex-wrap bg-slate-200 p-1 rounded-lg border border-slate-300 w-full lg:w-auto">
-                  <button
-                    type="button"
-                    onClick={() => setActiveCategory('weekly_report')}
-                    className={`flex-1 px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-md transition-colors cursor-pointer ${activeCategory === 'weekly_report' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-700 hover:text-black'}`}
-                  >
-                    Weekly Reports
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveCategory('general_doc')}
-                    className={`flex-1 px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-md transition-colors cursor-pointer ${activeCategory === 'general_doc' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-700 hover:text-black'}`}
-                  >
-                    General Docs
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveCategory('templates')}
-                    className={`flex-1 px-4 py-1.5 text-[11px] sm:text-xs font-bold rounded-md transition-colors cursor-pointer ${activeCategory === 'templates' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-700 hover:text-black'}`}
-                  >
-                    Templates
-                  </button>
-                </div>
-              </div>
-                
-              <div className="overflow-x-auto w-full">
-                <table className="min-w-full divide-y divide-slate-200">
-                  <thead className="bg-slate-100">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Document Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Type / Designation</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Date Logged</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Size</th>
-                      <th className="px-6 py-3 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-slate-100">
-                    {loadingDocs ? (
-                      <tr>
-                        <td colSpan="5" className="px-6 py-10 text-center text-slate-500 text-sm font-medium">
-                          <Loader2 className="w-5 h-5 mx-auto animate-spin mb-2 text-blue-500" /> Fetching documents...
-                        </td>
-                      </tr>
-                    ) : filteredDocuments.length === 0 ? (
-                      <tr>
-                        <td colSpan="5" className="px-4 py-10 text-center text-slate-500 text-sm font-medium">
-                          No documents found under this category for the selected jurisdiction.
-                        </td>
-                      </tr>
-                    ) : filteredDocuments.map((doc) => (
-                      <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-slate-800 flex items-center">
-                          <FolderOpen className="w-4 h-4 mr-2 text-amber-500 shrink-0" />
-                          {doc.name}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-xs">
-                          <span className="px-2 py-1 rounded font-bold uppercase tracking-wide bg-slate-100 text-slate-700 border border-slate-200">
-                            {doc.type}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-xs text-slate-500 flex items-center">
-                          <Clock className="w-3 h-3 mr-1" /> {doc.date}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-xs text-slate-500 font-mono">
-                          {doc.size}
-                        </td>
-                          
-                        <td className="px-4 py-4 whitespace-nowrap text-right">
-                          <div className="flex justify-end space-x-2">
-                            {/* 🟢 LAUNCHES MICROSOFT OFFICE ONLINE VIEWER */}
+                        {hasDownloadClearance ? (
+                          <>
                             <button 
-                              onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name)}
-                              className="text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer"
+                              onClick={() => handleDownloadDoc(doc.id, doc.isTemplate, doc.name)}
+                              disabled={actionLoading === `download-${doc.id}`}
+                              className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50"
                             >
-                              <ExternalLink className="w-3 h-3 mr-1 text-blue-600" />
-                              Read
+                              {actionLoading === `download-${doc.id}` ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Download className="w-3 h-3 mr-1" />}
+                              Download
                             </button>
-
-                            {hasDownloadClearance ? (
-                              <>
-                                <button 
-                                  onClick={() => handleDownloadDoc(doc.id, doc.isTemplate, doc.name)}
-                                  disabled={actionLoading === `download-${doc.id}`}
-                                  className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50"
-                                >
-                                  {actionLoading === `download-${doc.id}` ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Download className="w-3 h-3 mr-1" />}
-                                  Download
-                                </button>
-                                  
-                                {hasUploadClearance && (
-                                  <button 
-                                    onClick={() => handleDeleteDoc(doc.id)}
-                                    disabled={actionLoading === `delete-${doc.id}`}
-                                    className="text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50"
-                                  >
-                                    {actionLoading === `delete-${doc.id}` ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Trash2 className="w-3 h-3 mr-1" />}
-                                    Delete
-                                  </button>
-                                )}
-                              </>
-                            ) : (
-                              <button disabled className="text-slate-400 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded flex items-center text-xs font-bold cursor-not-allowed opacity-60" title="Command Clearance Required to Download">
-                                <Lock className="w-3 h-3 mr-1" /> Restricted
+                              
+                            {hasUploadClearance && (
+                              <button 
+                                onClick={() => handleDeleteDoc(doc.id)}
+                                disabled={actionLoading === `delete-${doc.id}`}
+                                className="text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50"
+                              >
+                                {actionLoading === `delete-${doc.id}` ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Trash2 className="w-3 h-3 mr-1" />}
+                                Delete
                               </button>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                          </>
+                        ) : (
+                          <button disabled className="text-slate-400 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded flex items-center text-xs font-bold cursor-not-allowed opacity-60" title="Command Clearance Required to Download">
+                            <Lock className="w-3 h-3 mr-1" /> Restricted
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 };

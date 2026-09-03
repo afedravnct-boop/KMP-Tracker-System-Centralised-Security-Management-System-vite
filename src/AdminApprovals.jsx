@@ -70,6 +70,18 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
   const [viewingPhotoModal, setViewingPhotoModal] = useState(null);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
 
+{['SUPER_ADMIN', 'ADMIN'].includes(currentUser?.role?.toUpperCase()) && (
+    <button
+      type="button"
+      onClick={handleSystemMaintenanceToggle}
+      className="bg-amber-950 border border-amber-600 text-amber-200 hover:bg-amber-900 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center justify-center transition cursor-pointer shadow-xs"
+      title="Configure System, Regional, Station, or Module Lockdowns"
+    >
+      <ShieldAlert size={13} className="mr-1.5" />
+      System Maintenance Lockdown
+    </button>
+  )}
+
   // AI Kill Switch State
   const [isDbKillActive, setIsDbKillActive] = useState(false);
   const [loadingKillSwitch, setLoadingKillSwitch] = useState(false);
@@ -737,6 +749,77 @@ useEffect(() => {
             <><option value="ALL STATIONS">ALL STATIONS / DIVISIONS</option>{filterRegion !== 'ALL REGIONS' && REGIONAL_HIERARCHY?.[filterRegion] ? REGIONAL_HIERARCHY[filterRegion].map(stat => <option key={stat} value={stat}>{stat}</option>) : null}</>
           ) : <option value={currentUser?.station}>{stripHtmlTags(currentUser?.station)}</option>}
         </select>
+
+{/* Global Filters & Control Ribbon */}
+      <div className="flex flex-col sm:flex-row justify-center gap-2 mb-3">
+        <select 
+          value={filterRegion} 
+          onChange={(e) => { setFilterRegion(stripHtmlTags(e.target.value)); setFilterStation('ALL STATIONS'); }} 
+          disabled={!canViewGlobalActive} 
+          className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs shadow-xs bg-white disabled:bg-slate-100 font-bold text-blue-800 outline-none focus:border-blue-500 cursor-pointer"
+        >
+          {canViewGlobalActive ? (
+            <><option value="ALL REGIONS">ALL REGIONS (GLOBAL)</option>{Object.keys(REGIONAL_HIERARCHY || {}).map(reg => <option key={reg} value={reg}>{reg}</option>)}</>
+          ) : <option value={currentUser?.region}>{stripHtmlTags(currentUser?.region)}</option>}
+        </select>
+
+        <select 
+          value={filterStation} 
+          onChange={(e) => setFilterStation(stripHtmlTags(e.target.value))} 
+          disabled={!canViewGlobalActive && !['RPC', 'Deputy Commander'].includes(currentUser?.role)} 
+          className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs shadow-xs bg-white disabled:bg-slate-100 font-bold text-blue-800 outline-none focus:border-blue-500 cursor-pointer"
+        >
+          {canViewGlobalActive || ['RPC', 'Deputy Commander'].includes(currentUser?.role) ? (
+            <><option value="ALL STATIONS">ALL STATIONS / DIVISIONS</option>{filterRegion !== 'ALL REGIONS' && REGIONAL_HIERARCHY?.[filterRegion] ? REGIONAL_HIERARCHY[filterRegion].map(stat => <option key={stat} value={stat}>{stat}</option>) : null}</>
+          ) : <option value={currentUser?.station}>{stripHtmlTags(currentUser?.station)}</option>}
+        </select>
+
+        <button
+          onClick={() => {
+            if (activeTab === 'approvals') fetchPendingUsers();
+            else if (activeTab === 'matrix') fetchAllSystemUsers();
+            else if (activeTab === 'requests') fetchModRequests();
+            else if (activeTab === 'logs') fetchAuditLogs();
+            else if (activeTab === 'resets') fetchResets();
+          }}
+          className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center justify-center transition cursor-pointer shadow-xs"
+          title="Refresh Current Queue"
+        >
+          <RefreshCw size={13} className="mr-1.5" /> Refresh Queue
+        </button>
+
+        {['SUPER_ADMIN', 'ADMIN'].includes(currentUser?.role?.toUpperCase()) && (
+          <button
+            type="button"
+            onClick={handleSystemMaintenanceToggle}
+            className="bg-amber-950 border border-amber-600 text-amber-200 hover:bg-amber-900 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center justify-center transition cursor-pointer shadow-xs"
+            title="Configure System, Regional, Station, or Module Lockdowns"
+          >
+            <ShieldAlert size={13} className="mr-1.5" />
+            System Maintenance Lockdown
+          </button>
+        )}
+
+        {currentUser?.role === 'SUPER_ADMIN' && (
+          <button
+            onClick={handleKillSwitchToggle}
+            disabled={loadingKillSwitch}
+            className={`font-bold px-3 py-1.5 rounded-lg text-xs flex items-center justify-center transition cursor-pointer shadow-xs border ${
+              isDbKillActive 
+                ? 'bg-emerald-950 border-emerald-600 text-emerald-200 hover:bg-emerald-900' 
+                : 'bg-red-950 border-red-600 text-red-200 hover:bg-red-900'
+            }`}
+            title="Toggle AI Direct Database Querying Access"
+          >
+            {loadingKillSwitch ? (
+              <Loader2 size={13} className="mr-1.5 animate-spin" />
+            ) : (
+              <ShieldAlert size={13} className="mr-1.5" />
+            )}
+            {isDbKillActive ? 'Enable AI DB Query' : 'Kill AI DB Query'}
+          </button>
+        )}
+      </div>
 
         <button
           onClick={() => {

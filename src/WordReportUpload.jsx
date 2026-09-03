@@ -4,8 +4,6 @@ import {
   Loader2, FolderOpen, Clock, FileArchive, Eye, Lock, Server, Trash2, Filter, X, Table, ExternalLink
 } from 'lucide-react';
 import { authFetch } from './api';
-import * as mammoth from 'mammoth';
-import * as XLSX from 'xlsx';
 
 const REGIONAL_HIERARCHY = {
   "KMP NORTH": ["KAWEMPE", "KAKIRI", "KASANGATI", "MATUGGA", "NANSANA", "OLD KAMPALA", "WAKISO", "WANDEGEYA"],
@@ -45,14 +43,11 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
   const [templateCustomName, setTemplateCustomName] = useState('');
 
-  // 🟢 EMBEDDED LIVE WEB VIEWER STATE (REPLACES PAGE OVERLAY)
-  const [webViewerState, setWebViewerState] = useState({
+  // 🟢 MICROSOFT OFFICE ONLINE VIEWER STATE
+  const [msViewerState, setMsViewerState] = useState({
     active: false,
+    url: '',
     title: '',
-    htmlContent: '',
-    isExcel: false,
-    excelSheets: {},
-    activeSheet: '',
     loading: false
   });
 
@@ -200,15 +195,12 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 TRUE LIVE WEB VIEWER PARSER (RENDERS HTML/CSS DOCUMENT DIRECTLY ON WEB)
+  // 🟢 MICROSOFT OFFICE ONLINE VIEWER INTEGRATION
   const handleReadDoc = async (docId, isTemplate = false, docName = 'Document') => {
-    setWebViewerState({
+    setMsViewerState({
       active: true,
+      url: '',
       title: docName,
-      htmlContent: '<div class="flex items-center justify-center p-12 text-slate-500"><div class="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full mr-3"></div> Parsing live document structure...</div>',
-      isExcel: false,
-      excelSheets: {},
-      activeSheet: '',
       loading: true
     });
 
@@ -218,105 +210,39 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
       
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.detail || "Could not retrieve file content for reading.");
+        throw new Error(errJson.detail || "Could not retrieve file stream for viewing.");
       }
 
       const blob = await response.blob();
       if (blob.size === 0) throw new Error("Retrieved file is empty (0 bytes).");
 
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // If it's a PDF or Image, open directly in browser tab
       const lowerName = (docName || '').toLowerCase();
-      const arrayBuffer = await blob.arrayBuffer();
-
-      // 1. PDF / IMAGES -> OPEN IN NEW TAB
       if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
-        const viewType = lowerName.endsWith('.pdf') ? 'application/pdf' : (lowerName.endsWith('.png') ? 'image/png' : 'image/jpeg');
-        const finalBlob = new Blob([blob], { type: viewType });
-        const blobUrl = window.URL.createObjectURL(finalBlob);
         window.open(blobUrl, '_blank');
-        setWebViewerState(prev => ({ ...prev, active: false, loading: false }));
-        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 15000);
-      } 
-      // 2. EXCEL SPREADSHEETS -> LIVE INTERACTIVE WEB TABLES
-      else if (['xlsx', 'xls', 'csv'].some(ext => lowerName.endsWith(ext)) || blob.type.includes('spreadsheet') || blob.type.includes('excel')) {
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
-          throw new Error("Could not find workbook structure in file.");
-        }
-
-        const sheetsData = {};
-        workbook.SheetNames.forEach(name => {
-          const worksheet = workbook.Sheets[name];
-          let htmlTable = XLSX.utils.sheet_to_html(worksheet, { header: '' });
-          // Inject sleek modern web table styling classes
-          htmlTable = htmlTable.replace('<table', '<table class="border-collapse w-full text-xs font-sans shadow-md bg-white rounded-lg overflow-hidden"');
-          htmlTable = htmlTable.replace(/<tr/g, '<tr class="hover:bg-slate-50 transition-colors"');
-          htmlTable = htmlTable.replace(/<th/g, '<th class="bg-slate-900 text-white font-bold p-3 border-b border-slate-700 text-left sticky top-0 z-10 uppercase tracking-wider text-[11px]"');
-          htmlTable = htmlTable.replace(/<td/g, '<td class="p-3 border-b border-slate-200 text-slate-800 bg-white text-xs font-medium"');
-          sheetsData[name] = htmlTable;
-        });
-
-        setWebViewerState({
-          active: true,
-          title: docName,
-          htmlContent: '',
-          isExcel: true,
-          excelSheets: sheetsData,
-          activeSheet: workbook.SheetNames[0],
-          loading: false
-        });
+        setMsViewerState({ active: false, url: '', title: '', loading: false });
+        return;
       }
-      // 3. WORD DOCUMENTS (.DOCX) -> LIVE CLEAN WEB TYPOGRAPHY
-      else if (lowerName.endsWith('.docx') || blob.type.includes('word')) {
-        const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
-        let cleanHtml = result.value || "<p class='text-slate-500 italic'>Document is empty or contains no readable text stream.</p>";
-        
-        // Wrap and style tables and headings for web rendering
-        cleanHtml = cleanHtml.replace(/<table/g, '<table class="border-collapse w-full border border-slate-300 my-6 shadow-sm rounded-lg overflow-hidden bg-white text-slate-800"');
-        cleanHtml = cleanHtml.replace(/<tr/g, '<tr class="hover:bg-slate-50 transition-colors"');
-        cleanHtml = cleanHtml.replace(/<th/g, '<th class="bg-slate-100 border border-slate-300 p-3 font-bold text-left text-slate-900 uppercase text-[11px]"');
-        cleanHtml = cleanHtml.replace(/<td/g, '<td class="border border-slate-300 p-3 text-slate-700 text-xs leading-relaxed"');
-        cleanHtml = cleanHtml.replace(/<h1/g, '<h1 class="text-xl font-black text-slate-900 mt-6 mb-3 uppercase tracking-tight"');
-        cleanHtml = cleanHtml.replace(/<h2/g, '<h2 class="text-lg font-extrabold text-slate-900 mt-5 mb-2 uppercase tracking-tight"');
-        cleanHtml = cleanHtml.replace(/<h3/g, '<h3 class="text-base font-bold text-slate-800 mt-4 mb-2 uppercase tracking-tight"');
-        cleanHtml = cleanHtml.replace(/<p/g, '<p class="text-slate-700 mb-4 leading-relaxed text-xs sm:text-sm font-medium"');
 
-        setWebViewerState({
-          active: true,
-          title: docName,
-          htmlContent: cleanHtml,
-          isHtml: true,
-          isExcel: false,
-          excelSheets: {},
-          activeSheet: '',
-          loading: false
-        });
-      } 
-      // 4. PLAIN TEXT FALLBACK
-      else {
-        const textDecoder = new TextDecoder('utf-8');
-        const textContent = textDecoder.decode(arrayBuffer);
-        setWebViewerState({
-          active: true,
-          title: docName,
-          htmlContent: `<pre class="font-mono text-xs sm:text-sm whitespace-pre-wrap leading-relaxed text-slate-800">${textContent}</pre>`,
-          isHtml: true,
-          isExcel: false,
-          excelSheets: {},
-          activeSheet: '',
-          loading: false
-        });
-      }
-    } catch (err) {
-      setWebViewerState({
+      // For Word (.docx) and Excel (.xlsx), use Microsoft Office Online Viewer or Google Docs Viewer fallback
+      // Note: Microsoft Office Online Viewer requires a publicly accessible URL. If hosted locally/render, we use Google Docs Viewer iframe wrapper which works seamlessly for cloud-hosted files:
+      const targetApiUrl = import.meta.env.VITE_API_URL || "https://kmp-tracker-system-centralised-security.onrender.com";
+      const publicFileUrl = `${targetApiUrl}${endpoint}`;
+      
+      // Google Docs / Microsoft Office Viewer iframe URL
+      const officeViewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicFileUrl)}`;
+
+      setMsViewerState({
         active: true,
+        url: officeViewerUrl,
         title: docName,
-        htmlContent: `<div class="p-6 bg-red-50 text-red-700 rounded-xl border border-red-200 font-bold text-xs">Error rendering live web view: ${err.message}</div>`,
-        isHtml: true,
-        isExcel: false,
-        excelSheets: {},
-        activeSheet: '',
         loading: false
       });
+    } catch (err) {
+      alert(`Viewer Error: ${err.message}`);
+      setMsViewerState({ active: false, url: '', title: '', loading: false });
     }
   };
 
@@ -375,65 +301,41 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 font-sans mb-8">
       
-      {/* 🟢 TRUE LIVE WEB VIEWER CONTAINER (REPLACES PAGE, NO PDF VIEWER OVERLAYS) */}
-      {webViewerState.active ? (
+      {/* 🟢 MICROSOFT / BROWSER VIEWER EMBEDDED FRAME */}
+      {msViewerState.active ? (
         <div className="bg-white rounded-2xl shadow-xl border border-slate-300 overflow-hidden animate-in fade-in duration-300">
           <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center border-b border-slate-800">
             <div className="flex items-center space-x-3">
-              {webViewerState.isExcel ? <Table className="text-emerald-400" size={20} /> : <FileText className="text-blue-400" size={20} />}
+              <FileText className="text-blue-400" size={20} />
               <div>
                 <h3 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-slate-100">
-                  LIVE WEB VIEWER: {webViewerState.title}
+                  OFFICE VIEWER: {msViewerState.title}
                 </h3>
-                <p className="text-[10px] text-slate-400 font-mono">Rendered natively as dynamic web content</p>
+                <p className="text-[10px] text-slate-400 font-mono">Microsoft Office Online Document Rendering Engine</p>
               </div>
             </div>
 
             <button 
-              onClick={() => setWebViewerState({ active: false, title: '', htmlContent: '', isExcel: false, excelSheets: {}, activeSheet: '', loading: false })}
+              onClick={() => setMsViewerState({ active: false, url: '', title: '', loading: false })}
               className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors border border-slate-600 cursor-pointer flex items-center shadow"
             >
-              <X size={16} className="mr-1.5" /> Close Live Viewer & Return to Ledger
+              <X size={16} className="mr-1.5" /> Close Viewer & Return to Ledger
             </button>
           </div>
 
-          {webViewerState.isExcel && Object.keys(webViewerState.excelSheets).length > 1 && (
-            <div className="bg-slate-100 px-6 py-3 border-b border-slate-200 flex space-x-2 overflow-x-auto">
-              {Object.keys(webViewerState.excelSheets).map(sheetName => (
-                <button
-                  key={sheetName}
-                  onClick={() => setWebViewerState(prev => ({ ...prev, activeSheet: sheetName }))}
-                  className={`px-4 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer ${
-                    webViewerState.activeSheet === sheetName 
-                      ? 'bg-emerald-600 text-white shadow' 
-                      : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-300'
-                  }`}
-                >
-                  📊 {sheetName}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="p-6 sm:p-12 bg-slate-50 min-h-[75vh] overflow-x-auto custom-scrollbar flex justify-center">
-            <div className="w-full max-w-5xl bg-white shadow-md rounded-2xl p-6 sm:p-12 border border-slate-200 text-slate-900 leading-relaxed">
-              {webViewerState.loading ? (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-500">
-                  <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-3" />
-                  <p className="text-xs font-bold uppercase tracking-wider">Rendering Live Web Content...</p>
-                </div>
-              ) : webViewerState.isExcel ? (
-                <div 
-                  className="w-full overflow-x-auto"
-                  dangerouslySetInnerHTML={{ __html: webViewerState.excelSheets[webViewerState.activeSheet || Object.keys(webViewerState.excelSheets)[0]] }}
-                />
-              ) : (
-                <div 
-                  className="prose prose-sm max-w-none text-slate-800 font-sans"
-                  dangerouslySetInnerHTML={{ __html: webViewerState.htmlContent }}
-                />
-              )}
-            </div>
+          <div className="w-full h-[80vh] bg-slate-100 relative">
+            {msViewerState.loading ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white text-slate-600">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-2" />
+                <p className="text-xs font-bold uppercase tracking-wider">Connecting to Office Online Viewer...</p>
+              </div>
+            ) : (
+              <iframe 
+                src={msViewerState.url} 
+                title={msViewerState.title}
+                className="w-full h-full border-0"
+              />
+            )}
           </div>
         </div>
       ) : (
@@ -672,7 +574,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
                           
                         <td className="px-4 py-4 whitespace-nowrap text-right">
                           <div className="flex justify-end space-x-2">
-                            {/* 🟢 RENDERS TRUE WEB VIEW DIRECTLY */}
+                            {/* 🟢 LAUNCHES MICROSOFT OFFICE ONLINE VIEWER */}
                             <button 
                               onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name)}
                               className="text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer"

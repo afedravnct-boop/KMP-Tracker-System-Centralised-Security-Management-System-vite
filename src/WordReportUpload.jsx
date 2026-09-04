@@ -187,7 +187,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 INDEPENDENT READ PATH: Fetches blob via authFetch and renders natively in browser tab
+  // 🟢 ORIGINAL MICROSOFT OFFICE ONLINE VIEWER LOGIC RESTORED (AUTHENTICATED BLOB TO OBJECT URL PASSED TO OFFICE VIEWER)
   const handleReadDoc = async (docId, isTemplate = false, docName = 'Document') => {
     setActionLoading(`read-${docId}`);
     try {
@@ -196,35 +196,30 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
       
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.detail || "Could not retrieve file stream for preview.");
+        throw new Error(errJson.detail || "Could not retrieve document stream.");
       }
 
       const blob = await response.blob();
       if (blob.size === 0) throw new Error("Retrieved document is empty (0 bytes).");
 
+      const blobUrl = window.URL.createObjectURL(blob);
       const lowerName = (docName || '').toLowerCase();
-      let mimeType = blob.type;
-      if (lowerName.endsWith('.pdf')) mimeType = 'application/pdf';
-      else if (lowerName.endsWith('.txt')) mimeType = 'text/plain';
-      else if (lowerName.endsWith('.png')) mimeType = 'image/png';
-      else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) mimeType = 'image/jpeg';
-      else if (lowerName.endsWith('.docx') || lowerName.endsWith('.xlsx')) {
-        mimeType = 'application/octet-stream';
+
+      if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+        window.open(blobUrl, '_blank');
+      } else {
+        const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(blobUrl)}`;
+        window.open(officeViewerUrl, '_blank');
       }
 
-      const typedBlob = new Blob([blob], { type: mimeType });
-      const blobUrl = window.URL.createObjectURL(typedBlob);
-      
-      window.open(blobUrl, '_blank');
-      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 120000);
     } catch (err) {
-      alert(`Read Error: ${err.message}`);
+      alert(`Viewer Error: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
   };
 
-  // 🟢 INDEPENDENT DOWNLOAD PATH: Forces local file attachment download
   const handleDownloadDoc = async (docId, isTemplate = false, fileName = 'document') => {
     if (!hasDownloadClearance) {
       return alert("Security Restriction: You do not have command clearance to download documents.");
@@ -518,7 +513,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
                       
                     <td className="px-4 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end space-x-2">
-                        {/* 🟢 INDEPENDENT READ ACTION */}
+                        {/* 🟢 READ BUTTON USING OFFICE ONLINE VIEWER WITH AUTHENTICATED OBJECT URL */}
                         <button 
                           onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name)}
                           disabled={actionLoading === `read-${doc.id}`}
@@ -530,7 +525,6 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
                         {hasDownloadClearance ? (
                           <>
-                            {/* 🟢 INDEPENDENT DOWNLOAD ACTION */}
                             <button 
                               onClick={() => handleDownloadDoc(doc.id, doc.isTemplate, doc.name)}
                               disabled={actionLoading === `download-${doc.id}`}

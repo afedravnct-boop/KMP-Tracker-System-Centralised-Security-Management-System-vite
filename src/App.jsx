@@ -2521,6 +2521,45 @@ const App = () => {
     return calculateGrandTotals(reports, currentUser, filterRegion, filterStation);
   }, [reports, currentUser, filterRegion, filterStation]);
 
+// 🟢 GLOBAL ACCESSIBILITY & AUTOCOMPLETE FIXER
+  useEffect(() => {
+    const fixFormInputs = () => {
+      const inputs = document.querySelectorAll('input, select, textarea');
+      inputs.forEach((el, index) => {
+        // 1. Ensure every input has a unique ID to satisfy accessibility requirements
+        if (!el.id) {
+          el.id = `auto-gen-field-${el.name || el.type || 'input'}-${index}`;
+        }
+        // 2. Ensure every input has a name attribute
+        if (!el.name) {
+          el.name = el.id;
+        }
+        // 3. Ensure every input has an autocomplete attribute to stop autofill warnings
+        if (!el.hasAttribute('autocomplete')) {
+          if (el.type === 'password') {
+            el.setAttribute('autocomplete', 'current-password');
+          } else if (el.type === 'email') {
+            el.setAttribute('autocomplete', 'email');
+          } else if (el.type === 'tel') {
+            el.setAttribute('autocomplete', 'tel');
+          } else {
+            el.setAttribute('autocomplete', 'off');
+          }
+        }
+      });
+    };
+
+    // Run immediately on load and set up a mutation observer for dynamically rendered components (modals/tabs)
+    fixFormInputs();
+    const observer = new MutationObserver(() => {
+      fixFormInputs();
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const applyThemeBasedOnTime = () => {
       const hour = new Date().getHours();

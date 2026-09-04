@@ -166,25 +166,19 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 CORRECT ONLINE FORMAT VIEWER: Requests S3 URL from Backend, passes it to MS Office Viewer
-  const handleReadDoc = async (docId, isTemplate = false, docName = 'Document') => {
+  // 🟢 READ PATH: Explicitly passes the categoryKey to prevent ID collisions
+  const handleReadDoc = async (docId, isTemplate = false, docName = 'Document', categoryKey = 'weekly_report') => {
     setActionLoading(`read-${docId}`);
     try {
-      // We pass return_url=true to tell the backend to give us JSON containing the pre-signed S3 URL
       const endpoint = isTemplate 
-        ? `/api/v1/templates/download/${docId}?stamp=true&return_url=true` 
-        : `/api/v1/reports/download/${docId}?stamp=true&return_url=true`;
+        ? `/api/v1/templates/download/${docId}?stamp=true&return_url=true&category=${categoryKey}` 
+        : `/api/v1/reports/download/${docId}?stamp=true&return_url=true&category=${categoryKey}`;
         
       const response = await authFetch(endpoint, { method: "GET" });
       
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
         throw new Error(errJson.detail || "Could not retrieve document viewer link.");
-      }
-
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Backend did not return a valid URL payload. Please ensure backend is updated.");
       }
 
       const data = await response.json();
@@ -194,13 +188,13 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
       const lowerName = (docName || '').toLowerCase();
       
-      // PDFs & Images open cleanly natively
+      // Open PDFs and Images natively
       if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
         window.open(s3Url, '_blank');
       } else {
-        // .docx, .xlsx, .pptx passed to official Microsoft Office Web Viewer
-        const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(s3Url)}`;
-        window.open(officeViewerUrl, '_blank');
+        // Route Office Docs through Google Docs Viewer for live web preview
+        const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(s3Url)}&embedded=false`;
+        window.open(googleViewerUrl, '_blank');
       }
     } catch (err) {
       alert(`Reader Error: ${err.message}`);
@@ -209,15 +203,15 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 DOWNLOAD PATH: Streams directly as a local attachment
-  const handleDownloadDoc = async (docId, isTemplate = false, fileName = 'document') => {
+  // 🟢 DOWNLOAD PATH: Also passes categoryKey
+  const handleDownloadDoc = async (docId, isTemplate = false, fileName = 'document', categoryKey = 'weekly_report') => {
     if (!hasDownloadClearance) return alert("Security Restriction: You do not have clearance to download.");
 
     setActionLoading(`download-${docId}`);
     try {
       const endpoint = isTemplate 
-        ? `/api/v1/templates/download/${docId}?stamp=true` 
-        : `/api/v1/reports/download/${docId}?stamp=true`;
+        ? `/api/v1/templates/download/${docId}?stamp=true&download=true&category=${categoryKey}` 
+        : `/api/v1/reports/download/${docId}?stamp=true&download=true&category=${categoryKey}`;
         
       const response = await authFetch(endpoint, { method: "GET" });
       if (!response.ok) throw new Error("Requested document not found on server.");
@@ -399,14 +393,15 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
                     <td className="px-4 py-4 whitespace-nowrap text-xs text-slate-500 font-mono">{doc.size}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end space-x-2">
-                        {/* 🟢 READ URL BUTTON */}
-                        <button onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name)} disabled={actionLoading === `read-${doc.id}`} className="text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50">
+                        {/* 🟢 READ BUTTON WITH CATEGORY FIX */}
+                        <button onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name, doc.categoryKey)} disabled={actionLoading === `read-${doc.id}`} className="text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-300 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50">
                           {actionLoading === `read-${doc.id}` ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <ExternalLink className="w-3 h-3 mr-1 text-blue-600" />} Read
                         </button>
 
                         {hasDownloadClearance ? (
                           <>
-                            <button onClick={() => handleDownloadDoc(doc.id, doc.isTemplate, doc.name)} disabled={actionLoading === `download-${doc.id}`} className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50">
+                            {/* 🟢 DOWNLOAD BUTTON WITH CATEGORY FIX */}
+                            <button onClick={() => handleDownloadDoc(doc.id, doc.isTemplate, doc.name, doc.categoryKey)} disabled={actionLoading === `download-${doc.id}`} className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50">
                               {actionLoading === `download-${doc.id}` ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Download className="w-3 h-3 mr-1" />} Download
                             </button>
                             {hasUploadClearance && (

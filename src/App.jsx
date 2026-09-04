@@ -2521,20 +2521,18 @@ const App = () => {
     return calculateGrandTotals(reports, currentUser, filterRegion, filterStation);
   }, [reports, currentUser, filterRegion, filterStation]);
 
-// 🟢 GLOBAL ACCESSIBILITY & AUTOCOMPLETE FIXER
+// 🟢 GLOBAL ACCESSIBILITY, AUTOCOMPLETE & LABEL ASSOCIATION FIXER
   useEffect(() => {
     const fixFormInputs = () => {
+      // 1. Ensure every input, select, and textarea has a unique ID, name, and autocomplete
       const inputs = document.querySelectorAll('input, select, textarea');
       inputs.forEach((el, index) => {
-        // 1. Ensure every input has a unique ID to satisfy accessibility requirements
         if (!el.id) {
           el.id = `auto-gen-field-${el.name || el.type || 'input'}-${index}`;
         }
-        // 2. Ensure every input has a name attribute
         if (!el.name) {
           el.name = el.id;
         }
-        // 3. Ensure every input has an autocomplete attribute to stop autofill warnings
         if (!el.hasAttribute('autocomplete')) {
           if (el.type === 'password') {
             el.setAttribute('autocomplete', 'current-password');
@@ -2547,9 +2545,29 @@ const App = () => {
           }
         }
       });
+
+      // 2. Ensure every label is properly associated with a form field via the 'for' attribute
+      const labels = document.querySelectorAll('label');
+      labels.forEach((label, index) => {
+        const hasFor = label.hasAttribute('for') || label.hasAttribute('htmlFor');
+        const hasNestedField = label.querySelector('input, select, textarea');
+        
+        if (!hasFor && !hasNestedField) {
+          // Look for a form field inside the same parent container or wrapper
+          const parent = label.closest('div, form, section, span') || document.body;
+          const targetField = parent.querySelector('input, select, textarea');
+          
+          if (targetField) {
+            if (!targetField.id) {
+              targetField.id = `auto-field-label-${index}`;
+            }
+            label.setAttribute('for', targetField.id);
+          }
+        }
+      });
     };
 
-    // Run immediately on load and set up a mutation observer for dynamically rendered components (modals/tabs)
+    // Run immediately and observe all future DOM updates globally
     fixFormInputs();
     const observer = new MutationObserver(() => {
       fixFormInputs();

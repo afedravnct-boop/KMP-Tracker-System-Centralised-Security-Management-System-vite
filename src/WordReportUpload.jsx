@@ -187,7 +187,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 READ PATH EXCLUSIVELY FOR VIEWING: Uses authenticated authFetch to bypass token blocks and opens cleanly in a new tab via a local blob URL
+  // 🟢 READ PATH EXCLUSIVELY FOR VIEWING: Uses authenticated authFetch and renders via Microsoft Office Online Viewer or Native Browser Stream without downloading
   const handleReadDoc = async (docId, isTemplate = false, docName = 'Document') => {
     setActionLoading(`read-${docId}`);
     try {
@@ -202,19 +202,17 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
       const blob = await response.blob();
       if (blob.size === 0) throw new Error("Retrieved document is empty (0 bytes).");
 
+      const blobUrl = window.URL.createObjectURL(blob);
       const lowerName = (docName || '').toLowerCase();
-      let mimeType = blob.type || 'application/octet-stream';
-      if (lowerName.endsWith('.pdf')) mimeType = 'application/pdf';
-      else if (lowerName.endsWith('.txt')) mimeType = 'text/plain';
-      else if (lowerName.endsWith('.png')) mimeType = 'image/png';
-      else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) mimeType = 'image/jpeg';
-      else if (lowerName.endsWith('.docx')) mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-      else if (lowerName.endsWith('.xlsx')) mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
-      const typedBlob = new Blob([blob], { type: mimeType });
-      const blobUrl = window.URL.createObjectURL(typedBlob);
       
-      window.open(blobUrl, '_blank');
+      if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.txt')) {
+        window.open(blobUrl, '_blank');
+      } else {
+        // Wrap local authenticated blob stream URL in Microsoft Office Online Viewer for inline web rendering
+        const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(blobUrl)}`;
+        window.open(officeViewerUrl, '_blank');
+      }
+
       setTimeout(() => window.URL.revokeObjectURL(blobUrl), 120000);
     } catch (err) {
       alert(`Reader Error: ${err.message}`);
@@ -517,7 +515,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
                       
                     <td className="px-4 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end space-x-2">
-                        {/* 🟢 READ BUTTON EXCLUSIVELY FOR VIEWING (AUTHENTICATED BLOB STREAM PREVIEW) */}
+                        {/* 🟢 READ BUTTON EXCLUSIVELY FOR VIEWING VIA AUTHENTICATED BLOB OBJECT URL PASSED TO OFFICE VIEWER */}
                         <button 
                           onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name)}
                           disabled={actionLoading === `read-${doc.id}`}
@@ -541,6 +539,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
                               
                             {hasUploadClearance && (
                               <button 
+                                python-action="delete"
                                 onClick={() => handleDeleteDoc(doc.id)}
                                 disabled={actionLoading === `delete-${doc.id}`}
                                 className="text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50"

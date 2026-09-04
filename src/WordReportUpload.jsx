@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {  
   UploadCloud, FileText, Download, CheckCircle, AlertTriangle,  
-  Loader2, FolderOpen, Clock, FileArchive, Eye, Lock, Server, Trash2, Filter, X, Table, ExternalLink
+  Loader2, FolderOpen, Clock, FileArchive, Eye, Lock, Server, Trash2, Filter, X, ExternalLink
 } from 'lucide-react';
 import { authFetch } from './api';
+import * as mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
 
 const REGIONAL_HIERARCHY = {
   "KMP NORTH": ["KAWEMPE", "KAKIRI", "KASANGATI", "MATUGGA", "NANSANA", "OLD KAMPALA", "WAKISO", "WANDEGEYA"],
@@ -187,14 +189,13 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 LIVE BROWSER VIEWER PATH: Resolves AWS S3 URL and forces Google Docs Viewer to render in a new tab without downloading
+  // 🟢 HTML BLOB VIEWER: Securely decodes the document and builds a live standalone web page
   const handleReadDoc = async (docId, isTemplate = false, docName = 'Document') => {
     setActionLoading(`read-${docId}`);
     try {
-      // Append view=true and stamp=true to trigger forensic stamping on the backend S3 cache
       const endpoint = isTemplate 
-        ? `/api/v1/templates/download/${docId}?view=true&stamp=true` 
-        : `/api/v1/reports/download/${docId}?view=true&stamp=true`;
+        ? `/api/v1/templates/download/${docId}?stamp=true` 
+        : `/api/v1/reports/download/${docId}?stamp=true`;
         
       const response = await authFetch(endpoint, { method: "GET" });
       
@@ -203,39 +204,79 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
         throw new Error(errJson.detail || "Could not retrieve document stream for viewing.");
       }
 
-      let fileUrl = "";
-      const contentType = response.headers.get("content-type");
-      
-      // Extract the authenticated AWS S3 URL
-      if (contentType && contentType.includes("application/json")) {
-        const data = await response.json();
-        fileUrl = data.url || data.view_url || data.file_url || data.s3_url;
-      } else {
-        // If the backend responds with a 302 Redirect, fetch follows it and the S3 URL is caught here
-        fileUrl = response.url;
-      }
-
-      if (!fileUrl) throw new Error("Valid viewer URL not returned from server.");
+      const blob = await response.blob();
+      if (blob.size === 0) throw new Error("Retrieved document is empty (0 bytes).");
 
       const lowerName = (docName || '').toLowerCase();
       
-      // 🟢 1. Native PDF/Images can be read cleanly and securely by the browser's built-in engine
+      // Native PDF and Images process instantly
       if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
-        window.open(fileUrl, '_blank');
-      } 
-      // 🟢 2. Office Documents (Word, Excel, PowerPoint) route to Google Docs Web Viewer
-      else if (
-        lowerName.endsWith('.docx') || lowerName.endsWith('.doc') || 
-        lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls') || lowerName.endsWith('.csv') ||
-        lowerName.endsWith('.pptx') || lowerName.endsWith('.ppt')
-      ) {
-        const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=false`;
-        window.open(googleViewerUrl, '_blank');
-      } 
-      // 🟢 3. Fallback for unrecognized formats
-      else {
-        alert("This file format cannot be previewed live. Please use the download button.");
+        let mime = lowerName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg';
+        const rawBlobUrl = window.URL.createObjectURL(new Blob([blob], { type: mime }));
+        window.open(rawBlobUrl, '_blank');
+        setTimeout(() => window.URL.revokeObjectURL(rawBlobUrl), 120000);
+        return;
       }
+
+      // Convert Word/Excel to an HTML String
+      const arrayBuffer = await blob.arrayBuffer();
+      let compiledHtml = '';
+
+      if (lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) {
+        const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+        compiledHtml = result.value || "<p>Document could not be decoded.</p>";
+      } 
+      else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls') || lowerName.endsWith('.csv')) {
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        compiledHtml = XLSX.utils.sheet_to_html(workbook.Sheets[sheetName]);
+      } 
+      else if (lowerName.endsWith('.txt')) {
+        const textData = new TextDecoder('utf-8').decode(arrayBuffer);
+        compiledHtml = `<pre>${textData}</pre>`;
+      } 
+      else {
+        throw new Error("This file format cannot be rendered live. Please use the download button.");
+      }
+
+      // Construct a fully styled, independent HTML document string
+      const fullWebPage = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>${docName} - KMP Live Viewer</title>
+          <style>
+            body { background-color: #0f172a; margin: 0; padding: 20px; font-family: system-ui, -apple-system, sans-serif; }
+            .viewer-container { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 40px 60px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); min-height: 90vh; border-radius: 4px; }
+            .header-bar { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 30px; color: #1e293b; }
+            .header-bar h1 { margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; }
+            .header-bar p { margin: 5px 0 0 0; font-size: 11px; color: #64748b; font-family: monospace; }
+            table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+            th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: left; font-size: 13px; }
+            th { background-color: #f8fafc; font-weight: 700; color: #0f172a; }
+            p { color: #334155; line-height: 1.6; font-size: 14px; }
+            h1, h2, h3, h4 { color: #0f172a; }
+          </style>
+        </head>
+        <body>
+          <div class="viewer-container">
+            <div class="header-bar">
+              <h1>${docName}</h1>
+              <p>SECURE DOCUMENT MATRIX • LIVE WEB PREVIEW</p>
+            </div>
+            ${compiledHtml}
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Create an object URL from the HTML string and open it
+      const htmlBlob = new Blob([fullWebPage], { type: 'text/html' });
+      const viewerUrl = window.URL.createObjectURL(htmlBlob);
+      
+      window.open(viewerUrl, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(viewerUrl), 120000);
 
     } catch (err) {
       alert(`Reader Error: ${err.message}`);
@@ -252,7 +293,6 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
     setActionLoading(`download-${docId}`);
     try {
-      // Appends stamp=true to ensure the red forensic receipt is embedded for the specific user
       const endpoint = isTemplate 
         ? `/api/v1/templates/download/${docId}?stamp=true&download=true` 
         : `/api/v1/reports/download/${docId}?stamp=true&download=true`;
@@ -264,7 +304,6 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
         throw new Error(errorData.detail || "Requested document not found on server.");
       }
 
-      // Explicitly process as blob to trigger a local file attachment download
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
 
@@ -543,7 +582,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
                       
                     <td className="px-4 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end space-x-2">
-                        {/* 🟢 READ BUTTON EXCLUSIVELY FOR VIEWING VIA GOOGLE DOCS WEB VIEWER */}
+                        {/* 🟢 HTML BLOB VIEWER: OPENS FULL PAGE PREVIEW IN A NEW TAB */}
                         <button 
                           onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name)}
                           disabled={actionLoading === `read-${doc.id}`}
@@ -555,7 +594,6 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
                         {hasDownloadClearance ? (
                           <>
-                            {/* 🟢 DOWNLOAD BUTTON WITH FORENSIC RECEIPT STAMPING BEARING PARTICULAR USER'S DETAILS */}
                             <button 
                               onClick={() => handleDownloadDoc(doc.id, doc.isTemplate, doc.name)}
                               disabled={actionLoading === `download-${doc.id}`}

@@ -187,11 +187,15 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 READ PATH EXCLUSIVELY FOR VIEWING: Uses authenticated authFetch and renders via Microsoft Office Online Viewer or Native Browser Stream without downloading
+  // 🟢 READ PATH EXCLUSIVELY FOR VIEWING: Captures the S3 forensic_cache URL and passes it to MS Viewer
   const handleReadDoc = async (docId, isTemplate = false, docName = 'Document') => {
     setActionLoading(`read-${docId}`);
     try {
-      const endpoint = isTemplate ? `/api/v1/templates/download/${docId}` : `/api/v1/reports/download/${docId}`;
+      // Append view=true and stamp=true. The backend creates the stamped file in S3 and returns the URL.
+      const endpoint = isTemplate 
+        ? `/api/v1/templates/download/${docId}?view=true&stamp=true` 
+        : `/api/v1/reports/download/${docId}?view=true&stamp=true`;
+        
       const response = await authFetch(endpoint, { method: "GET" });
       
       if (!response.ok) {
@@ -199,21 +203,32 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
         throw new Error(errJson.detail || "Could not retrieve document stream for viewing.");
       }
 
-      const blob = await response.blob();
-      if (blob.size === 0) throw new Error("Retrieved document is empty (0 bytes).");
+      let fileUrl = "";
+      const contentType = response.headers.get("content-type");
+      
+      // If the backend returns a JSON payload with the S3 URL
+      if (contentType && contentType.includes("application/json")) {
+        const data = await response.json();
+        fileUrl = data.url || data.view_url || data.file_url || data.s3_url;
+      } else {
+        // If the backend responds with a 302 Redirect to the S3 bucket, authFetch automatically follows it.
+        // We capture the final AWS S3 URL from response.url
+        fileUrl = response.url;
+      }
 
-      const blobUrl = window.URL.createObjectURL(blob);
+      if (!fileUrl) throw new Error("Valid viewer URL not returned from server.");
+
       const lowerName = (docName || '').toLowerCase();
       
-      if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.txt')) {
-        window.open(blobUrl, '_blank');
+      // If PDF or Image, the browser can open the S3 link natively in a new tab
+      if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+        window.open(fileUrl, '_blank');
       } else {
-        // Wrap local authenticated blob stream URL in Microsoft Office Online Viewer for inline web rendering
-        const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(blobUrl)}`;
+        // Route Word and Excel documents through the Microsoft Office Online Viewer using the public S3 URL
+        const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fileUrl)}`;
         window.open(officeViewerUrl, '_blank');
       }
 
-      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 120000);
     } catch (err) {
       alert(`Reader Error: ${err.message}`);
     } finally {
@@ -221,7 +236,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 DOWNLOAD PATH WITH FORENSIC RECEIPT STAMPING: Appends ?stamp=true to embed the officer's metadata watermark in red ink
+  // 🟢 DOWNLOAD PATH WITH FORENSIC RECEIPT STAMPING
   const handleDownloadDoc = async (docId, isTemplate = false, fileName = 'document') => {
     if (!hasDownloadClearance) {
       return alert("Security Restriction: You do not have command clearance to download documents.");
@@ -229,7 +244,11 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
     setActionLoading(`download-${docId}`);
     try {
-      const endpoint = isTemplate ? `/api/v1/templates/download/${docId}?stamp=true` : `/api/v1/reports/download/${docId}?stamp=true`;
+      // Appending stamp=true to ensure forensic receipt is embedded
+      const endpoint = isTemplate 
+        ? `/api/v1/templates/download/${docId}?stamp=true&download=true` 
+        : `/api/v1/reports/download/${docId}?stamp=true&download=true`;
+        
       const response = await authFetch(endpoint, { method: "GET" });
 
       if (!response.ok) {
@@ -237,6 +256,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
         throw new Error(errorData.detail || "Requested document not found on server.");
       }
 
+      // We explicitly parse as blob here to force a local machine download prompt
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
 
@@ -515,7 +535,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
                       
                     <td className="px-4 py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end space-x-2">
-                        {/* 🟢 READ BUTTON EXCLUSIVELY FOR VIEWING VIA AUTHENTICATED BLOB OBJECT URL PASSED TO OFFICE VIEWER */}
+                        {/* 🟢 READ BUTTON EXCLUSIVELY FOR VIEWING VIA PUBLIC S3 CACHE REDIRECT PASSED TO OFFICE VIEWER */}
                         <button 
                           onClick={() => handleReadDoc(doc.id, doc.isTemplate, doc.name)}
                           disabled={actionLoading === `read-${doc.id}`}
@@ -527,7 +547,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
                         {hasDownloadClearance ? (
                           <>
-                            {/* 🟢 DOWNLOAD BUTTON WITH FORENSIC RECEIPT STAMPING BEARING PARTICULAR USER'S DETAILS */}
+                            {/* 🟢 DOWNLOAD BUTTON WITH FORENSIC RECEIPT STAMPING */}
                             <button 
                               onClick={() => handleDownloadDoc(doc.id, doc.isTemplate, doc.name)}
                               disabled={actionLoading === `download-${doc.id}`}
@@ -539,7 +559,6 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
                               
                             {hasUploadClearance && (
                               <button 
-                                python-action="delete"
                                 onClick={() => handleDeleteDoc(doc.id)}
                                 disabled={actionLoading === `delete-${doc.id}`}
                                 className="text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded transition flex items-center text-xs font-bold cursor-pointer disabled:opacity-50"

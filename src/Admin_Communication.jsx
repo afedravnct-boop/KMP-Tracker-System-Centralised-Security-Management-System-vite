@@ -365,11 +365,12 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
     if (activeTab === 'inbox' || activeTab === 'outbox') fetchMessages();
   }, [activeTab, dateFilter, customStartDate, customEndDate]);
 
+  // 🟢 AUTOMATIC READ STATUS CLEARING ON EXPANSION (Ensures state & backend sync cleanly)
   const handleOpenMessage = async (msg) => {
     const willExpand = !expandedMsgs[msg.id];
     setExpandedMsgs(prev => ({ ...prev, [msg.id]: willExpand }));
 
-    const isSender = msg.sender_fnum === currentUser.fnum;
+    const isSender = msg.sender_fnum === currentUser?.fnum;
     if (willExpand && !msg.acknowledged && !isSender) {
       try {
         const token = sessionStorage.getItem('kmp_authToken');
@@ -433,6 +434,17 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
   return (
     <div className="p-6 w-full max-w-[1920px] mx-auto space-y-6 relative z-10 font-sans">
       
+      {/* Quill Editor Dark Mode Override Style */}
+      <style>{`
+        .quill-editor-container .ql-editor {
+          color: #0f172a !important;
+          background-color: #ffffff !important;
+        }
+        .quill-editor-container .ql-toolbar {
+          background-color: #f8fafc !important;
+        }
+      `}</style>
+
       {viewingReceiptsFor && (
         <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-300">
@@ -595,77 +607,87 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
 
                 {formData.targetAudience === 'SPECIFIC_USER' && (
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-blue-900 uppercase mb-1">Filter by Command Category</label>
-                        <select 
-                          value={selectedCategoryFilter} 
-                          onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                          className="w-full p-2.5 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-800"
-                        >
-                          <option value="ALL">All System Categories</option>
-                          <option value="POLICE_HQ">Police Headquarters</option>
-                          <option value="KMP_HQ">KMP Headquarters</option>
-                          <option value="FIELD_COMMAND">Field Regions & Divisions</option>
-                        </select>
+                    {/* 🟢 If replying, lock recipient exclusively to avoid displaying unrelated parties */}
+                    {isReplyingTo && replyingToDoc ? (
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-300 text-xs font-bold text-blue-900">
+                        <span>🔒 Direct Reply Recipient: {replyingToDoc.sender_name} ({replyingToDoc.sender_fnum})</span>
+                        <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded uppercase font-mono">Locked Thread</span>
                       </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-blue-900 uppercase mb-1">Filter by Command Category</label>
+                            <select 
+                              value={selectedCategoryFilter} 
+                              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                              className="w-full p-2.5 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-800"
+                            >
+                              <option value="ALL">All System Categories</option>
+                              <option value="POLICE_HQ">Police Headquarters</option>
+                              <option value="KMP_HQ">KMP Headquarters</option>
+                              <option value="FIELD_COMMAND">Field Regions & Divisions</option>
+                            </select>
+                          </div>
 
-                      <div>
-                        <label className="block text-xs font-bold text-blue-900 uppercase mb-1">Filter by Specific Jurisdiction</label>
-                        <select 
-                          value={selectedRegionFilter} 
-                          onChange={(e) => setSelectedRegionFilter(e.target.value)}
-                          className="w-full p-2.5 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-800"
-                        >
-                          <option value="ALL">All Active Jurisdictions</option>
-                          {Array.from(new Set((filteredRecipientsList.length > 0 ? filteredRecipientsList : (users || [])).map(r => r.region))).filter(Boolean).map(reg => (
-                            <option key={reg} value={reg}>{reg}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
+                          <div>
+                            <label className="block text-xs font-bold text-blue-900 uppercase mb-1">Filter by Specific Jurisdiction</label>
+                            <select 
+                              value={selectedRegionFilter} 
+                              onChange={(e) => setSelectedRegionFilter(e.target.value)}
+                              className="w-full p-2.5 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-800"
+                            >
+                              <option value="ALL">All Active Jurisdictions</option>
+                              {Array.from(new Set((filteredRecipientsList.length > 0 ? filteredRecipientsList : (users || [])).map(r => r.region))).filter(Boolean).map(reg => (
+                                <option key={reg} value={reg}>{reg}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-2 flex items-center justify-between">
-                        <span className="flex items-center"><UserPlus size={14} className="mr-1"/> Select Recipients (Multi-Select)</span>
-                        <span className="text-[10px] bg-blue-200 text-blue-900 px-2 py-0.5 rounded font-mono">
-                          {formData.targetFnum.length} Selected
-                        </span>
-                      </label>
-                      
-                      <div className="max-h-48 overflow-y-auto bg-white border border-blue-300 rounded-md p-2 space-y-1.5 custom-scrollbar">
-                        {finalSelectableRecipients.length === 0 ? (
-                          <p className="text-xs text-center text-slate-400 py-4 font-bold">No active users match the selected filters.</p>
-                        ) : (
-                          finalSelectableRecipients.map(u => {
-                            const isChecked = formData.targetFnum.includes(u.fnum);
-                            return (
-                              <label key={u.fnum} className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors text-xs font-bold ${isChecked ? 'bg-blue-100/70 border border-blue-300 text-blue-900' : 'hover:bg-slate-50 text-slate-700'}`}>
-                                <div className="flex items-center space-x-2">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={isChecked}
-                                    onChange={(e) => {
-                                      const currentList = [...formData.targetFnum];
-                                      if (e.target.checked) {
-                                        currentList.push(u.fnum);
-                                      } else {
-                                        const index = currentList.indexOf(u.fnum);
-                                        if (index > -1) currentList.splice(index, 1);
-                                      }
-                                      setFormData({ ...formData, targetFnum: currentList });
-                                    }}
-                                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                                  />
-                                  <span>{u.rank} {u.name} ({u.position || 'Officer'})</span>
-                                </div>
-                                <span className="text-[10px] uppercase font-mono text-slate-500 bg-white px-1.5 py-0.5 rounded border">{u.station} [{u.region}]</span>
-                              </label>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
+                        <div>
+                          <label className="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-2 flex items-center justify-between">
+                            <span className="flex items-center"><UserPlus size={14} className="mr-1"/> Select Recipients (Multi-Select)</span>
+                            <span className="text-[10px] bg-blue-200 text-blue-900 px-2 py-0.5 rounded font-mono">
+                              {formData.targetFnum.length} Selected
+                            </span>
+                          </label>
+                          
+                          <div className="max-h-48 overflow-y-auto bg-white border border-blue-300 rounded-md p-2 space-y-1.5 custom-scrollbar">
+                            {finalSelectableRecipients.length === 0 ? (
+                              <p className="text-xs text-center text-slate-400 py-4 font-bold">No active users match the selected filters.</p>
+                            ) : (
+                              finalSelectableRecipients.map(u => {
+                                const isChecked = formData.targetFnum.includes(u.fnum);
+                                return (
+                                  <label key={u.fnum} className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors text-xs font-bold ${isChecked ? 'bg-blue-100/70 border border-blue-300 text-blue-900' : 'hover:bg-slate-50 text-slate-700'}`}>
+                                    <div className="flex items-center space-x-2">
+                                      <input 
+                                        type="checkbox" 
+                                        checked={isChecked}
+                                        onChange={(e) => {
+                                          const currentList = [...formData.targetFnum];
+                                          if (e.target.checked) {
+                                            currentList.push(u.fnum);
+                                          } else {
+                                            const index = currentList.indexOf(u.fnum);
+                                            if (index > -1) currentList.splice(index, 1);
+                                          }
+                                          setFormData({ ...formData, targetFnum: currentList });
+                                        }}
+                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                                      />
+                                      <span>{u.rank} {u.name} ({u.position || 'Officer'})</span>
+                                    </div>
+                                    <span className="text-[10px] uppercase font-mono text-slate-500 bg-white px-1.5 py-0.5 rounded border">{u.station} [{u.region}]</span>
+                                  </label>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -700,16 +722,18 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     {isReplyingTo ? 'Your Response Body *' : 'Communication Body *'}
                   </label>
-                  <ReactQuill 
-                    theme="snow" 
-                    value={formData.message} 
-                    onChange={(content) => {
-                      setFormData({ ...formData, message: content });
-                    }}
-                    className="bg-white rounded-md"
-                    style={{ height: '300px', marginBottom: '40px' }}
-                    modules={{ toolbar: [['bold', 'italic', 'underline'], [{'list': 'ordered'}, {'list': 'bullet'}], ['clean']] }}
-                  />
+                  {/* 🟢 Dark-mode protected Quill Editor container wrapper */}
+                  <div className="quill-editor-container bg-white rounded-md shadow-sm">
+                    <ReactQuill 
+                      theme="snow" 
+                      value={formData.message} 
+                      onChange={(content) => {
+                        setFormData({ ...formData, message: content });
+                      }}
+                      style={{ height: '300px', marginBottom: '40px' }}
+                      modules={{ toolbar: [['bold', 'italic', 'underline'], [{'list': 'ordered'}, {'list': 'bullet'}], ['clean']] }}
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center space-x-3 bg-blue-50 p-4 rounded-lg border border-blue-100 mt-8">
@@ -855,7 +879,7 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
                     .filter(msg => activeFilter === 'all' || msg.message_type === activeFilter)
                     .map((msg) => {
                       const isExpanded = expandedMsgs[msg.id];
-                      const isSender = msg.sender_fnum === currentUser.fnum;
+                      const isSender = msg.sender_fnum === currentUser?.fnum;
                       const isUnread = !msg.acknowledged && !isSender;
 
                       return (

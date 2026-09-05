@@ -375,15 +375,20 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
       try {
         const token = sessionStorage.getItem('kmp_authToken');
         
-        // Collect root message ID and all unacknowledged reply IDs
+        // Collect root message ID and all unacknowledged reply IDs including nested replies
         const idsToAcknowledge = [msg.id];
-        if (msg.replies && msg.replies.length > 0) {
-          msg.replies.forEach(reply => {
+        const collectReplyIds = (repliesList) => {
+          if (!repliesList || repliesList.length === 0) return;
+          repliesList.forEach(reply => {
             if (!reply.acknowledged && reply.sender_fnum !== currentUser?.fnum) {
               idsToAcknowledge.push(reply.id);
             }
+            if (reply.replies && reply.replies.length > 0) {
+              collectReplyIds(reply.replies);
+            }
           });
-        }
+        };
+        collectReplyIds(msg.replies);
 
         await Promise.all(
           idsToAcknowledge.map(async (targetId) => {
@@ -395,28 +400,15 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
           })
         );
         
-        // Instantly update local UI state so badges and read highlights apply cleanly
-        setInboxMessages(prev => prev.map(m => {
-          if (m.id === msg.id) {
-            return {
-              ...m,
-              acknowledged: true,
-              replies: (m.replies || []).map(r => ({ ...r, acknowledged: true }))
-            };
-          }
-          return m;
-        }));
+        // Recursively update local UI state for all nested replies
+        const markAllReadRecursive = (item) => ({
+          ...item,
+          acknowledged: true,
+          replies: (item.replies || []).map(markAllReadRecursive)
+        });
 
-        setOutboxMessages(prev => prev.map(m => {
-          if (m.id === msg.id) {
-            return {
-              ...m,
-              acknowledged: true,
-              replies: (m.replies || []).map(r => ({ ...r, acknowledged: true }))
-            };
-          }
-          return m;
-        }));
+        setInboxMessages(prev => prev.map(m => m.id === msg.id ? markAllReadRecursive(m) : m));
+        setOutboxMessages(prev => prev.map(m => m.id === msg.id ? markAllReadRecursive(m) : m));
 
         if (typeof onAcknowledgeComm === 'function') {
           idsToAcknowledge.forEach(id => onAcknowledgeComm(id));
@@ -425,6 +417,44 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
       } catch (err) {
         console.error("Automatic response read-detection error:", err);
       }
+    }
+  };
+
+  // 🟢 BULK MARK ALL INBOX MESSAGES AS READ
+  const handleMarkAllAsRead = async () => {
+    try {
+      const token = sessionStorage.getItem('kmp_authToken');
+      const unreadList = inboxMessages.filter(m => !m.acknowledged);
+      
+      if (unreadList.length === 0) {
+        setNotification({ type: 'info', text: 'ℹ️ Your inbox has no unread messages.' });
+        setTimeout(() => setNotification(null), 3000);
+        return;
+      }
+
+      await Promise.all(
+        unreadList.map(async (msg) => {
+          const encodedId = encodeURIComponent(encodeURIComponent(msg.id));
+          await fetch(`${API_URL}/api/v1/communications/${encodedId}/acknowledge`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+          });
+        })
+      );
+
+      const markAllReadRecursive = (item) => ({
+        ...item,
+        acknowledged: true,
+        replies: (item.replies || []).map(markAllReadRecursive)
+      });
+
+      setInboxMessages(prev => prev.map(markAllReadRecursive));
+      setNotification({ type: 'success', text: '✅ All inbox messages marked as read.' });
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      console.error("Bulk acknowledge error:", err);
+      setNotification({ type: 'error', text: '❌ Failed to mark all messages as read.' });
+      setTimeout(() => setNotification(null), 3000);
     }
   };
 
@@ -801,7 +831,7 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
               )}
 
               <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
-                <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex flex-col md:flex-row gap-4 items-end justify-between">
                   <div className="flex-1 w-full">
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center"><Filter size={14} className="mr-1"/> Time Filter</label>
                     <select 
@@ -823,6 +853,17 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
                       <option value="custom">Custom Date Range (Backdate Search)</option>
                     </select>
                   </div>
+
+                  {activeTab === 'inbox' && (
+                    <div className="shrink-0">
+                      <button 
+                        onClick={handleMarkAllAsRead}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs shadow-sm transition-colors cursor-pointer flex items-center"
+                      >
+                        <CheckCircle size={14} className="mr-1.5" /> Mark All as Read
+                      </button>
+                    </div>
+                  )}
 
                   {dateFilter === 'custom' && (
                     <>

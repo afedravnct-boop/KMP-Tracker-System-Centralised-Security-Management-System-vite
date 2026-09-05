@@ -365,29 +365,65 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
     if (activeTab === 'inbox' || activeTab === 'outbox') fetchMessages();
   }, [activeTab, dateFilter, customStartDate, customEndDate]);
 
-  // 🟢 AUTOMATIC READ STATUS CLEARING ON EXPANSION (Ensures state & backend sync cleanly)
+  // 🟢 AUTOMATIC THREAD-WIDE READ STATUS CLEARING
   const handleOpenMessage = async (msg) => {
     const willExpand = !expandedMsgs[msg.id];
     setExpandedMsgs(prev => ({ ...prev, [msg.id]: willExpand }));
 
     const isSender = msg.sender_fnum === currentUser?.fnum;
-    if (willExpand && !msg.acknowledged && !isSender) {
+    if (willExpand && !isSender) {
       try {
         const token = sessionStorage.getItem('kmp_authToken');
-        const encodedMsgId = encodeURIComponent(encodeURIComponent(msg.id));
         
-        const res = await fetch(`${API_URL}/api/v1/communications/${encodedMsgId}/acknowledge`, { 
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (res.ok) {
-          setInboxMessages(prev => prev.map(m => m.id === msg.id ? { ...m, acknowledged: true } : m));
-          setOutboxMessages(prev => prev.map(m => m.id === msg.id ? { ...m, acknowledged: true } : m));
-          if (typeof onAcknowledgeComm === 'function') onAcknowledgeComm(msg.id);
+        // Collect root message ID and all unacknowledged reply IDs
+        const idsToAcknowledge = [msg.id];
+        if (msg.replies && msg.replies.length > 0) {
+          msg.replies.forEach(reply => {
+            if (!reply.acknowledged && reply.sender_fnum !== currentUser?.fnum) {
+              idsToAcknowledge.push(reply.id);
+            }
+          });
         }
+
+        await Promise.all(
+          idsToAcknowledge.map(async (targetId) => {
+            const encodedId = encodeURIComponent(encodeURIComponent(targetId));
+            await fetch(`${API_URL}/api/v1/communications/${encodedId}/acknowledge`, { 
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+            });
+          })
+        );
+        
+        // Instantly update local UI state so badges and read highlights apply cleanly
+        setInboxMessages(prev => prev.map(m => {
+          if (m.id === msg.id) {
+            return {
+              ...m,
+              acknowledged: true,
+              replies: (m.replies || []).map(r => ({ ...r, acknowledged: true }))
+            };
+          }
+          return m;
+        }));
+
+        setOutboxMessages(prev => prev.map(m => {
+          if (m.id === msg.id) {
+            return {
+              ...m,
+              acknowledged: true,
+              replies: (m.replies || []).map(r => ({ ...r, acknowledged: true }))
+            };
+          }
+          return m;
+        }));
+
+        if (typeof onAcknowledgeComm === 'function') {
+          idsToAcknowledge.forEach(id => onAcknowledgeComm(id));
+        }
+
       } catch (err) {
-        console.error("Auto-acknowledgment error:", err);
+        console.error("Automatic response read-detection error:", err);
       }
     }
   };
@@ -607,7 +643,7 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
 
                 {formData.targetAudience === 'SPECIFIC_USER' && (
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 space-y-4">
-                    {/* 🟢 If replying, lock recipient exclusively to avoid displaying unrelated parties */}
+                    {/* 🟢 Locked recipient view when replying to a direct message */}
                     {isReplyingTo && replyingToDoc ? (
                       <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-300 text-xs font-bold text-blue-900">
                         <span>🔒 Direct Reply Recipient: {replyingToDoc.sender_name} ({replyingToDoc.sender_fnum})</span>
@@ -883,7 +919,11 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
                       const isUnread = !msg.acknowledged && !isSender;
 
                       return (
-                        <div key={msg.id} className={`bg-white border ${isUnread ? 'border-blue-400 shadow-md ring-1 ring-blue-400' : 'border-slate-200'} rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden`}>
+                        <div key={msg.id} className={`border rounded-xl transition-all overflow-hidden ${
+                          isUnread 
+                            ? 'bg-white border-blue-400 shadow-md ring-1 ring-blue-400' 
+                            : 'bg-slate-50/60 border-slate-300 opacity-85 shadow-none'
+                        }`}>
                           
                           <div 
                             className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 cursor-pointer"

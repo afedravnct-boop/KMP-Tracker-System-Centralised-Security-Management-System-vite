@@ -161,9 +161,12 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
     }
   };
 
+  const [replyingToDoc, setReplyingToDoc] = useState(null);
+
   const handleReplyToMessage = (msg) => {
     setActiveTab('dispatch');
     setIsReplyingTo(true);
+    setReplyingToDoc(msg);
     
     let newSubject = msg.subject;
     if (!/^RE:/i.test(newSubject)) {
@@ -176,8 +179,7 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
       targetFnum: [msg.sender_fnum],
       messageType: msg.message_type === 'COMPLAINT_GRIEVANCE' ? 'COMPLAINT_GRIEVANCE' : 'DIRECT_MESSAGE',
       subject: newSubject,
-      // 🟢 Simplified clean reply body without bulky original nested blocks
-      message: `<p><br></p>`
+      message: ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -243,6 +245,7 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
 
       setNotification({ type: 'success', text: '✅ Message successfully dispatched securely.' });
       setIsReplyingTo(false);
+      setReplyingToDoc(null);
       setFormData({ 
         ...formData, subject: '', message: '', sendEmail: false, 
         targetAudience: canBroadcast ? 'ALL_USERS' : 'SPECIFIC_USER', 
@@ -362,12 +365,10 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
     if (activeTab === 'inbox' || activeTab === 'outbox') fetchMessages();
   }, [activeTab, dateFilter, customStartDate, customEndDate]);
 
-  // 🟢 AUTOMATIC READ STATUS CLEARING ON EXPANSION
   const handleOpenMessage = async (msg) => {
     const willExpand = !expandedMsgs[msg.id];
     setExpandedMsgs(prev => ({ ...prev, [msg.id]: willExpand }));
 
-    // If opening an unread message targeted at us, trigger automatic backend acknowledgment
     const isSender = msg.sender_fnum === currentUser.fnum;
     if (willExpand && !msg.acknowledged && !isSender) {
       try {
@@ -683,8 +684,22 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
                   {isReplyingTo && <p className="text-[10px] text-amber-600 mt-1 font-bold">Subject is locked to maintain accurate communication threads.</p>}
                 </div>
 
+                {/* 🟢 SEPARATED ORIGINAL MESSAGE REFERENCE BANNER */}
+                {isReplyingTo && replyingToDoc && (
+                  <div className="bg-slate-100 border-l-4 border-indigo-600 p-4 rounded-r-lg space-y-2 mb-4 shadow-sm">
+                    <div className="flex justify-between items-center text-xs text-slate-500 font-bold uppercase">
+                      <span>Replying to Message From: {replyingToDoc.sender_name} ({replyingToDoc.sender_fnum})</span>
+                      <span className="font-mono">{replyingToDoc.created_at}</span>
+                    </div>
+                    <div className="text-xs font-bold text-slate-800">{replyingToDoc.subject}</div>
+                    <div className="text-xs text-slate-600 bg-white p-3 rounded border border-slate-200 max-h-28 overflow-y-auto" dangerouslySetInnerHTML={{ __html: replyingToDoc.message }} />
+                  </div>
+                )}
+
                 <div className="pb-12">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Communication Body *</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    {isReplyingTo ? 'Your Response Body *' : 'Communication Body *'}
+                  </label>
                   <ReactQuill 
                     theme="snow" 
                     value={formData.message} 
@@ -878,7 +893,6 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
                               </p>
                             )}
 
-                            {/* 🟢 EXPANDED VIEW WITH DISTINGUISHED REPLY CARDS */}
                             {isExpanded && (
                               <div className="prose prose-sm max-w-none text-slate-700 mt-4 pt-4 border-t border-slate-100 animate-in fade-in space-y-4">
                                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 leading-relaxed" dangerouslySetInnerHTML={{ __html: msg.message }} onClick={(e) => e.stopPropagation()} />
@@ -893,7 +907,6 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
                                     <div className="space-y-4">
                                       {msg.replies.map((reply, rIdx) => (
                                         <div key={rIdx} className="bg-indigo-50/40 p-5 rounded-xl border-2 border-indigo-200/80 shadow-sm relative overflow-hidden">
-                                          {/* Accent side stripe */}
                                           <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-600"></div>
 
                                           <div className="flex justify-between items-center border-b border-indigo-100 pb-2 mb-3 pl-2">

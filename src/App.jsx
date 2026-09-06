@@ -31,6 +31,7 @@ import SystemAssistant from './SystemAssistant';
 import AICommandConsole from "./AICommandConsole";
 import { authFetch, hasValidSession, getAuthToken, setAuthSession, clearAuthSession } from './api';
 import { FullUserPolicyText } from './policyContent';
+import { Analytics } from '@vercel/analytics/react';
 
 
 
@@ -3248,6 +3249,7 @@ const App = () => {
       </DashboardLayout>
 
       <WorkspaceSecurityCurtain />
+      <Analytics />
     </>
   );
 };

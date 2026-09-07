@@ -149,7 +149,7 @@ Region: \`${currentUser?.region || 'ALL'}\` | Station: \`${currentUser?.station 
 
   return (
     
-    <div className="fixed bottom-2 right-18 sm:right-10 z-[99990] flex flex-col items-end font-sans select-none">
+    <div className="fixed bottom-2 right-4 sm:right-18 z-[99990] flex flex-col items-end font-sans select-none">
       {isOpen && (
         <div className={`mb-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-300 dark:border-slate-800 overflow-hidden flex flex-col transition-all duration-300 ease-in-out animate-in slide-in-from-bottom-3 ${
           isExpanded ? 'w-[560px] h-[640px] max-w-[95vw] max-h-[85vh]' : 'w-96 h-[470px] max-w-[90vw] max-h-[80vh]'

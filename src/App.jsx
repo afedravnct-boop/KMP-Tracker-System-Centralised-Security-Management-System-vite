@@ -1337,8 +1337,19 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           ) : (
             <>
               {authMessage && (
-                <div className={`border px-4 py-3 rounded-lg flex items-center mb-4 ${authMessage.includes('Error') || authMessage.includes('❌') ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
-                  <span className="text-sm font-medium">{typeof authMessage === 'string' ? authMessage : JSON.stringify(authMessage)}</span>
+                <div className={`border px-4 py-3 rounded-lg flex items-start mb-4 transition-all ${
+                  typeof authMessage === 'string' && authMessage.includes('LOCKDOWN')
+                    ? 'bg-red-100 border-red-500 text-red-900 shadow-md animate-pulse'
+                    : authMessage.includes('Error') || authMessage.includes('❌') 
+                      ? 'bg-red-50 border-red-200 text-red-800' 
+                      : 'bg-blue-50 border-blue-200 text-blue-800'
+                }`}>
+                  {typeof authMessage === 'string' && authMessage.includes('LOCKDOWN') && (
+                    <span className="text-xl mr-3 mt-0.5 drop-shadow-sm" role="img" aria-label="padlock">🔒</span>
+                  )}
+                  <span className={`text-sm leading-snug ${typeof authMessage === 'string' && authMessage.includes('LOCKDOWN') ? 'font-extrabold' : 'font-medium'}`}>
+                    {typeof authMessage === 'string' ? authMessage : JSON.stringify(authMessage)}
+                  </span>
                 </div>
               )}
               

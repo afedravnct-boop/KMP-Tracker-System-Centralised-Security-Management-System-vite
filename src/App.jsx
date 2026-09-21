@@ -2744,343 +2744,270 @@ const App = () => {
   const renderPage = () => {
     const canViewGlobal = canViewGlobalJurisdiction(currentUser);
 
+    // 🟢 Define the strict read-only observer guard
     const isReadOnlyObserver = currentUser?.permissions?.global_observer === true && 
       !currentUser?.permissions?.global_open && 
       currentUser?.role !== 'SUPER_ADMIN';
 
-    // 🟢 Modern professional button style with uniform tab sizing and background contrast switching
-    const tabStyle = (isActive) => `
-      flex-1 min-w-[130px] px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer shadow-sm border text-center truncate
-      ${isActive 
-        ? 'bg-blue-600 text-white border-blue-500 shadow-md ring-2 ring-blue-400/30' 
-        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}
-    `;
+    switch (currentPage) {
+      case 'home':  
+        return checkClearance(currentUser, 'acc_home', true) ? (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        ) : null;
 
-    return (
-      <div className="space-y-4">
-        {/* 🟢 Modern Professional Sub-Navigation Bar with uniform sizing */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-100 dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-x-auto custom-scrollbar">
-          {checkClearance(currentUser, 'acc_home', true) && (
-            <button onClick={() => handlePageChange('home')} className={tabStyle(currentPage === 'home')}>
-              Home
-            </button>
-          )}
-          {checkClearance(currentUser, 'acc_crime', true) && (
-            <button onClick={() => handlePageChange('reports')} className={tabStyle(currentPage === 'reports')}>
-              Crime Registry
-            </button>
-          )}
-          {checkClearance(currentUser, 'acc_ops', true) && (
-            <button onClick={() => handlePageChange('statistics')} className={tabStyle(currentPage === 'statistics')}>
-              OPS Statistics
-            </button>
-          )}
-          {checkClearance(currentUser, 'acc_stories', true) && (
-            <button onClick={() => handlePageChange('success')} className={tabStyle(currentPage === 'success')}>
-              Success Stories
-            </button>
-          )}
-          {checkClearance(currentUser, 'acc_est', true) && (
-            <button onClick={() => handlePageChange('establishments')} className={tabStyle(currentPage === 'establishments')}>
-              Establishments
-            </button>
-          )}
-          {checkClearance(currentUser, 'acc_analytics', true) && (
-            <button onClick={() => handlePageChange('analytics')} className={tabStyle(currentPage === 'analytics')}>
-              Analytics
-            </button>
-          )}
-          {checkClearance(currentUser, 'acc_hr', true) && (
-            <button onClick={() => handlePageChange('nominal-roll')} className={tabStyle(currentPage === 'nominal-roll')}>
-              Nominal Roll
-            </button>
-          )}
+      case 'reports':  
+        return checkClearance(currentUser, 'acc_crime', true) ? (
+          <CrimeIncidentRegistry 
+            currentUser={currentUser} 
+            canViewGlobal={canViewGlobal}
+            isReadOnlyObserver={isReadOnlyObserver} // 🟢 Enforces read-only lock
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        );
 
-          {/* 🟢 Documents & Reports positioned immediately after Nominal Roll */}
-          {checkClearance(currentUser, 'acc_documents', true) && (
-            <button onClick={() => handlePageChange('reports_hub')} className={tabStyle(currentPage === 'reports_hub')}>
-              📁 Documents
-            </button>
-          )}
+      case 'statistics':  
+        return checkClearance(currentUser, 'acc_ops', true) ? (
+          <Statistics 
+            currentUser={currentUser} 
+            canViewGlobal={canViewGlobal} 
+            stats={stats} 
+            setStats={setStats}
+            isReadOnlyObserver={isReadOnlyObserver} // 🟢 Enforces read-only lock
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        );
 
-          {/* 🟢 AI Command Console positioned immediately after Documents */}
-          <button onClick={() => handlePageChange('ai_console')} className={tabStyle(currentPage === 'ai_console')}>
-            ✨ AI Console
-          </button>
+      case 'success':  
+        return checkClearance(currentUser, 'acc_stories', true) ? (
+          <SuccessStories 
+            currentUser={currentUser} 
+            canViewGlobal={canViewGlobal} 
+            stories={stories} 
+            setStories={setStories}
+            isReadOnlyObserver={isReadOnlyObserver} // 🟢 Enforces read-only lock
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        );
 
-          {checkClearance(currentUser, 'acc_exhibits', true) && (
-            <button onClick={() => handlePageChange('exhibits')} className={tabStyle(currentPage === 'exhibits')}>
-              Exhibits
-            </button>
-          )}
-        </div>
+      case 'establishments':  
+        return checkClearance(currentUser, 'acc_est', true) ? (
+          <Establishments 
+            currentUser={currentUser} 
+            canViewGlobal={canViewGlobal} 
+            establishments={establishments} 
+            setEstablishments={setEstablishments}
+            isReadOnlyObserver={isReadOnlyObserver} // 🟢 Enforces read-only lock
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        );
 
-        {/* Dynamic Page Content Render Container */}
-        <div className="w-full">
-          {(() => {
-            switch (currentPage) {
-              case 'home':  
-                return checkClearance(currentUser, 'acc_home', true) ? (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                ) : null;
+      case 'analytics':  
+        return checkClearance(currentUser, 'acc_analytics', true) ? (
+          <AnalyticsDashboard 
+            nominalRolls={Nominal_Rolls} 
+            crimeRegistry={reports} 
+            successStories={stories} 
+            operationalStats={stats} 
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        );
 
-              case 'reports':  
-                return checkClearance(currentUser, 'acc_crime', true) ? (
-                  <CrimeIncidentRegistry 
-                    currentUser={currentUser} 
-                    canViewGlobal={canViewGlobal}
-                    isReadOnlyObserver={isReadOnlyObserver} 
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                );
+      case 'nominal-roll':  
+        return checkClearance(currentUser, 'acc_hr', true) ? (
+          <Nominal_Roll 
+            currentUser={currentUser} 
+            canViewGlobal={canViewGlobal} 
+            Nominal_Rolls={Nominal_Rolls} 
+            setNominal_Rolls={setNominal_Rolls} 
+            Nominal_Roll_archives={Nominal_Roll_archives} 
+            setNominal_Roll_archives={setNominal_Roll_archives} 
+            isReadOnlyObserver={isReadOnlyObserver} // 🟢 Enforces read-only lock
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        );
 
-              case 'statistics':  
-                return checkClearance(currentUser, 'acc_ops', true) ? (
-                  <Statistics 
-                    currentUser={currentUser} 
-                    canViewGlobal={canViewGlobal} 
-                    stats={stats} 
-                    setStats={setStats}
-                    isReadOnlyObserver={isReadOnlyObserver} 
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                );
+      case 'reports_hub':  
+        return checkClearance(currentUser, 'acc_documents', true) ? (
+          <WordReportUpload 
+            currentUser={currentUser} 
+            generalDocs={generalDocs}
+            setGeneralDocs={setGeneralDocs}
+            isReadOnlyObserver={isReadOnlyObserver} // 🟢 Enforces read-only lock
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        ); 
 
-              case 'success':  
-                return checkClearance(currentUser, 'acc_stories', true) ? (
-                  <SuccessStories 
-                    currentUser={currentUser} 
-                    canViewGlobal={canViewGlobal} 
-                    stories={stories} 
-                    setStories={setStories}
-                    isReadOnlyObserver={isReadOnlyObserver} 
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                );
+      case 'ai_console':
+        return (
+          <AICommandConsole 
+            currentUser={currentUser} 
+            canViewGlobal={canViewGlobal}
+            onBack={() => handlePageChange('home')}
+          />
+        );
 
-              case 'establishments':  
-                return checkClearance(currentUser, 'acc_est', true) ? (
-                  <Establishments 
-                    currentUser={currentUser} 
-                    canViewGlobal={canViewGlobal} 
-                    establishments={establishments} 
-                    setEstablishments={setEstablishments}
-                    isReadOnlyObserver={isReadOnlyObserver} 
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                );
+      case 'approvals':  
+        return checkClearance(currentUser, 'acc_approvals', ['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander', 'ASSISTANT_SUPER_ADMIN'].includes(currentUser.role)) ? (
+          <AdminApprovals 
+            currentUser={currentUser} 
+            canViewGlobal={canViewGlobal}
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        ); 
 
-              case 'analytics':  
-                return checkClearance(currentUser, 'acc_analytics', true) ? (
-                  <AnalyticsDashboard 
-                    nominalRolls={Nominal_Rolls} 
-                    crimeRegistry={reports} 
-                    successStories={stories} 
-                    operationalStats={stats} 
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                );
+      case 'profile':  
+        return checkClearance(currentUser, 'acc_profile', true) ? (
+          <AdminProfile 
+            currentUser={currentUser} 
+            setCurrentUser={setCurrentUser} 
+            setCurrentPage={handlePageChange} 
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        );
 
-              case 'nominal-roll':  
-                return checkClearance(currentUser, 'acc_hr', true) ? (
-                  <Nominal_Roll 
-                    currentUser={currentUser} 
-                    canViewGlobal={canViewGlobal} 
-                    Nominal_Rolls={Nominal_Rolls} 
-                    setNominal_Rolls={setNominal_Rolls} 
-                    Nominal_Roll_archives={Nominal_Roll_archives} 
-                    setNominal_Roll_archives={setNominal_Roll_archives} 
-                    isReadOnlyObserver={isReadOnlyObserver} 
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                );
+      case 'Admin_Communication':  
+        return checkClearance(currentUser, 'acc_comms', true) ? (
+          <Admin_Communication 
+            currentUser={currentUser} 
+            users={users} 
+            setCurrentPage={handlePageChange} 
+            onAcknowledgeComm={handleAcknowledgeComm}
+            onMarkAllRead={handleClearAllPings} 
+            initialTab={commDefaultTab} 
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        );
 
-              case 'reports_hub':  
-                return checkClearance(currentUser, 'acc_documents', true) ? (
-                  <WordReportUpload 
-                    currentUser={currentUser} 
-                    generalDocs={generalDocs}
-                    setGeneralDocs={setGeneralDocs}
-                    isReadOnlyObserver={isReadOnlyObserver} 
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                ); 
+      case 'exhibits':  
+        return checkClearance(currentUser, 'acc_exhibits', true) ? (
+          <ExhibitsRegistry 
+            currentUser={currentUser} 
+            canViewGlobal={canViewGlobal}
+            isReadOnlyObserver={isReadOnlyObserver} 
+          />
+        ) : (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        );
 
-              case 'ai_console':
-                return (
-                  <AICommandConsole 
-                    currentUser={currentUser} 
-                    canViewGlobal={canViewGlobal}
-                    onBack={() => handlePageChange('home')}
-                  />
-                );
-
-              case 'approvals':  
-                return checkClearance(currentUser, 'acc_approvals', ['ADMIN', 'SUPER_ADMIN', 'RPC', 'Deputy Commander', 'ASSISTANT_SUPER_ADMIN'].includes(currentUser.role)) ? (
-                  <AdminApprovals 
-                    currentUser={currentUser} 
-                    canViewGlobal={canViewGlobal}
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                ); 
-
-              case 'profile':  
-                return checkClearance(currentUser, 'acc_profile', true) ? (
-                  <AdminProfile 
-                    currentUser={currentUser} 
-                    setCurrentUser={setCurrentUser} 
-                    setCurrentPage={handlePageChange} 
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                );
-
-              case 'Admin_Communication':  
-                return checkClearance(currentUser, 'acc_comms', true) ? (
-                  <Admin_Communication 
-                    currentUser={currentUser} 
-                    users={users} 
-                    setCurrentPage={handlePageChange} 
-                    onAcknowledgeComm={handleAcknowledgeComm}
-                    onMarkAllRead={handleClearAllPings} 
-                    initialTab={commDefaultTab} 
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                );
-
-              case 'exhibits':  
-                return checkClearance(currentUser, 'acc_exhibits', true) ? (
-                  <ExhibitsRegistry 
-                    currentUser={currentUser} 
-                    canViewGlobal={canViewGlobal}
-                    isReadOnlyObserver={isReadOnlyObserver} 
-                  />
-                ) : (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                );
-
-              default:  
-                return (
-                  <HomeDashboard 
-                    currentUser={currentUser} 
-                    setCurrentPage={handlePageChange} 
-                    onMasterExport={handleMasterExport} 
-                    onViewConsolidated={handleViewConsolidated} 
-                    adminCommsData={adminCommsData} 
-                    onAcknowledgeComm={handleAcknowledgeComm} 
-                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-                  />
-                );
-            }
-          })()}
-        </div>
-      </div>
-    );
+      default:  
+        return (
+          <HomeDashboard 
+            currentUser={currentUser} 
+            setCurrentPage={handlePageChange} 
+            onMasterExport={handleMasterExport} 
+            onViewConsolidated={handleViewConsolidated} 
+            adminCommsData={adminCommsData} 
+            onAcknowledgeComm={handleAcknowledgeComm} 
+            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+          />
+        );
+    }
   };
 
   const handleViewHRReport = async () => {
@@ -3213,9 +3140,9 @@ const App = () => {
     }
   };
 
-  const isReadOnlyObserver = currentUser?.permissions?.global_observer === true && 
-    !currentUser?.permissions?.global_open && 
-    currentUser?.role !== 'SUPER_ADMIN';
+const isReadOnlyObserver = currentUser?.permissions?.global_observer === true && 
+  !currentUser?.permissions?.global_open && 
+  currentUser?.role !== 'SUPER_ADMIN';
 
   return (
     <>
@@ -3256,7 +3183,7 @@ const App = () => {
           />
         )}
         
-        <div className={(isViewingConsolidated || isViewingHR) ? 'hidden' : 'block w-full h-full overflow-x-hidden'}>
+        <div className={(isViewingConsolidated || isViewingHR) ? 'hidden' : 'block w-full h-full'}>
           {renderPage()}
         </div>
 

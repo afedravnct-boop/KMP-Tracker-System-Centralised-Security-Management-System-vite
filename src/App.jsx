@@ -362,6 +362,7 @@ const HomeDashboard = ({ currentUser, setCurrentPage, reports = [], stats = [], 
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
         {canViewCrime && (
           <div onClick={() => setCurrentPage('reports')} className="bg-white dark:bg-slate-900/80 rounded-xl shadow-sm border border-slate-200 dark:border-blue-900/50 p-4 flex items-center cursor-pointer transition-all hover:shadow-md hover:-translate-y-1 hover:border-blue-300 dark:hover:border-blue-500 dark:hover:bg-slate-800 group">
             <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mr-3 group-hover:bg-blue-600 group-hover:text-white dark:group-hover:bg-blue-500 dark:group-hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all shrink-0">
@@ -410,7 +411,6 @@ const HomeDashboard = ({ currentUser, setCurrentPage, reports = [], stats = [], 
           </div>
         )}
 
-        {/* 🟢 IMPOUNDED EXHIBITS CARD ADDED HERE */}
         {canViewExhibits && (
           <div onClick={() => setCurrentPage('exhibits')} className="bg-white dark:bg-slate-900/80 rounded-xl shadow-sm border border-slate-200 dark:border-teal-900/50 p-4 flex items-center cursor-pointer transition-all hover:shadow-md hover:-translate-y-1 hover:border-teal-400 dark:hover:border-teal-500 dark:hover:bg-slate-800 group">
             <div className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center mr-3 group-hover:bg-teal-600 group-hover:text-white dark:group-hover:bg-teal-500 dark:group-hover:shadow-[0_0_15px_rgba(20,184,166,0.5)] transition-all shrink-0">
@@ -446,6 +446,30 @@ const HomeDashboard = ({ currentUser, setCurrentPage, reports = [], stats = [], 
             </div>
           </div>
         )}
+
+        {/* 🟢 DOCUMENTS & REPORTS CARD (Positioned immediately after Nominal Roll with 3D hover style) */}
+        {checkClearance(currentUser, 'acc_documents', true) && (
+          <div onClick={() => setCurrentPage('reports_hub')} className="bg-white dark:bg-slate-900/80 rounded-xl shadow-sm border border-slate-200 dark:border-blue-900/50 p-4 flex items-center cursor-pointer transition-all hover:shadow-md hover:-translate-y-1 hover:border-blue-400 dark:hover:border-blue-500 dark:hover:bg-slate-800 group">
+            <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mr-3 group-hover:bg-blue-600 group-hover:text-white dark:group-hover:bg-blue-500 dark:group-hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all shrink-0">
+              <FileText size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 leading-tight">Documents & Reports</h3>
+              <p className="text-[11px] text-slate-500 dark:text-blue-200/70 font-medium mt-0.5 leading-snug">Universal file intake hub.</p>
+            </div>
+          </div>
+        )}
+
+        {/* 🟢 AI COMMAND CONSOLE CARD (Positioned immediately after Documents with 3D hover style) */}
+        <div onClick={() => setCurrentPage('ai_console')} className="bg-white dark:bg-slate-900/80 rounded-xl shadow-sm border border-slate-200 dark:border-amber-900/50 p-4 flex items-center cursor-pointer transition-all hover:shadow-md hover:-translate-y-1 hover:border-amber-400 dark:hover:border-amber-500 dark:hover:bg-slate-800 group">
+          <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mr-3 group-hover:bg-amber-500 group-hover:text-white dark:group-hover:bg-amber-500 dark:group-hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] transition-all shrink-0">
+            <Sparkles size={18} />
+          </div>
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 leading-tight">AI Command Console</h3>
+            <p className="text-[11px] text-slate-500 dark:text-amber-200/70 font-medium mt-0.5 leading-snug">Natural language intelligence queries.</p>
+          </div>
+        </div>
 
         {canViewApprovals && (
           <div onClick={() => setCurrentPage('approvals')} className="bg-slate-900 dark:bg-slate-950 rounded-xl shadow-sm border border-slate-700 dark:border-slate-800 p-4 flex items-center cursor-pointer transition-all hover:shadow-md hover:-translate-y-1 hover:border-slate-500 dark:hover:border-slate-600 group lg:col-span-2">

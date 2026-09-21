@@ -2744,21 +2744,13 @@ const App = () => {
   const renderPage = () => {
     const canViewGlobal = canViewGlobalJurisdiction(currentUser);
 
-    // 🟢 Define the strict read-only observer guard
     const isReadOnlyObserver = currentUser?.permissions?.global_observer === true && 
       !currentUser?.permissions?.global_open && 
       currentUser?.role !== 'SUPER_ADMIN';
 
-    const renderPage = () => {
-    const canViewGlobal = canViewGlobalJurisdiction(currentUser);
-
-    const isReadOnlyObserver = currentUser?.permissions?.global_observer === true && 
-      !currentUser?.permissions?.global_open && 
-      currentUser?.role !== 'SUPER_ADMIN';
-
-    // Modern professional button style with dynamic background-switch response
+    // 🟢 Modern professional button style with uniform tab sizing and background contrast switching
     const tabStyle = (isActive) => `
-      px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer shadow-sm border
+      flex-1 min-w-[130px] px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer shadow-sm border text-center truncate
       ${isActive 
         ? 'bg-blue-600 text-white border-blue-500 shadow-md ring-2 ring-blue-400/30' 
         : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}
@@ -2766,8 +2758,8 @@ const App = () => {
 
     return (
       <div className="space-y-4">
-        {/* 🟢 Modern Professional Sub-Navigation Bar maintaining uniform tab sizing */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-100 dark:bg-slate-950 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-x-auto custom-scrollbar">
+        {/* 🟢 Modern Professional Sub-Navigation Bar with uniform sizing */}
+        <div className="flex flex-wrap items-center gap-2 bg-slate-100 dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-x-auto custom-scrollbar">
           {checkClearance(currentUser, 'acc_home', true) && (
             <button onClick={() => handlePageChange('home')} className={tabStyle(currentPage === 'home')}>
               Home
@@ -2804,21 +2796,21 @@ const App = () => {
             </button>
           )}
 
-          {/* 🟢 Documents & Reports placed immediately after Nominal Roll */}
+          {/* 🟢 Documents & Reports positioned immediately after Nominal Roll */}
           {checkClearance(currentUser, 'acc_documents', true) && (
             <button onClick={() => handlePageChange('reports_hub')} className={tabStyle(currentPage === 'reports_hub')}>
-              📁 Documents & Reports
+              📁 Documents
             </button>
           )}
 
-          {/* 🟢 AI Command Console placed immediately after Documents */}
+          {/* 🟢 AI Command Console positioned immediately after Documents */}
           <button onClick={() => handlePageChange('ai_console')} className={tabStyle(currentPage === 'ai_console')}>
-            ✨ AI Command Console
+            ✨ AI Console
           </button>
 
           {checkClearance(currentUser, 'acc_exhibits', true) && (
             <button onClick={() => handlePageChange('exhibits')} className={tabStyle(currentPage === 'exhibits')}>
-              Impounded Exhibits
+              Exhibits
             </button>
           )}
         </div>
@@ -2847,7 +2839,17 @@ const App = () => {
                     canViewGlobal={canViewGlobal}
                     isReadOnlyObserver={isReadOnlyObserver} 
                   />
-                ) : null;
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                );
 
               case 'statistics':  
                 return checkClearance(currentUser, 'acc_ops', true) ? (
@@ -2858,7 +2860,17 @@ const App = () => {
                     setStats={setStats}
                     isReadOnlyObserver={isReadOnlyObserver} 
                   />
-                ) : null;
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                );
 
               case 'success':  
                 return checkClearance(currentUser, 'acc_stories', true) ? (
@@ -2869,7 +2881,17 @@ const App = () => {
                     setStories={setStories}
                     isReadOnlyObserver={isReadOnlyObserver} 
                   />
-                ) : null;
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                );
 
               case 'establishments':  
                 return checkClearance(currentUser, 'acc_est', true) ? (
@@ -2880,7 +2902,17 @@ const App = () => {
                     setEstablishments={setEstablishments}
                     isReadOnlyObserver={isReadOnlyObserver} 
                   />
-                ) : null;
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                );
 
               case 'analytics':  
                 return checkClearance(currentUser, 'acc_analytics', true) ? (
@@ -2890,7 +2922,17 @@ const App = () => {
                     successStories={stories} 
                     operationalStats={stats} 
                   />
-                ) : null;
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                );
 
               case 'nominal-roll':  
                 return checkClearance(currentUser, 'acc_hr', true) ? (
@@ -2903,7 +2945,17 @@ const App = () => {
                     setNominal_Roll_archives={setNominal_Roll_archives} 
                     isReadOnlyObserver={isReadOnlyObserver} 
                   />
-                ) : null;
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                );
 
               case 'reports_hub':  
                 return checkClearance(currentUser, 'acc_documents', true) ? (
@@ -2913,7 +2965,17 @@ const App = () => {
                     setGeneralDocs={setGeneralDocs}
                     isReadOnlyObserver={isReadOnlyObserver} 
                   />
-                ) : null; 
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                ); 
 
               case 'ai_console':
                 return (
@@ -2930,7 +2992,17 @@ const App = () => {
                     currentUser={currentUser} 
                     canViewGlobal={canViewGlobal}
                   />
-                ) : null; 
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                ); 
 
               case 'profile':  
                 return checkClearance(currentUser, 'acc_profile', true) ? (
@@ -2939,7 +3011,17 @@ const App = () => {
                     setCurrentUser={setCurrentUser} 
                     setCurrentPage={handlePageChange} 
                   />
-                ) : null;
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                );
 
               case 'Admin_Communication':  
                 return checkClearance(currentUser, 'acc_comms', true) ? (
@@ -2951,7 +3033,17 @@ const App = () => {
                     onMarkAllRead={handleClearAllPings} 
                     initialTab={commDefaultTab} 
                   />
-                ) : null;
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                );
 
               case 'exhibits':  
                 return checkClearance(currentUser, 'acc_exhibits', true) ? (
@@ -2960,7 +3052,17 @@ const App = () => {
                     canViewGlobal={canViewGlobal}
                     isReadOnlyObserver={isReadOnlyObserver} 
                   />
-                ) : null;
+                ) : (
+                  <HomeDashboard 
+                    currentUser={currentUser} 
+                    setCurrentPage={handlePageChange} 
+                    onMasterExport={handleMasterExport} 
+                    onViewConsolidated={handleViewConsolidated} 
+                    adminCommsData={adminCommsData} 
+                    onAcknowledgeComm={handleAcknowledgeComm} 
+                    onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+                  />
+                );
 
               default:  
                 return (
@@ -3111,9 +3213,9 @@ const App = () => {
     }
   };
 
-const isReadOnlyObserver = currentUser?.permissions?.global_observer === true && 
-  !currentUser?.permissions?.global_open && 
-  currentUser?.role !== 'SUPER_ADMIN';
+  const isReadOnlyObserver = currentUser?.permissions?.global_observer === true && 
+    !currentUser?.permissions?.global_open && 
+    currentUser?.role !== 'SUPER_ADMIN';
 
   return (
     <>
@@ -3155,8 +3257,8 @@ const isReadOnlyObserver = currentUser?.permissions?.global_observer === true &&
         )}
         
         <div className={(isViewingConsolidated || isViewingHR) ? 'hidden' : 'block w-full h-full overflow-x-hidden'}>
-  {renderPage()}
-</div>
+          {renderPage()}
+        </div>
 
         <SystemAssistant 
           currentUser={currentUser} 

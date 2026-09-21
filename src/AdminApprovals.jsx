@@ -248,7 +248,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     else if (activeTab === 'requests') fetchModRequests();
     else if (activeTab === 'logs') { fetchAuditLogs(); fetchAllSystemUsers(); }
     else if (activeTab === 'resets') fetchResets();
-     
+      
     if (typeof fetchLockdownStatus === 'function') fetchLockdownStatus();
   }, [activeTab, fetchPendingUsers, fetchAllSystemUsers, fetchModRequests, fetchAuditLogs, fetchResets, fetchLockdownStatus]);
 
@@ -613,9 +613,9 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
                 <table className="w-full divide-y divide-slate-200 dark:divide-slate-800 text-xs table-fixed">
                   <thead className="bg-slate-900 dark:bg-slate-950 text-white uppercase font-black text-[10px]">
                     <tr>
-                      <th className="p-2.5 text-left sticky left-0 z-20 bg-slate-900 dark:bg-slate-950 text-blue-100 w-[240px] min-w-[240px]">Officer Details</th>
-                      <th className="p-2.5 text-center sticky left-[240px] z-20 bg-slate-900 dark:bg-slate-950 text-blue-100 w-[120px] min-w-[120px]">Administrative Tier</th>
-                      <th className="p-2.5 text-center sticky left-[360px] z-20 bg-slate-900 dark:bg-slate-950 text-blue-100 w-[100px] min-w-[100px]">Quick Actions</th>
+                      <th className="p-2.5 text-left md:sticky md:left-0 z-20 bg-slate-900 dark:bg-slate-950 text-blue-100 w-[240px] min-w-[240px]">Officer Details</th>
+                      <th className="p-2.5 text-center md:sticky md:left-[240px] z-20 bg-slate-900 dark:bg-slate-950 text-blue-100 w-[120px] min-w-[120px]">Administrative Tier</th>
+                      <th className="p-2.5 text-center md:sticky md:left-[360px] z-20 bg-slate-900 dark:bg-slate-950 text-blue-100 w-[100px] min-w-[100px]">Quick Actions</th>
                       {CLEARANCE_MATRIX_COLS.map((col, idx) => (
                         <th key={idx} className="p-2 border-l border-slate-700 dark:border-slate-800 bg-slate-900 dark:bg-slate-950 w-20 min-w-[80px] align-middle">
                           <div className="w-20 min-w-[80px] text-[9px] text-blue-100 font-bold whitespace-normal break-words leading-tight text-center px-0.5" title={col.label}>
@@ -631,8 +631,8 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
                       const isSelf = u.fnum === currentUser?.fnum;
                       return (
                         <tr key={u.fnum} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <td className="p-2.5 sticky left-0 z-10 bg-white dark:bg-slate-900 font-extrabold text-[11px] text-slate-900 dark:text-slate-100 w-[240px] min-w-[240px] truncate" title={formatOfficerHeader(u)}>{formatOfficerHeader(u)}</td>
-                          <td className="p-2.5 text-center sticky left-[240px] z-10 bg-white dark:bg-slate-900 w-[120px] min-w-[120px]">
+                          <td className="p-2.5 md:sticky md:left-0 z-10 bg-white dark:bg-slate-900 font-extrabold text-[11px] text-slate-900 dark:text-slate-100 w-[240px] min-w-[240px] truncate" title={formatOfficerHeader(u)}>{formatOfficerHeader(u)}</td>
+                          <td className="p-2.5 text-center md:sticky md:left-[240px] z-10 bg-white dark:bg-slate-900 w-[120px] min-w-[120px]">
                             <select value={u.role || 'USER'} onChange={(e) => handleRoleTierChange(u.fnum, e.target.value)} disabled={isSelf} className="border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-1 font-bold outline-none uppercase text-[10px] w-full truncate bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200">
                               <option value="USER">USER</option>
                               <option value="STATION_ADMIN">STN ADMIN</option>
@@ -647,7 +647,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
                               <option value="REVOKED">REVOKED</option>
                             </select>
                           </td>
-                          <td className="p-2.5 text-center sticky left-[360px] z-10 bg-white dark:bg-slate-900 w-[100px] min-w-[100px]">
+                          <td className="p-2.5 text-center md:sticky md:left-[360px] z-10 bg-white dark:bg-slate-900 w-[100px] min-w-[100px]">
                             <div className="flex items-center justify-center space-x-1">
                               <button onClick={() => handleBulkMatrixAction(u.fnum, true)} title="Check All" className="p-1 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 cursor-pointer"><CheckSquare size={12} /></button>
                               <button onClick={() => handleBulkMatrixAction(u.fnum, false)} title="Uncheck All" className="p-1 rounded bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 cursor-pointer"><Square size={12} /></button>

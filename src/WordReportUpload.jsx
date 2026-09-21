@@ -34,7 +34,6 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
   const [templateCustomName, setTemplateCustomName] = useState('');
-  
   const [searchQuery, setSearchQuery] = useState('');
 
   const canViewGlobalActive = canViewGlobal || 
@@ -168,7 +167,7 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
     }
   };
 
-  // 🟢 READ ACTION: FIXED TO PREVENT EXCEL/WORD DOWNLOADS
+  // 🟢 STRICT ROUTING READ PATH: Fixed Command Templates download confusion
   const handleReadDoc = async (docId, isTemplate = false, docName = 'Document', categoryKey = 'weekly_report') => {
     setActionLoading(`read-${docId}`);
     
@@ -198,15 +197,28 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
 
       const lowerName = (docName || '').toLowerCase();
       
-      // 🟢 UNIVERSAL MOBILE READER ROUTING
-      if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
-        // Browsers can render PDFs and Images natively
-        mobileSafeWindow.location.href = s3Url;
-      } else {
-        // 🟢 FIX: Force Excel (.xls, .xlsx) and Word files to route through the Google Docs Viewer. 
-        // This prevents the browser from forcing a native download for office templates.
-        const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(s3Url)}&embedded=false`;
-        mobileSafeWindow.location.href = googleViewerUrl;
+      // 🟢 ISOLATED FIX: Force Templates to route via Google Viewer so they read instead of downloading
+      if (categoryKey === 'templates' || isTemplate) {
+        if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+          mobileSafeWindow.location.href = s3Url;
+        } else {
+          // Force Excel and Word templates into the viewer to stop auto-downloads on "Read"
+          const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(s3Url)}&embedded=false`;
+          mobileSafeWindow.location.href = googleViewerUrl;
+        }
+      } 
+      // 🟢 ORIGINAL LOGIC: Kept entirely untouched for weekly reports and general docs
+      else {
+        if (lowerName.endsWith('.pdf') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+          mobileSafeWindow.location.href = s3Url;
+        } else if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx')) {
+          // Excel native live view handler (Original behavior)
+          mobileSafeWindow.location.href = s3Url;
+        } else {
+          // Word and general documents: Route via Google Docs Viewer
+          const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(s3Url)}&embedded=false`;
+          mobileSafeWindow.location.href = googleViewerUrl;
+        }
       }
     } catch (err) {
       if (mobileSafeWindow) mobileSafeWindow.close();
@@ -253,37 +265,36 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
   const filteredDocuments = useMemo(() => {
     let result = documents.filter(doc => {
       if (doc.categoryKey !== activeCategory) return false;
-      
       const stn = (doc.station || '').trim().toUpperCase();
       const reg = getOfficialRegionForStation(stn, doc.region);
-      if (!canViewGlobalActive || filterRegion !== 'ALL REGIONS' || filterStation !== 'ALL STATIONS') {
-        if (filterRegion !== 'ALL REGIONS' && reg !== filterRegion.toUpperCase()) return false;
-        if (filterStation !== 'ALL STATIONS' && stn !== filterStation.toUpperCase()) return false;
-      }
-      
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const docName = (doc.name || '').toLowerCase();
-        const docType = (doc.type || '').toLowerCase();
-        if (!docName.includes(q) && !docType.includes(q)) return false;
-      }
-
+      if (canViewGlobalActive && filterRegion === 'ALL REGIONS' && filterStation === 'ALL STATIONS') return true;
+      if (filterRegion !== 'ALL REGIONS' && reg !== filterRegion.toUpperCase()) return false;
+      if (filterStation !== 'ALL STATIONS' && stn !== filterStation.toUpperCase()) return false;
       return true;
     });
 
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(doc => 
+        (doc.name || '').toLowerCase().includes(q) || 
+        (doc.type || '').toLowerCase().includes(q)
+      );
+    }
+    
+    // Sort by latest
     result.sort((a, b) => {
       const dateA = new Date(a.date || a.created_at || 0).getTime();
       const dateB = new Date(b.date || b.created_at || 0).getTime();
       return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
     });
-
+    
     return result;
   }, [documents, activeCategory, filterRegion, filterStation, canViewGlobalActive, searchQuery]);
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 font-sans mb-8 p-4 md:p-6 animate-in fade-in duration-300">
       
-      {/* 🟢 MODERN SKY-BLUE TOUCH PROFESSIONAL HEADER & FULLY FUNCTIONAL BACK BUTTON */}
+      {/* 🟢 MODERN SKY-BLUE TOUCH PROFESSIONAL HEADER & BACK BUTTON */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-sky-900 via-blue-900 to-sky-950 text-white px-6 py-5 rounded-2xl shadow-xl border border-sky-400/35">
         <div className="flex items-center space-x-3.5">
           <div className="w-12 h-12 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center shrink-0 shadow-inner">
@@ -300,13 +311,9 @@ const WordReportUpload = ({ currentUser, overrideRegion, overrideStation, canVie
         <button 
           type="button"
           onClick={() => {
-            if (typeof onBack === 'function') {
-              onBack();
-            } else if (typeof setCurrentPage === 'function') {
-              setCurrentPage('home');
-            } else {
-              window.location.href = '/';
-            }
+            if (typeof onBack === 'function') onBack();
+            else if (typeof setCurrentPage === 'function') setCurrentPage('home');
+            else window.location.href = '/';
           }} 
           className="flex items-center text-xs font-black uppercase tracking-wider text-sky-950 bg-sky-400 hover:bg-sky-300 active:bg-sky-500 px-5 py-3 rounded-xl shadow-lg border border-sky-300 transition-all cursor-pointer shrink-0"
         >

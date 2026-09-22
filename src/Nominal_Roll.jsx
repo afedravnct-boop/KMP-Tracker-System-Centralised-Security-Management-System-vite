@@ -32,7 +32,7 @@ const getOfficialRegionForStation = (stationName, dbRegion) => {
   return cleanDbRegion || 'KMP HEADQUARTERS';
 };
 
-// 🟢 STATION PRIORITY: KMP HEADQUARTERS COMES FIRST
+// 🟢 STATION PRIORITY: KMP HEADQUARTERS COMES FIRST WITHIN RANKS
 const getStationPriorityWeight = (station, region) => {
   const stn = cleanStr(station);
   const reg = cleanStr(region);
@@ -46,18 +46,26 @@ const getStationPriorityWeight = (station, region) => {
   return 2;
 };
 
-// 🟢 TIER 1: COMMAND & SPECIAL POSITION HIERARCHY OVERRIDE
+// 🟢 COMMAND LEADERSHIP OVERRIDE: EXACT TOP-DOWN FLOW FOR KMP LEADERSHIP (ALL ACPs)
 const getCommandWeight = (officer) => {
   if (!officer) return 99;
   const pos = cleanStr(officer.position);
   const rank = cleanStr(officer.rank);
   const name = cleanStr(officer.name);
   
-  if (pos.includes('COMMANDER KMP') || pos.includes('COMDR KMP') || name.includes('COMMANDER KMP')) return 0;
-  if (pos.includes('DEPUTY') && pos.includes('KMP')) return 1;
+  // 1. Commander KMP / Comdr KMP / KMP Commander (Rank: ACP)
+  if (pos.includes('COMMANDER KMP') || pos.includes('COMDR KMP') || pos.includes('KMP COMMANDER') || name.includes('COMMANDER KMP')) return 0;
+  
+  // 2. Deputy Commander KMP (Rank: ACP)
+  if ((pos.includes('DEPUTY') || pos.includes('D/COMDR')) && (pos.includes('KMP') || pos.includes('COMDR'))) return 1;
+  
+  // 3. Admin Officer / Administrative Officer (Rank: SSP / SP etc.)
   if (pos.includes('ADMIN OFFICER') || pos.includes('ADMINISTRATIVE OFFICER')) return 2;
+  
+  // 4. Regional Police Commanders (RPC)
   if (pos === 'RPC' || rank === 'RPC') return 3;
   if (pos === 'D/RPC' || pos === 'DEPUTY RPC' || rank === 'D/RPC') return 4;
+  
   if (pos.startsWith('R/')) return 5; 
   if (pos === 'OC' || pos.startsWith('OC ')) return 6;
   
@@ -515,17 +523,17 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       }
       return true;
     }).sort((a, b) => {
-      // 1. KMP Headquarters Priority (KMP HQ personnel come first within each rank)
+      // 1. KMP Headquarters Station/Region Priority
       const prioA = getStationPriorityWeight(a.station, a.region);
       const prioB = getStationPriorityWeight(b.station, b.region);
       if (prioA !== prioB) return prioA - prioB;
 
-      // 2. Command / Leadership Override
+      // 2. Command Leadership Precedence (Commander KMP -> Deputy Comdr -> Admin Officer -> RPC)
       const cmdA = getCommandWeight(a);
       const cmdB = getCommandWeight(b);
       if (cmdA !== cmdB) return cmdA - cmdB;
 
-      // 3. Rank Chronology
+      // 3. Standard Rank Chronology (IGP down to PC)
       const weightA = getRankWeight(a.rank);
       const weightB = getRankWeight(b.rank);
       if (weightA !== weightB) return weightA - weightB;
@@ -563,17 +571,17 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       }
       return true;
     }).sort((a, b) => {
-      // 1. KMP Headquarters Priority
+      // 1. KMP Headquarters Station/Region Priority
       const prioA = getStationPriorityWeight(a.station, a.region);
       const prioB = getStationPriorityWeight(b.station, b.region);
       if (prioA !== prioB) return prioA - prioB;
 
-      // 2. Command / Leadership Override
+      // 2. Command Leadership Precedence
       const cmdA = getCommandWeight(a);
       const cmdB = getCommandWeight(b);
       if (cmdA !== cmdB) return cmdA - cmdB;
 
-      // 3. Rank Chronology
+      // 3. Standard Rank Chronology
       const weightA = getRankWeight(a.rank);
       const weightB = getRankWeight(b.rank);
       if (weightA !== weightB) return weightA - weightB;

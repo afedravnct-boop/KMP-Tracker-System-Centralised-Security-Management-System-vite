@@ -27,6 +27,19 @@ const getOfficialRegionForStation = (stationName, dbRegion) => {
   return cleanDbRegion || 'KMP HEADQUARTERS';
 };
 
+// 🟢 TIER 1: COMMAND POSITION OVERRIDE
+const getCommandWeight = (officer) => {
+  if (!officer) return 99;
+  const pos = (officer.position || '').toUpperCase().trim();
+  const rank = (officer.rank || '').toUpperCase().trim();
+  
+  if (pos === 'RPC' || rank === 'RPC') return 0;
+  if (pos === 'D/RPC' || pos === 'DEPUTY RPC' || rank === 'D/RPC') return 1;
+  
+  return 99; // Standard Officer
+};
+
+// 🟢 TIER 2: RANK HIERARCHY ENGINE
 const getRankWeight = (rank) => {
   if (!rank) return 99;
   let r = rank.toUpperCase().trim();
@@ -53,8 +66,7 @@ const getRankWeight = (rank) => {
   if (!r) r = 'PC';
 
   let baseWeight = 50;
-  if (r === 'RPC') baseWeight = 0;
-  else if (r === 'IGP') baseWeight = 1;
+  if (r === 'IGP') baseWeight = 1;
   else if (r === 'DIGP') baseWeight = 2;
   else if (r === 'AIGP') baseWeight = 3;
   else if (r === 'SCP') baseWeight = 4;
@@ -417,13 +429,8 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       const selRegion = (filterRegion || '').trim().toUpperCase();
       const selStation = (filterStation || '').trim().toUpperCase();
 
-      if (selRegion && selRegion !== 'ALL REGIONS' && reg !== selRegion) {
-        return false;
-      }
-
-      if (selStation && selStation !== 'ALL STATIONS' && stn !== selStation) {
-        return false;
-      }
+      if (selRegion && selRegion !== 'ALL REGIONS' && reg !== selRegion) return false;
+      if (selStation && selStation !== 'ALL STATIONS' && stn !== selStation) return false;
 
       if (searchTerm.trim()) {
         const query = searchTerm.trim().toLowerCase();
@@ -438,14 +445,19 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
           return false;
         }
       }
-
       return true;
     }).sort((a, b) => {
+      // 🟢 1. PRIMARY SORT: Commander Positions (RPC -> D/RPC)
+      const cmdA = getCommandWeight(a);
+      const cmdB = getCommandWeight(b);
+      if (cmdA !== cmdB) return cmdA - cmdB;
+
+      // 🟢 2. SECONDARY SORT: Calculated Rank Weight
       const weightA = getRankWeight(a.rank);
       const weightB = getRankWeight(b.rank);
-      if (weightA !== weightB) {
-        return weightA - weightB;
-      }
+      if (weightA !== weightB) return weightA - weightB;
+
+      // 🟢 3. TERTIARY SORT: Force Number Seniority
       return (a.f_num || a.fnum || '').localeCompare(b.f_num || b.fnum || '', undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [Nominal_Rolls, filterRegion, filterStation, searchTerm]);
@@ -460,13 +472,8 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       const selRegion = (filterRegion || '').trim().toUpperCase();
       const selStation = (filterStation || '').trim().toUpperCase();
 
-      if (selRegion && selRegion !== 'ALL REGIONS' && reg !== selRegion) {
-        return false;
-      }
-
-      if (selStation && selStation !== 'ALL STATIONS' && stn !== selStation) {
-        return false;
-      }
+      if (selRegion && selRegion !== 'ALL REGIONS' && reg !== selRegion) return false;
+      if (selStation && selStation !== 'ALL STATIONS' && stn !== selStation) return false;
 
       if (searchTerm.trim()) {
         const query = searchTerm.trim().toLowerCase();
@@ -482,14 +489,16 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
           return false;
         }
       }
-
       return true;
     }).sort((a, b) => {
+      const cmdA = getCommandWeight(a);
+      const cmdB = getCommandWeight(b);
+      if (cmdA !== cmdB) return cmdA - cmdB;
+
       const weightA = getRankWeight(a.rank);
       const weightB = getRankWeight(b.rank);
-      if (weightA !== weightB) {
-        return weightA - weightB;
-      }
+      if (weightA !== weightB) return weightA - weightB;
+
       return (a.f_num || a.fnum || '').localeCompare(b.f_num || b.fnum || '', undefined, { numeric: true, sensitivity: 'base' });
     });
   }, [Nominal_Roll_archives, filterRegion, filterStation, searchTerm]);
@@ -536,19 +545,14 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
           else if (metricCategory === 'DISTRICT') key = homeDistrict ? homeDistrict.trim().toUpperCase() : 'DISTRICT UNKNOWN';
           else if (metricCategory === 'TRIBE') key = n.tribe ? n.tribe.trim().toUpperCase() : 'TRIBE UNKNOWN';
           else if (metricCategory === 'EDUCATION') key = parseEducationLevel(educLevel);
-
           else if (metricCategory === 'AGE') {
               if (n.dob) {
                   const birthYear = new Date(n.dob).getFullYear();
                   if (!isNaN(birthYear)) {
                       const age = new Date().getFullYear() - birthYear;
                       key = age < 30 ? '18-29 Years' : age < 40 ? '30-39 Years' : age < 50 ? '40-49 Years' : '50+ Years';
-                  } else {
-                      key = 'Age Not Recorded';
-                  }
-              } else { 
-                  key = 'Age Not Recorded'; 
-              }
+                  } else key = 'Age Not Recorded';
+              } else key = 'Age Not Recorded'; 
           }
            
           if (!grouped[key]) grouped[key] = { category: key, total: 0, male: 0, female: 0, unknown: 0 };
@@ -561,7 +565,14 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       const resultsArray = Object.values(grouped);
 
       if (metricCategory === 'RANK') {
-          return resultsArray.sort((a, b) => getRankWeight(a.category) - getRankWeight(b.category));
+          // 🟢 Sort the analytics table using the primary position weight as a fallback for RPC
+          return resultsArray.sort((a, b) => {
+             const weightA = getRankWeight(a.category);
+             const weightB = getRankWeight(b.category);
+             if (weightA === 50 && a.category === 'RPC') return -1;
+             if (weightB === 50 && b.category === 'RPC') return 1;
+             return weightA - weightB;
+          });
       } else {
           return resultsArray.sort((a, b) => b.total - a.total);
       }

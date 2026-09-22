@@ -53,19 +53,17 @@ const getCommandWeight = (officer) => {
   const rank = cleanStr(officer.rank);
   const name = cleanStr(officer.name);
   
-  // 1. Commander KMP / Comdr KMP / KMP Commander (Rank: ACP)
-  if (pos.includes('COMMANDER KMP') || pos.includes('COMDR KMP') || pos.includes('KMP COMMANDER') || name.includes('COMMANDER KMP')) return 0;
+  // Catch any variation of KMP Commander / Comdr (Rank ACP)
+  if (pos.includes('COMMANDER') || pos.includes('COMDR') || name.includes('COMMANDER')) {
+    if (pos.includes('DEPUTY') || pos.includes('D/COMDR') || pos.includes('D/COMMANDER')) {
+      return 1; // Deputy Commander KMP
+    }
+    return 0; // Commander KMP
+  }
   
-  // 2. Deputy Commander KMP (Rank: ACP)
-  if ((pos.includes('DEPUTY') || pos.includes('D/COMDR')) && (pos.includes('KMP') || pos.includes('COMDR'))) return 1;
-  
-  // 3. Admin Officer / Administrative Officer (Rank: SSP / SP etc.)
   if (pos.includes('ADMIN OFFICER') || pos.includes('ADMINISTRATIVE OFFICER')) return 2;
-  
-  // 4. Regional Police Commanders (RPC)
   if (pos === 'RPC' || rank === 'RPC') return 3;
   if (pos === 'D/RPC' || pos === 'DEPUTY RPC' || rank === 'D/RPC') return 4;
-  
   if (pos.startsWith('R/')) return 5; 
   if (pos === 'OC' || pos.startsWith('OC ')) return 6;
   

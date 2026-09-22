@@ -1267,7 +1267,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                           <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-blue-700">{cleanStr(n.station)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.region)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.section)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.dir)}</td>
+                          <td className="px-3 py-2 text-xs text-slate-700 max-w-[120px] truncate" title={cleanStr(n.dir)}>{cleanStr(n.dir)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-green-700 bg-green-50/30">{cleanStr(n.status) || 'ACTIVE'}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.dob || ''}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.doe || ''}</td>

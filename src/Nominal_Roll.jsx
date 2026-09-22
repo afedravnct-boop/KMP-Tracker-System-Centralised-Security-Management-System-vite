@@ -15,7 +15,6 @@ const REGIONAL_HIERARCHY = {
   "POLICE HEADQUARTERS": ["NAGURU"]
 };
 
-// 🟢 Auto-infer official region from station if region is blank in uploaded data
 const getOfficialRegionForStation = (stationName, dbRegion) => {
   const cleanStation = (stationName || '').trim().toUpperCase();
   const cleanDbRegion = (dbRegion || '').trim().toUpperCase();
@@ -28,25 +27,20 @@ const getOfficialRegionForStation = (stationName, dbRegion) => {
   return cleanDbRegion || 'KMP HEADQUARTERS';
 };
 
-// 🟢 HIERARCHY ENGINE: RPC First, Detective/Driver Grouping, Numeric Seniority
 const getRankWeight = (rank) => {
   if (!rank) return 99;
   let r = rank.toUpperCase().trim();
   let modifier = 0;
 
-  // 🟢 Explicitly handle DC & D/C (Detective Constable)
   if (r === 'DC') {
     modifier += 0.1;
     r = 'PC';
-  }
-  // Handle other Detective Prefixes
-  else if (r.startsWith('D/') || r.startsWith('D-') || r.startsWith('D ')) {
+  } else if (r.startsWith('D/') || r.startsWith('D-') || r.startsWith('D ')) {
     modifier += 0.1;
     r = r.replace(/^D[\/\- ]/, '').trim();
-    if (r === 'C') r = 'PC'; // D/C -> PC
+    if (r === 'C') r = 'PC';
   }
 
-  // Handle Driver Modifiers
   if (r.includes('/DRV') || r.includes('-DRV') || r.includes(' DRV') || r === 'DRV' || r.includes('C/DRV')) {
     modifier += 0.2;
     if (r === 'C/DRV' || r === 'DRV') {
@@ -412,7 +406,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     }
   };
 
-  // 🟢 FIXED FILTERING: Auto-infers region from station so uploaded rows aren't rejected
   const filteredRolls = useMemo(() => {
     return (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).filter(n => {
       const statusStr = (n.status || '').trim().toUpperCase();
@@ -519,7 +512,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     });
   }, [Nominal_Rolls, currentUser, updateSearch, canViewGlobal]);
 
-  // 🟢 FIXED ANALYTICS: Calculates metrics continuously without UI race conditions
   const calculatedMetrics = useMemo(() => {
       const grouped = {};
        
@@ -534,8 +526,11 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
           const bankBranch = n.bankbranch || n.bank_branch || n.bank || n.bank_name || '';
           const educLevel = n.educlevel || n.educ_level || n.education || '';
            
+          const stationStr = (n.station || '').trim().toUpperCase() || 'UNKNOWN';
+          const sectionStr = (n.section || '').trim().toUpperCase();
+
           if (metricCategory === 'RANK') key = n.rank ? n.rank.trim().toUpperCase() : 'UNRANKED';
-          else if (metricCategory === 'UNIT') key = `${n.station || 'UNKNOWN'} ${n.section ? '- ' + n.section : ''}`.trim();
+          else if (metricCategory === 'UNIT') key = `${stationStr} ${sectionStr ? '- ' + sectionStr : ''}`.trim();
           else if (metricCategory === 'SEX') key = isFemale ? 'FEMALE' : (isMale ? 'MALE' : 'UNSPECIFIED');
           else if (metricCategory === 'BANK') key = bankBranch ? bankBranch.trim().toUpperCase() : 'BANK UNKNOWN';
           else if (metricCategory === 'DISTRICT') key = homeDistrict ? homeDistrict.trim().toUpperCase() : 'DISTRICT UNKNOWN';
@@ -588,7 +583,8 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       }
 
       if (n.station) {
-        uniqueStations[n.station] = true;
+        const cleanStation = n.station.trim().toUpperCase();
+        if (cleanStation) uniqueStations[cleanStation] = true;
       }
     });
 
@@ -609,7 +605,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         <h3 className="text-xs sm:text-sm text-blue-700 mt-0.5 font-semibold uppercase tracking-wider">Man-Power Auditing & Deployment Registry</h3>
       </div>
        
-      {/* 🟢 PERSONNEL METRICS DASHBOARD - CARDS REMAIN PERMANENTLY VISIBLE */}
       <div className="bg-white/90 backdrop-blur p-3.5 rounded-xl border border-slate-200 shadow-sm relative">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
           <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center">
@@ -641,7 +636,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
           </div>
         </div>
 
-        {/* 🟢 ALWAYS VISIBLE METRIC SUMMARY */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
            <MetricCard title="Total Personnel" value={metricsData.total} colorClass={viewMode === 'archive' ? "text-red-700" : "text-blue-700"} />
            <MetricCard title="Male Officers" value={metricsData.male} colorClass="text-indigo-600" />

@@ -1196,11 +1196,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Name</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Sex</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Position</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Station</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Region</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Section</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Dir</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-green-700 uppercase whitespace-nowrap bg-green-50/50">Status</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">DOB</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">DOE</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">D.O. Post</th>
@@ -1214,7 +1209,12 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Tribe</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Acc No</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Bank Branch</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Station</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">District</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Region</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Section</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Dir</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Status</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Last Updated By</th>
                         {viewMode === 'archive' && (
                           <>
@@ -1264,11 +1264,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                           <td className="px-3 py-2 whitespace-nowrap text-xs font-medium uppercase text-slate-800">{cleanStr(n.name)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.sex)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">{cleanStr(n.position)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-blue-700">{cleanStr(n.station)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.region)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.section)}</td>
-                          <td className="px-3 py-2 text-xs text-slate-700 max-w-[120px] truncate" title={cleanStr(n.dir)}>{cleanStr(n.dir)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-green-700 bg-green-50/30">{cleanStr(n.status) || 'ACTIVE'}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.dob || ''}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.doe || ''}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.do_post || n.dopost || n.dop || ''}</td>
@@ -1282,7 +1277,12 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.tribe)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.acc_no || n.accno)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.bank_branch || n.bankbranch)}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-blue-700">{cleanStr(n.station)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.district)}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.region)}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.section)}</td>
+                          <td className="px-3 py-2 text-xs text-slate-700 max-w-[130px] truncate" title={cleanStr(n.dir)}>{cleanStr(n.dir)}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-green-700">{cleanStr(n.status) || 'ACTIVE'}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.last_updated_by || ''}</td>
                           {viewMode === 'archive' && (
                             <>

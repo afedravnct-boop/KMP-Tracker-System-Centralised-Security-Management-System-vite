@@ -229,7 +229,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     district: '', region: currentUser?.region, section: '', dir: '', status: 'ACTIVE'
   });
 
-  // 🟢 DYNAMIC LIST OF ALL AVAILABLE STATIONS & POSTS FROM DATABASE RECORDS
   const availableStationsList = useMemo(() => {
     const list = new Set();
     (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).forEach(n => {
@@ -238,7 +237,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         if (cleaned) list.add(cleaned);
       }
     });
-    // Fallback to static hierarchy if database is empty
     if (list.size === 0) {
       Object.values(REGIONAL_HIERARCHY).forEach(arr => arr.forEach(stn => list.add(stn)));
     }
@@ -1179,11 +1177,11 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
             >
               {(expanded) => (
                 <div className={`overflow-x-auto overflow-y-auto w-full ${expanded ? 'h-full flex-1' : 'max-h-[500px]'} custom-scrollbar`}>
-                  <table className="min-w-full divide-y divide-gray-200">
+                  <table className="w-full divide-y divide-gray-200 table-auto text-xs">
                     <thead className="bg-gray-50 sticky top-0 z-10 shadow-xs">
                       <tr>
                         {bulkSelectMode && viewMode === 'active' && canEditRecords && (
-                          <th className="px-2.5 py-2.5 text-center text-xs font-bold text-gray-500 uppercase whitespace-nowrap">
+                          <th className="px-2 py-2 text-center font-bold text-gray-500 uppercase whitespace-nowrap">
                              <input 
                                type="checkbox" 
                                checked={selectedOfficers.length === filteredRolls.length && filteredRolls.length > 0}
@@ -1195,36 +1193,36 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                              />
                           </th>
                         )}
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">S/No</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">F/NO</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Rank</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Name</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Sex</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Position</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">DOB</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">DOE</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">D.O. Post</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">D.O. Pro</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Contact</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Educ Level</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">IPPS</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">TIN</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">NIN</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Home Dist</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Tribe</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Acc No</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Bank Branch</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Station</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">District</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Region</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Section</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Dir</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Status</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Last Updated By</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">S/No</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">F/NO</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Rank</th>
+                        <th className="px-3 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Name</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Sex</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Position</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">DOB</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">DOE</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">D.O. Post</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">D.O. Pro</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Contact</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Educ Level</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">IPPS</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">TIN</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">NIN</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Home Dist</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Tribe</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Acc No</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Bank Branch</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Station</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">District</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Region</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Section</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Dir</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Status</th>
+                        <th className="px-2 py-2 text-left font-bold text-gray-500 uppercase whitespace-nowrap">Last Updated By</th>
                         {viewMode === 'archive' && (
                           <>
-                            <th className="px-3 py-2.5 text-left text-xs font-bold text-red-600 uppercase whitespace-nowrap bg-red-50">Archive Reason</th>
-                            <th className="px-3 py-2.5 text-left text-xs font-bold text-red-600 uppercase whitespace-nowrap bg-red-50">Archive Date</th>
+                            <th className="px-2 py-2 text-left font-bold text-red-600 uppercase whitespace-nowrap bg-red-50">Archive Reason</th>
+                            <th className="px-2 py-2 text-left font-bold text-red-600 uppercase whitespace-nowrap bg-red-50">Archive Date</th>
                           </>
                         )}
                       </tr>
@@ -1250,7 +1248,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                           }}
                         >
                           {bulkSelectMode && viewMode === 'active' && canEditRecords && (
-                              <td className="px-2.5 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                              <td className="px-2 py-1.5 text-center" onClick={(e) => e.stopPropagation()}>
                                 <input 
                                   type="checkbox" 
                                   checked={selectedOfficers.includes(n.f_num || n.fnum)}
@@ -1263,36 +1261,36 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                                 />
                               </td>
                           )}
-                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-gray-900">{index + 1}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-blue-800">{cleanStr(n.f_num || n.fnum)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-slate-800">{cleanStr(n.rank)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs font-medium uppercase text-slate-800">{cleanStr(n.name)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.sex)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-700">{cleanStr(n.position)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.dob || ''}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.doe || ''}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.do_post || n.dopost || n.dop || ''}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.do_pro || n.dopro || ''}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.contact)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.educ_level || n.educlevel)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs font-mono text-slate-700">{cleanStr(n.ipps)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.tin)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.nin)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.home_dist || n.homedist)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.tribe)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.acc_no || n.accno)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.bank_branch || n.bankbranch)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-blue-700">{cleanStr(n.station)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.district)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.region)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.section)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">{cleanStr(n.dir)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-green-700">{cleanStr(n.status) || 'ACTIVE'}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{n.last_updated_by || ''}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap font-bold text-gray-900">{index + 1}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap font-bold text-blue-800">{cleanStr(n.f_num || n.fnum)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap font-bold text-slate-800">{cleanStr(n.rank)}</td>
+                          <td className="px-3 py-1.5 whitespace-nowrap font-medium uppercase text-slate-800">{cleanStr(n.name)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.sex)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-gray-700">{cleanStr(n.position)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">{n.dob || ''}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">{n.doe || ''}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">{n.do_post || n.dopost || n.dop || ''}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">{n.do_pro || n.dopro || ''}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.contact)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.educ_level || n.educlevel)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap font-mono text-slate-700">{cleanStr(n.ipps)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.tin)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.nin)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.home_dist || n.homedist)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.tribe)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.acc_no || n.accno)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.bank_branch || n.bankbranch)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap font-bold text-blue-700">{cleanStr(n.station)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.district)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.region)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.section)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-slate-700">{cleanStr(n.dir)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap font-bold text-green-700">{cleanStr(n.status) || 'ACTIVE'}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">{n.last_updated_by || ''}</td>
                           {viewMode === 'archive' && (
                             <>
-                              <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-red-700 bg-red-50/50">{cleanStr(n.archive_reason)}</td>
-                              <td className="px-3 py-2 whitespace-nowrap text-xs text-red-500 bg-red-50/50">{n.archive_date || ''}</td>
+                              <td className="px-2 py-1.5 whitespace-nowrap font-bold text-red-700 bg-red-50/50">{cleanStr(n.archive_reason)}</td>
+                              <td className="px-2 py-1.5 whitespace-nowrap text-red-500 bg-red-50/50">{n.archive_date || ''}</td>
                             </>
                           )}
                         </tr>

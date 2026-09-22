@@ -34,10 +34,16 @@ const getRankWeight = (rank) => {
   let r = rank.toUpperCase().trim();
   let modifier = 0;
 
-  // Handle Detective Prefix
-  if (r.startsWith('D/') || r.startsWith('D-') || r.startsWith('D ')) {
+  // 🟢 Explicitly handle DC & D/C (Detective Constable)
+  if (r === 'DC') {
+    modifier += 0.1;
+    r = 'PC';
+  }
+  // Handle other Detective Prefixes
+  else if (r.startsWith('D/') || r.startsWith('D-') || r.startsWith('D ')) {
     modifier += 0.1;
     r = r.replace(/^D[\/\- ]/, '').trim();
+    if (r === 'C') r = 'PC'; // D/C -> PC
   }
 
   // Handle Driver Modifiers

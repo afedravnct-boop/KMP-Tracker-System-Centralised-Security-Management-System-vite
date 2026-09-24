@@ -54,7 +54,15 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     isOpen: false, fnum: null, actionType: null, targetValue: null, permissionKey: null, reason: ''
   });
 
-  // 🟢 1. DEFINE HANDLER FUNCTIONS AT THE TOP TO AVOID TEMPORAL DEAD ZONE REFERENCE ERRORS
+  // 🟢 1. DEFINE activeLockdownSummary HERE TO FIX THE REFERENCE ERROR
+  const activeLockdownSummary = useMemo(() => {
+    let list = [];
+    if (lockdownData.system) list.push("🚨 SYSTEM-WIDE FULL LOCKDOWN");
+    Object.keys(lockdownData.regions).forEach(r => { if (lockdownData.regions[r]) list.push(`⚠️ REGION: ${r}`); });
+    Object.keys(lockdownData.stations).forEach(s => { if (lockdownData.stations[s]) list.push(`🔒 STATION: ${s}`); });
+    return list;
+  }, [lockdownData]);
+
   const userRoleClean = stripHtmlTags(currentUser?.role || '').toUpperCase();
   const userPosClean = stripHtmlTags(currentUser?.position || '').toUpperCase();
   const isSuperAdmin = userRoleClean === 'SUPER_ADMIN';
@@ -294,7 +302,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     finally { setIsProcessingAction(false); }
   };
 
-  // Fetch functions
   const fetchLockdownStatus = useCallback(async () => {
     if (!hasValidSession()) return;
     try {

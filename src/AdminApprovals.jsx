@@ -54,7 +54,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     isOpen: false, fnum: null, actionType: null, targetValue: null, permissionKey: null, reason: ''
   });
 
-  // 🟢 1. DEFINE activeLockdownSummary HERE TO FIX THE REFERENCE ERROR
   const activeLockdownSummary = useMemo(() => {
     let list = [];
     if (lockdownData.system) list.push("🚨 SYSTEM-WIDE FULL LOCKDOWN");
@@ -90,6 +89,36 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     if (['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER'].includes(targetRole) && myRole === targetRole) return false;
     return true;
   }, [isSuperAdmin, userRoleClean]);
+
+  // 🟢 DEFINED HANDLERS AT THE TOP TO PREVENT REFERENCE ERRORS
+  const handleToggleLockdown = async (type, name, currentStatus) => {
+    if (isReadOnlyObserver) {
+      alert("SECURITY RESTRICTION: Read-only clearance does not permit managing system lockdowns.");
+      return;
+    }
+
+    const isLifting = currentStatus; 
+    const actionWord = isLifting ? "LIFT" : "ACTIVATE";
+    const rawReason = window.prompt(`State official reason to ${actionWord} lockdown on [${type}: ${name}]:`);
+    if (rawReason === null) return;
+    const reason = stripHtmlTags(rawReason || (isLifting ? "Command Lockdown Lifted" : "Command Maintenance"));
+
+    try {
+      const res = await authFetch('/api/v1/admin/toggle-maintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lockdown_type: type, target_name: name, reason: reason })
+      });
+
+      if (res && res.ok) fetchLockdownStatus();
+      else {
+        const err = await res.json().catch(() => ({}));
+        alert(`❌ Failed to execute command: ${err.detail || 'Server error'}`);
+      }
+    } catch (err) {
+      alert("❌ Error communicating with the command server.");
+    }
+  };
 
   const handleReviewRequest = async (reqId, actionStatus) => {
     if (isReadOnlyObserver) {

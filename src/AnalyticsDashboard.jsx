@@ -53,7 +53,6 @@ const normalizeAnalyticsRank = (rankStr) => {
   return r;
 };
 
-// 🟢 Unit Normalization Engine to eliminate spelling & abbreviation repetitions
 const normalizeUnitName = (rawUnit) => {
   if (!rawUnit) return 'GENERAL DUTIES';
   let clean = String(rawUnit).trim().toUpperCase();
@@ -70,7 +69,6 @@ const normalizeUnitName = (rawUnit) => {
   return clean;
 };
 
-// 🟢 Dual-Equivalence Engine for Regional Headquarter matching
 const isStationEquivalent = (statA, statB) => {
   const a = stripHtmlTags(statA || '').trim().toUpperCase();
   const b = stripHtmlTags(statB || '').trim().toUpperCase();
@@ -195,7 +193,6 @@ const AnalyticsDashboard = ({
   const [metricCategory, setMetricCategory] = useState('CATEGORY');
   const [dateFilter, setDateFilter] = useState('ALL'); 
   
-  // 🟢 OPSEC Role Classification Engine
   const userRoleClean = stripHtmlTags(currentUser?.role || '').toUpperCase();
   const userPosClean = stripHtmlTags(currentUser?.position || '').toUpperCase();
   const userRegClean = stripHtmlTags(currentUser?.region || '').toUpperCase();
@@ -208,19 +205,15 @@ const AnalyticsDashboard = ({
   const isKmpSpecialist = userRoleClean === 'ASSISTANT_SYSTEM_MANAGER' && ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(userRegClean) && userPosClean.includes('KMP');
 
   const canViewGlobalLevel = canViewGlobal || isGlobalTier || isKmpSystemManager || isKmpSpecialist;
-  
-  // 🟢 Regional Command check for locking regional filters
-  const isRegionalCommand = ['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN', 'ASSISTANT_REGIONAL_ADMIN'].includes(userRoleClean) || userPosClean.includes('RPC') || userRegClean in REGIONAL_HIERARCHY;
 
   const [selectedRegion, setSelectedRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);
-  const [selectedStation, setSelectedStation] = useState(canViewGlobalLevel ? 'ALL STATIONS' : 'ALL STATIONS');
+  const [selectedStation, setSelectedStation] = useState('ALL STATIONS');
 
   useEffect(() => {
     if (canViewGlobalLevel) {
       setSelectedRegion('ALL REGIONS');
       setSelectedStation('ALL STATIONS');
     } else {
-      // 🟢 Locked strictly to the user's assigned region encompassing regional HQ and stations
       setSelectedRegion(userRegClean);
       setSelectedStation('ALL STATIONS');
     }
@@ -243,7 +236,6 @@ const AnalyticsDashboard = ({
         return true;
       }
 
-      // 🟢 Encompassing Region + Regional Headquarters + Subordinate Stations
       const activeTargetRegion = canViewGlobalLevel ? selectedRegion : userRegClean;
       
       const belongsToRegion = activeTargetRegion === 'ALL REGIONS' || 
@@ -569,7 +561,7 @@ const AnalyticsDashboard = ({
     const allWeeksSet = new Set();
 
     ops.forEach(o => {
-      let stn = stripHtmlTags(o.station || '').trim().toUpperCase();
+      let stn = stripHtmlTags(o.station || 'UNKNOWN').trim().toUpperCase();
       if (stn === "KIRA DIVISION" || stn === "KIRA DIV" || stn === "KIRA") stn = "KIRA DIV";
 
       const reg = getOfficialRegionForStation(stn, o.region);
@@ -1100,4 +1092,4 @@ const AnalyticsDashboard = ({
   );
 };
 
-export data export default AnalyticsDashboard;
+export default AnalyticsDashboard;

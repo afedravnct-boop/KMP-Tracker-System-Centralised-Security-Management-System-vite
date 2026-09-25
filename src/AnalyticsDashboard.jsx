@@ -52,6 +52,36 @@ const normalizeAnalyticsRank = (rankStr) => {
   return r;
 };
 
+// 🟢 Unit Normalization Engine to eliminate spelling & abbreviation repetitions
+const normalizeUnitName = (rawUnit) => {
+  if (!rawUnit) return 'GENERAL DUTIES';
+  let clean = String(rawUnit).trim().toUpperCase();
+  clean = clean.replace(/[\.\,\-\/]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  if (['G D', 'GD', 'G DUTIES', 'GENERAL DUTY', 'GENERAL DUTIES'].includes(clean)) return 'GENERAL DUTIES';
+  if (['CCTV', 'CCTV CAMERA', 'CCTV CAMERAS', 'CCTV SURVEILLANCE'].includes(clean)) return 'CCTV';
+  if (['CID', 'CRIME INVESTIGATION', 'CRIME INVESTIGATIONS'].includes(clean)) return 'CID';
+  if (['CI', 'CRIME INT', 'CRIME INTELLIGENCE'].includes(clean)) return 'CRIME INTELLIGENCE';
+  if (['TRAFFIC', 'TRF', 'TRAF'].includes(clean)) return 'TRAFFIC';
+  if (['LOG', 'LOGISTICS', 'LOGIS', 'LOG AND ENG', 'LOGS'].includes(clean)) return 'LOGISTICS';
+  if (['ICT', 'COMMUNICATIONS', 'SIGNAL', 'SIGNALS', 'SIGNAL AND COMM'].includes(clean)) return 'ICT & COMMUNICATIONS';
+
+  return clean;
+};
+
+// 🟢 Dual-Equivalence Engine for Regional Headquarter matching
+const isStationEquivalent = (statA, statB) => {
+  const a = (statA || '').trim().toUpperCase();
+  const b = (statB || '').trim().toUpperCase();
+  if (!a || !b) return false;
+  if (a === b) return true;
+
+  const cleanA = a.replace(/(\s+HEADQUARTERS|\s+HQ)$/, '');
+  const cleanB = b.replace(/(\s+HEADQUARTERS|\s+HQ)$/, '');
+
+  return cleanA === cleanB && cleanA.length > 0;
+};
+
 const getOfficialRegionForStation = (stationName, dbRegion) => {
   let cleanStation = (stationName || '').trim().toUpperCase();
   const cleanDbRegion = (dbRegion || '').trim().toUpperCase();
@@ -169,7 +199,6 @@ const AnalyticsDashboard = ({
   const [selectedRegion, setSelectedRegion] = useState(canViewGlobalActive ? 'ALL REGIONS' : (currentUser?.region || 'KMP HEADQUARTERS'));
   const [selectedStation, setSelectedStation] = useState(canViewGlobalActive ? 'ALL STATIONS' : (currentUser?.station || 'KMP HEADQUARTERS'));
 
-  // 🟢 1. DEFINE currentDataset FIRST so it is guaranteed to exist in scope for all subsequent memos
   const currentDataset = useMemo(() => {
     let baseData = [];
     if (activeDomain === 'CRIME' || activeDomain === 'CRIME_SUMMARY') baseData = resolvedCrimeRegistry.filter(r => !isLockupLog(r)); 
@@ -187,8 +216,15 @@ const AnalyticsDashboard = ({
         return true;
       }
 
-      if (selectedRegion !== 'ALL REGIONS' && reg !== selectedRegion.toUpperCase()) return false;
-      if (selectedStation !== 'ALL STATIONS' && stn !== selectedStation.toUpperCase()) return false;
+      const belongsToRegion = selectedRegion === 'ALL REGIONS' || 
+                              reg === selectedRegion || 
+                              (REGIONAL_HIERARCHY[selectedRegion] && REGIONAL_HIERARCHY[selectedRegion].some(s => isStationEquivalent(s, stn)));
+
+      if (!belongsToRegion) return false;
+
+      if (selectedStation !== 'ALL STATIONS') {
+        if (!isStationEquivalent(stn, selectedStation)) return false;
+      }
       return true;
     });
 
@@ -233,8 +269,14 @@ const AnalyticsDashboard = ({
       if (stn === "KIRA DIVISION" || stn === "KIRA DIV" || stn === "KIRA") stn = "KIRA DIV";
       const reg = getOfficialRegionForStation(stn, o.region);
 
-      if (selectedRegion !== 'ALL REGIONS' && reg !== selectedRegion) return;
-      if (selectedStation !== 'ALL STATIONS' && stn !== selectedStation) return;
+      if (selectedRegion !== 'ALL REGIONS') {
+        const belongsToRegion = reg === selectedRegion || 
+                                (REGIONAL_HIERARCHY[selectedRegion] && REGIONAL_HIERARCHY[selectedRegion].some(s => isStationEquivalent(s, stn)));
+        if (!belongsToRegion) return;
+      }
+      if (selectedStation !== 'ALL STATIONS') {
+        if (!isStationEquivalent(stn, selectedStation)) return;
+      }
 
       const targetReg = regionMap[reg] || regionMap["GENERAL / OTHER"];
       if (!targetReg.stations[stn]) {
@@ -282,13 +324,8 @@ const AnalyticsDashboard = ({
           grandTotals.reasons[reason] = (grandTotals.reasons[reason] || 0) + 1;
           grandTotals.nonDeployableTotal += 1;
       } else {
-          let unit = (o.section || o.dir || o.unit || 'GD').toUpperCase();
-          
-          if (unit.includes('GENERAL DUTIES')) unit = 'GD';
-          else if (unit.includes('CRIME INTELLIGENCE')) unit = 'CI';
-          else if (unit.includes('TRAFFIC')) unit = 'TRAFFIC';
-          
-          unit = unit.trim();
+          // 🟢 Apply Unit Normalization Engine to aggregate synonymous abbreviations
+          let unit = normalizeUnitName(o.section || o.dir || o.unit || 'GD');
 
           unitsSet.add(unit);
           targetReg.units[unit] = (targetReg.units[unit] || 0) + 1;
@@ -790,7 +827,7 @@ const AnalyticsDashboard = ({
                             {isExpanded && reg.stationList.map((stn, sIdx) => (
                                <tr key={`dep-${sIdx}`} className="bg-white hover:bg-[#f7f3eb] transition-colors">
                                   <td className="px-3 py-1.5 pl-7 text-[10px] font-semibold text-[#594d3c] uppercase sticky left-0 bg-white shadow-[1px_0_0_#e2d6c3]">
-                                     — {stn.station}
+                                      — {stn.station}
                                   </td>
                                   {manpowerAnalysis.uniqueUnits.map(u => (
                                      <td key={u} className="px-2 py-1.5 text-[10px] text-center font-medium text-slate-700 border-l border-[#e2d6c3]/50">{stn.units[u] || ''}</td>
@@ -852,7 +889,7 @@ const AnalyticsDashboard = ({
                             {isExpanded && reg.stationList.map((stn, sIdx) => (
                                <tr key={`non-${sIdx}`} className="bg-white hover:bg-[#f7f3eb] transition-colors">
                                   <td className="px-3 py-1.5 pl-7 text-[10px] font-semibold text-[#594d3c] uppercase sticky left-0 bg-white shadow-[1px_0_0_#e2d6c3]">
-                                     — {stn.station}
+                                      — {stn.station}
                                   </td>
                                   {manpowerAnalysis.uniqueReasons.map(r => (
                                      <td key={r} className="px-2 py-1.5 text-[10px] text-center font-medium text-slate-700 border-l border-[#e2d6c3]/50">{stn.reasons[r] || ''}</td>

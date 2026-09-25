@@ -195,7 +195,7 @@ const AnalyticsDashboard = ({
   const [metricCategory, setMetricCategory] = useState('CATEGORY');
   const [dateFilter, setDateFilter] = useState('ALL'); 
   
-  // 🟢 Corrected OPSEC Role Classification Engine (No forced global override)
+  // 🟢 OPSEC Role Classification Engine
   const userRoleClean = stripHtmlTags(currentUser?.role || '').toUpperCase();
   const userPosClean = stripHtmlTags(currentUser?.position || '').toUpperCase();
   const userRegClean = stripHtmlTags(currentUser?.region || '').toUpperCase();
@@ -208,23 +208,23 @@ const AnalyticsDashboard = ({
   const isKmpSpecialist = userRoleClean === 'ASSISTANT_SYSTEM_MANAGER' && ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(userRegClean) && userPosClean.includes('KMP');
 
   const canViewGlobalLevel = canViewGlobal || isGlobalTier || isKmpSystemManager || isKmpSpecialist;
-  const isRegionalCommand = ['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN', 'ASSISTANT_REGIONAL_ADMIN', 'STATION_ADMIN', 'DIVISION_ADMIN'].includes(userRoleClean) && !canViewGlobalLevel;
+  
+  // 🟢 Regional Command check for locking regional filters
+  const isRegionalCommand = ['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN', 'ASSISTANT_REGIONAL_ADMIN'].includes(userRoleClean) || userPosClean.includes('RPC') || userRegClean in REGIONAL_HIERARCHY;
 
   const [selectedRegion, setSelectedRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);
-  const [selectedStation, setSelectedStation] = useState((canViewGlobalLevel || isRegionalCommand) ? 'ALL STATIONS' : stripHtmlTags(currentUser?.station || '').toUpperCase());
+  const [selectedStation, setSelectedStation] = useState(canViewGlobalLevel ? 'ALL STATIONS' : 'ALL STATIONS');
 
   useEffect(() => {
     if (canViewGlobalLevel) {
       setSelectedRegion('ALL REGIONS');
       setSelectedStation('ALL STATIONS');
-    } else if (isRegionalCommand) {
+    } else {
+      // 🟢 Locked strictly to the user's assigned region encompassing regional HQ and stations
       setSelectedRegion(userRegClean);
       setSelectedStation('ALL STATIONS');
-    } else {
-      setSelectedRegion(userRegClean);
-      setSelectedStation(stripHtmlTags(currentUser?.station || '').toUpperCase());
     }
-  }, [canViewGlobalLevel, isRegionalCommand, userRegClean, currentUser?.station]);
+  }, [canViewGlobalLevel, userRegClean]);
 
   const currentDataset = useMemo(() => {
     let baseData = [];
@@ -243,9 +243,13 @@ const AnalyticsDashboard = ({
         return true;
       }
 
-      const belongsToRegion = selectedRegion === 'ALL REGIONS' || 
-                              reg.toUpperCase() === selectedRegion.toUpperCase() || 
-                              (REGIONAL_HIERARCHY[selectedRegion] && REGIONAL_HIERARCHY[selectedRegion].some(s => isStationEquivalent(s, stn)));
+      // 🟢 Encompassing Region + Regional Headquarters + Subordinate Stations
+      const activeTargetRegion = canViewGlobalLevel ? selectedRegion : userRegClean;
+      
+      const belongsToRegion = activeTargetRegion === 'ALL REGIONS' || 
+                              reg.toUpperCase() === activeTargetRegion.toUpperCase() || 
+                              (item.region && item.region.toUpperCase() === activeTargetRegion.toUpperCase()) ||
+                              (REGIONAL_HIERARCHY[activeTargetRegion] && REGIONAL_HIERARCHY[activeTargetRegion].some(s => isStationEquivalent(s, stn)));
 
       if (!belongsToRegion) return false;
 
@@ -275,7 +279,7 @@ const AnalyticsDashboard = ({
       });
     }
     return baseData;
-  }, [activeDomain, resolvedCrimeRegistry, resolvedNominalRolls, resolvedSuccessStories, resolvedOperationalStats, resolvedExhibits, dateFilter, selectedRegion, selectedStation, canViewGlobalLevel]);
+  }, [activeDomain, resolvedCrimeRegistry, resolvedNominalRolls, resolvedSuccessStories, resolvedOperationalStats, resolvedExhibits, dateFilter, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
   const manpowerAnalysis = useMemo(() => {
     const rolls = Array.isArray(resolvedNominalRolls) ? resolvedNominalRolls : [];
@@ -296,9 +300,12 @@ const AnalyticsDashboard = ({
       if (stn === "KIRA DIVISION" || stn === "KIRA DIV" || stn === "KIRA") stn = "KIRA DIV";
       const reg = getOfficialRegionForStation(stn, o.region);
 
-      if (selectedRegion !== 'ALL REGIONS') {
-        const belongsToRegion = reg.toUpperCase() === selectedRegion.toUpperCase() || 
-                                (REGIONAL_HIERARCHY[selectedRegion] && REGIONAL_HIERARCHY[selectedRegion].some(s => isStationEquivalent(s, stn)));
+      const activeTargetRegion = canViewGlobalLevel ? selectedRegion : userRegClean;
+
+      if (activeTargetRegion !== 'ALL REGIONS') {
+        const belongsToRegion = reg.toUpperCase() === activeTargetRegion.toUpperCase() || 
+                                (o.region && o.region.toUpperCase() === activeTargetRegion.toUpperCase()) ||
+                                (REGIONAL_HIERARCHY[activeTargetRegion] && REGIONAL_HIERARCHY[activeTargetRegion].some(s => isStationEquivalent(s, stn)));
         if (!belongsToRegion) return;
       }
       if (selectedStation !== 'ALL STATIONS') {
@@ -373,7 +380,7 @@ const AnalyticsDashboard = ({
     }));
 
     return { rows, uniqueUnits, uniqueReasons, grandTotals };
-  }, [resolvedNominalRolls, selectedRegion, selectedStation]);
+  }, [resolvedNominalRolls, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
   const aggregatedData = useMemo(() => {
     const grouped = {};
@@ -514,7 +521,8 @@ const AnalyticsDashboard = ({
 
     const rows = [];
     Object.values(regionMap).forEach(regObj => {
-      if (selectedRegion !== 'ALL REGIONS' && regObj.region.toUpperCase() !== selectedRegion.toUpperCase()) return;
+      const activeTargetRegion = canViewGlobalLevel ? selectedRegion : userRegClean;
+      if (activeTargetRegion !== 'ALL REGIONS' && regObj.region.toUpperCase() !== activeTargetRegion.toUpperCase()) return;
 
       let hasMatchingStation = false;
       const stationRows = [];
@@ -553,7 +561,7 @@ const AnalyticsDashboard = ({
     });
 
     return rows;
-  }, [resolvedCrimeRegistry, resolvedOperationalStats, resolvedSuccessStories, resolvedExhibits, selectedRegion, selectedStation]);
+  }, [resolvedCrimeRegistry, resolvedOperationalStats, resolvedSuccessStories, resolvedExhibits, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
   const operationsTrendsData = useMemo(() => {
     const ops = Array.isArray(resolvedOperationalStats) ? resolvedOperationalStats : [];
@@ -561,12 +569,13 @@ const AnalyticsDashboard = ({
     const allWeeksSet = new Set();
 
     ops.forEach(o => {
-      let stn = stripHtmlTags(o.station || 'UNKNOWN').trim().toUpperCase();
+      let stn = stripHtmlTags(o.station || '').trim().toUpperCase();
       if (stn === "KIRA DIVISION" || stn === "KIRA DIV" || stn === "KIRA") stn = "KIRA DIV";
 
       const reg = getOfficialRegionForStation(stn, o.region);
+      const activeTargetRegion = canViewGlobalLevel ? selectedRegion : userRegClean;
 
-      if (selectedRegion !== 'ALL REGIONS' && reg.toUpperCase() !== selectedRegion.toUpperCase()) return;
+      if (activeTargetRegion !== 'ALL REGIONS' && reg.toUpperCase() !== activeTargetRegion.toUpperCase()) return;
       if (selectedStation !== 'ALL STATIONS' && !isStationEquivalent(stn, selectedStation)) return;
 
       const weekId = getWeekIdentifier(o.date || o.timestamp);
@@ -599,7 +608,7 @@ const AnalyticsDashboard = ({
     });
 
     return { rows: rows.sort((a, b) => b.currentArrests - a.currentArrests), currentWeek, previousWeek };
-  }, [resolvedOperationalStats, selectedRegion, selectedStation]);
+  }, [resolvedOperationalStats, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
   const handleExportExcel = async () => {
     try {
@@ -690,11 +699,11 @@ const AnalyticsDashboard = ({
 
           <select 
             value={selectedRegion} 
-            onChange={(e) => { setSelectedRegion(e.target.value); setSelectedStation('ALL STATIONS'); }}
-            disabled={!canViewGlobalActive}
-            className="border border-[#e2d6c3] rounded-md px-2 py-1 text-[11px] font-bold text-[#3a3225] bg-white outline-none cursor-pointer disabled:bg-[#f4eee2] disabled:text-[#736450]"
+            onChange={(e) => { if (canViewGlobalLevel) { setSelectedRegion(e.target.value); setSelectedStation('ALL STATIONS'); } }}
+            disabled={!canViewGlobalLevel}
+            className="border border-[#e2d6c3] rounded-md px-2 py-1 text-[11px] font-bold text-[#3a3225] bg-white outline-none cursor-pointer disabled:bg-[#f4eee2] disabled:text-[#736450] disabled:opacity-90"
           >
-            {canViewGlobalActive ? (
+            {canViewGlobalLevel ? (
               <>
                 <option value="ALL REGIONS">ALL REGIONS</option>
                 {Object.keys(REGIONAL_HIERARCHY).map(reg => (
@@ -702,26 +711,21 @@ const AnalyticsDashboard = ({
                 ))}
               </>
             ) : (
-              <option value={userRegClean}>{userRegClean}</option>
+              <option value={userRegClean}>{userRegClean} (LOCKED REGIONAL COMMAND)</option>
             )}
           </select>
 
           <select 
             value={selectedStation} 
             onChange={(e) => setSelectedStation(e.target.value)}
-            disabled={!canViewGlobalActive && !isRegionalCommand}
-            className="border border-[#e2d6c3] rounded-md px-2 py-1 text-[11px] font-bold text-[#3a3225] bg-white outline-none cursor-pointer disabled:bg-[#f4eee2] disabled:text-[#736450]"
+            className="border border-[#e2d6c3] rounded-md px-2 py-1 text-[11px] font-bold text-[#3a3225] bg-white outline-none cursor-pointer"
           >
-            {(canViewGlobalActive || isRegionalCommand) ? (
-              <>
-                <option value="ALL STATIONS">ALL STATIONS</option>
-                {selectedRegion !== 'ALL REGIONS' && (REGIONAL_HIERARCHY[selectedRegion] || []).map(stn => (
-                  <option key={stn} value={stn}>{stn}</option>
-                ))}
-              </>
-            ) : (
-              <option value={stripHtmlTags(currentUser?.station || '').toUpperCase()}>{stripHtmlTags(currentUser?.station || '').toUpperCase()}</option>
-            )}
+            <option value="ALL STATIONS">ALL STATIONS / DIVISIONS</option>
+            {((canViewGlobalLevel ? selectedRegion : userRegClean) !== 'ALL REGIONS' && REGIONAL_HIERARCHY[canViewGlobalLevel ? selectedRegion : userRegClean]) ? (
+              REGIONAL_HIERARCHY[canViewGlobalLevel ? selectedRegion : userRegClean].map(stn => (
+                <option key={stn} value={stn}>{stn}</option>
+              ))
+            ) : null}
           </select>
 
           {activeDomain !== 'RELATIONAL' && activeDomain !== 'MANPOWER_DEEP' && (
@@ -1096,4 +1100,4 @@ const AnalyticsDashboard = ({
   );
 };
 
-export default AnalyticsDashboard;
+export data export default AnalyticsDashboard;

@@ -857,17 +857,17 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
             <div className="p-8 text-center text-slate-400 font-medium animate-pulse text-xs">Syncing user database...</div>
           ) : matrixView === 'ACTIVE' ? (
             <div className="w-full overflow-x-auto custom-scrollbar">
-              <div className="min-w-[1500px]">
+              <div className="min-w-[1550px]">
                 <table className="w-full divide-y divide-slate-200 dark:divide-slate-800 text-xs table-fixed">
                   <thead className="bg-slate-100 dark:bg-slate-950/50 text-slate-700 dark:text-slate-300 uppercase font-black text-[10px]">
                     <tr>
-                      <th className="py-4 px-3 text-left md:sticky md:left-0 z-20 bg-slate-100 dark:bg-slate-950 text-blue-900 dark:text-blue-100 w-[240px] min-w-[240px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Officer Details</th>
-                      <th className="py-4 px-3 text-center md:sticky md:left-[240px] z-20 bg-slate-100 dark:bg-slate-950 text-blue-900 dark:text-blue-100 w-[130px] min-w-[130px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Administrative Tier</th>
-                      <th className="py-4 px-3 text-center md:sticky md:left-[370px] z-20 bg-slate-100 dark:bg-slate-950 text-blue-900 dark:text-blue-100 w-[110px] min-w-[110px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Quick Actions</th>
+                      <th className="py-3 px-3 text-left md:sticky md:left-0 z-20 bg-slate-100 dark:bg-slate-950 text-blue-900 dark:text-blue-100 w-[240px] min-w-[240px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Officer Details</th>
+                      <th className="py-3 px-3 text-center md:sticky md:left-[240px] z-20 bg-slate-100 dark:bg-slate-950 text-blue-900 dark:text-blue-100 w-[130px] min-w-[130px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Administrative Tier</th>
+                      <th className="py-3 px-3 text-center md:sticky md:left-[370px] z-20 bg-slate-100 dark:bg-slate-950 text-blue-900 dark:text-blue-100 w-[110px] min-w-[110px] shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Quick Actions</th>
                       {CLEARANCE_MATRIX_COLS.map((col, idx) => (
-                        <th key={idx} className="py-3 px-1 border-l border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 w-28 min-w-[112px] align-bottom">
-                          <div className="h-24 flex items-end justify-center pb-2 px-1">
-                            <span className="transform -rotate-45 origin-bottom-left text-[10px] font-bold text-blue-900 dark:text-blue-100 tracking-tight whitespace-nowrap block w-24 text-left" title={col.label}>
+                        <th key={idx} className="py-2 px-1 border-l border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 w-28 min-w-[112px] align-middle">
+                          <div className="h-16 flex items-center justify-center text-center px-1">
+                            <span className="text-[9px] font-extrabold text-blue-900 dark:text-blue-100 tracking-tight whitespace-normal break-words leading-tight" title={col.label}>
                               {col.label}
                             </span>
                           </div>
@@ -922,7 +922,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
                             const isDisabled = isSelf || isMutuallyDisabled || !canModifyThisUser;
 
                             return (
-                              <td key={idx} className="py-3 px-1 text-center border-l border-slate-100 dark:border-slate-800 w-28 min-w-[112px]">
+                              <td key={idx} className="py-3 px-1.5 text-center border-l border-slate-100 dark:border-slate-800 w-28 min-w-[112px]">
                                 <input 
                                   type="checkbox" 
                                   checked={p[col.key] !== false ? (['SUPER_ADMIN', 'ADMIN'].includes(u.role) || Boolean(p[col.key])) : false} 

@@ -33,7 +33,7 @@ import AICommandConsole from "./AICommandConsole";
 import { authFetch, hasValidSession, getAuthToken, setAuthSession, clearAuthSession } from './api';
 import { FullUserPolicyText } from './policyContent';
 import ExhibitsRegistry from './ExhibitsRegistry';
-import LockupMatrixPage from './LockupMatrixPage';
+import LockupMatrixLedger from './LockupMatrixLedger';
 
 // ====================================================================
 // 1. CONSTANTS & CONFIGURATION

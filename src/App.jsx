@@ -3018,19 +3018,27 @@ const App = () => {
         ); 
 
       case 'lockup-matrix': 
-        return checkClearance(currentUser, 'acc_lockup', true) ? (
-          <LockupMatrixPage currentUser={currentUser} />
-        ) : (
-          <HomeDashboard 
-            currentUser={currentUser} 
-            setCurrentPage={handlePageChange} 
-            onMasterExport={handleMasterExport} 
-            onViewConsolidated={handleViewConsolidated} 
-            adminCommsData={adminCommsData} 
-            onAcknowledgeComm={handleAcknowledgeComm} 
-            onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
-          />
-        );
+     return checkClearance(currentUser, 'acc_lockup', true) ? (
+       <div className="p-6">
+         <LockupMatrixLedger 
+           lockupEntries={reports} // or fetch lockup records directly
+           allTimeLockupTotal={grandTotals.displayTotal}
+           onClose={() => setCurrentPage('home')}
+           selectedRegion={currentUser?.region || 'ALL REGIONS'}
+           selectedStation={currentUser?.station || 'ALL STATIONS'}
+         />
+       </div>
+     ) : (
+       <HomeDashboard 
+         currentUser={currentUser} 
+         setCurrentPage={handlePageChange} 
+         onMasterExport={handleMasterExport} 
+         onViewConsolidated={handleViewConsolidated} 
+         adminCommsData={adminCommsData} 
+         onAcknowledgeComm={handleAcknowledgeComm} 
+         onOpenInbox={() => { setCommDefaultTab('INBOX'); handlePageChange('Admin_Communication'); }} 
+       />
+     );
 
       case 'ai_console':
         return (

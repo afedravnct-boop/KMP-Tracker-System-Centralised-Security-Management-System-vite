@@ -510,6 +510,15 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
       const cleanRefNumber = stripHtmlTags(formData.ref_number).toUpperCase();
       const final_reference = `${cleanRefType} ${cleanRefNumber}`.trim();
         
+      // 🟢 STRICT REFERENCE VALIDATION
+      // Rejects anything that isn't the exact prefix followed by strictly numbers and slashes.
+      const referenceRegex = /^(SD Ref:|CRB:|DEF:|GEF:|TAR:|CID:)\s*\d+(\/\d+)+$/i;
+      
+      if (!referenceRegex.test(final_reference)) {
+        setNotification("⚠️ Invalid Reference Format. Do NOT type station names. The number field must only contain digits and slashes (e.g., 04/2026 or 12/05/11/2026).");
+        return; // 🛑 Stops submission
+      }
+
       const isDuplicate = serverReports.some(r => stripHtmlTags(r.station) === stripHtmlTags(formData.station) && ((stripHtmlTags(r.sdRef || r.sd_ref || '')).trim().toLowerCase() === final_reference.toLowerCase() || extractPlainText(r.narrative || '').trim().toLowerCase() === plainTextForDuplicate.toLowerCase()));
       if (isDuplicate) return setNotification(`Error: This specific ${cleanRefType} entry or identical narrative already exists.`);
 

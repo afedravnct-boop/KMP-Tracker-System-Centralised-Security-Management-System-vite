@@ -724,7 +724,7 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
           <MetricCard title={filterRegion === 'ALL REGIONS' && filterStation === 'ALL STATIONS' ? "Computed Sum (All)" : filterStation === 'ALL STATIONS' ? `${filterRegion} Lock-up` : `${filterStation} Lock-up`} value={metrics.localLockup} colorClass="text-slate-800 dark:text-slate-100" />
           <MetricCard title="KMP Master Lock-up" value={metrics.kmpGeneralLockup} colorClass="text-amber-600 dark:text-amber-400" />
           <MetricCard title="Total Cases" value={metrics.newCases} colorClass="text-blue-700 dark:text-blue-400" />
-          <MetricCard title="Suspects (Case)" value={metrics.totalSuspects} colorClass="text-red-600 dark:text-red-400" />
+          <MetricCard title="Suspects (Arrested in Case)" value={metrics.totalSuspects} colorClass="text-red-600 dark:text-red-400" />
           <MetricCard title="Active" value={metrics.active} colorClass="text-yellow-600 dark:text-yellow-400" />
           <MetricCard title="Sanctioned" value={metrics.sanctioned} colorClass="text-purple-600 dark:text-purple-400" />
           <MetricCard title="Closed" value={metrics.closed} colorClass="text-green-600 dark:text-green-400" />

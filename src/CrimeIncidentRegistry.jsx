@@ -423,15 +423,29 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
       uploadData.append("case_id", stripHtmlTags(formData.sd_ref || "NEW_CASE"));
 
       try {
-        const token = localStorage.getItem('kmp_authToken') || sessionStorage.getItem('kmp_authToken');
-        const API_URL = import.meta.env?.VITE_API_URL || "https://kmp-tracker-system-centralised-security.onrender.com";
-        const response = await fetch(`${API_URL}/api/v1/investigation/upload/`, { method: "POST", headers: { "Authorization": `Bearer ${token}` }, body: uploadData });
+        // 🟢 Replaced manual fetch with authFetch and REMOVED the trailing slash
+        // Note: Do NOT set 'Content-Type' when sending FormData. The browser handles the multipart boundary automatically.
+        const response = await authFetch(`/api/v1/investigation/upload`, { 
+          method: "POST", 
+          body: uploadData 
+        });
+        
+        if (!response.ok) throw new Error(`Upload failed with status: ${response.status}`);
+        
         const data = await response.json();
+        
         if (data.full_s3_url || data.cloud_storage_path) {
-          setNewSuspect({ ...newSuspect, photo_url: stripHtmlTags(data.full_s3_url || `https://kmp-tracker-system-tu-16-06-26.s3.eu-central-1.amazonaws.com/${data.cloud_storage_path}`) });
+          setNewSuspect({ 
+            ...newSuspect, 
+            photo_url: stripHtmlTags(data.full_s3_url || `https://kmp-tracker-system-tu-16-06-26.s3.eu-central-1.amazonaws.com/${data.cloud_storage_path}`) 
+          });
           setNotification("✅ Mugshot uploaded securely!");
-        } else throw new Error("Invalid response");
+        } else {
+          throw new Error("Invalid response format from server");
+        }
       } catch (error) {
+        console.error("Upload Error:", error);
+        // Fallback to local blob preview if upload fails
         setNewSuspect({ ...newSuspect, photo_url: URL.createObjectURL(file) });
         setNotification("⚠️ API unreachable. Using temporary local preview.");
       }

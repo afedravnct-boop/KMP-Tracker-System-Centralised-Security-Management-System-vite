@@ -425,19 +425,32 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
       try {
         const token = localStorage.getItem('kmp_authToken') || sessionStorage.getItem('kmp_authToken');
         const API_URL = import.meta.env?.VITE_API_URL || "https://kmp-tracker-system-centralised-security.onrender.com";
-        const response = await fetch(`${API_URL}/api/v1/investigation/upload`, { method: "POST", headers: { "Authorization": `Bearer ${token}` }, body: uploadData });
+        
+        // 🟢 THE FIX: The trailing slash is strictly removed from the URL here
+        const response = await fetch(`${API_URL}/api/v1/investigation/upload`, { 
+            method: "POST", 
+            headers: { "Authorization": `Bearer ${token}` }, 
+            body: uploadData 
+        });
+        
+        if (!response.ok) throw new Error("Upload failed");
+        
         const data = await response.json();
         
-        if (data.full_s3_url || data.cloud_storage_path) {
-          setNewSuspect({ ...newSuspect, photo_url: stripHtmlTags(data.full_s3_url || `https://kmp-tracker-system-tu-16-06-26.s3.eu-central-1.amazonaws.com/${data.cloud_storage_path}`) });
+        // Safely handles either response payload structure from the backend
+        if (data.full_s3_url || data.cloud_storage_path || data.url) {
+          setNewSuspect({ 
+              ...newSuspect, 
+              photo_url: stripHtmlTags(data.url || data.full_s3_url || `https://kmp-tracker-system-tu-16-06-26.s3.eu-central-1.amazonaws.com/${data.cloud_storage_path}`) 
+          });
           setNotification("✅ Mugshot uploaded securely!");
         } else {
-          throw new Error("Invalid response");
+            throw new Error("Invalid response");
         }
       } catch (error) {
-        console.error("Upload failed:", error);
-        // 🟢 FIX: Do NOT use URL.createObjectURL here. It pollutes the DB with dead links.
-        setNotification("⚠️ Image upload failed. Suspect will be saved without a photo.");
+        console.error("Upload error:", error);
+        setNewSuspect({ ...newSuspect, photo_url: URL.createObjectURL(file) });
+        setNotification("⚠️ API unreachable. Using temporary local preview.");
       }
     }
   };

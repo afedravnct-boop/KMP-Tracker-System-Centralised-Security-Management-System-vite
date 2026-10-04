@@ -16,7 +16,7 @@ const REGIONAL_HIERARCHY = {
   "POLICE HEADQUARTERS": ["NAGURU"]
 };
 
-// 🟢 Defined explicit standard offenses list for mapping and fallback comparison
+// 🟢 Standard offenses list for dropdown matching
 const STANDARD_OFFENCES = ["Murder", "Aggravated Robbery", "Theft", "Assault", "Burglary", "Defilement / Rape", "Traffic Accident (Fatal)", "Traffic Accident (Minor)", "Fraud / Forgery", "Drug Offenses"];
 
 const isStationEquivalent = (statA, statB) => {
@@ -236,17 +236,14 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
     if (mode === 'new') resetFormToBlank();
   };
 
-  // 🟢 Resolves Offence Logic: Maps standard vs custom offences for Edit/Update 
+  // 🟢 Simply loads the actual database string straight into formData.offence without mapping logic
   const populateUpdateCrimeForm = (caseData) => {
-    const rawOffence = stripHtmlTags(caseData.offence || 'Other');
-    const standardMatch = STANDARD_OFFENCES.find(o => o.toUpperCase() === rawOffence.toUpperCase());
-  
     setFormData({ 
       ...caseData, 
       sn: caseData.sn || caseData.id, 
       sd_ref: stripHtmlTags(caseData.sdRef || caseData.sd_ref), 
-      offence: standardMatch ? standardMatch : 'Other',
-      customOffence: standardMatch ? '' : rawOffence,
+      offence: stripHtmlTags(caseData.offence || 'Other'), // Safely carries over the custom text
+      customOffence: '',
       suspectDetails: caseData.suspectDetails || [], 
       updateText: '' 
     });
@@ -331,7 +328,6 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
     });
   }, [finalFilteredReports, updateSearch, canViewGlobalActive, userRegClean]);
 
-  // 🟢 24-Hour Fallback Logic applied to metrics computations
   const metrics = useMemo(() => {
     const stationCellPop = {};
     const todayStr = getTodayString(); 
@@ -539,7 +535,7 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
           updatedNarrative = `${formData.narrative}<p><br></p><p><strong style="color: #2563eb;">[UPDATE ${new Date().toLocaleString()}]:</strong></p>${formData.updateText}`;
       }
         
-      // 🟢 Ensures finalOffenceValue retains custom text properly for backend updates
+      // 🟢 Always takes the value loaded in formData.offence as it was handled natively
       const finalOffenceValue = formData.offence === 'Other' ? stripHtmlTags(formData.customOffence).toUpperCase() : stripHtmlTags(formData.offence);
 
       const updatedRecord = { 
@@ -547,7 +543,7 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
         region: getOfficialRegionForStation(formData.station, formData.region),
         time: formattedTime, 
         narrative: updatedNarrative, 
-        offence: finalOffenceValue, // Passes the explicitly retrieved custom/standard offence string
+        offence: finalOffenceValue, 
         status: formData.status,
         suspects: formData.suspectDetails.length,
         last_updated_by: `${stripHtmlTags(currentUser.name)} (${stripHtmlTags(currentUser.fnum)})`, 
@@ -557,7 +553,7 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
       delete updatedRecord.updateText; 
       delete updatedRecord.ref_type; 
       delete updatedRecord.ref_number;
-      delete updatedRecord.customOffence; // Cleans payload for backend
+      delete updatedRecord.customOffence; 
         
       try {
         const response = await authFetch(`/api/v1/reports/${formData.sn}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updatedRecord) });
@@ -813,12 +809,18 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
                     {STANDARD_OFFENCES.map(off => (
                       <option key={off} value={off}>{off}</option>
                     ))}
+                    
+                    {/* 🟢 THE FIX: Safely injects the raw custom database string into the options array if it isn't standard, preventing the browser from defaulting to 'Murder' */}
+                    {formData.offence && formData.offence !== 'Other' && !STANDARD_OFFENCES.some(o => o.toUpperCase() === formData.offence.toUpperCase()) && (
+                      <option value={formData.offence}>{formData.offence}</option>
+                    )}
+                    
                     <option value="Other">Other (Specify Below)</option>
                   </select>
                   
-                  {/* 🟢 Removed `&& operation === 'new'` so custom offence correctly displays in read-only greyed out text box during updates */}
-                  {formData.offence === 'Other' && (
-                    <input type="text" name="customOffence" required disabled={operation === 'update'} value={stripHtmlTags(formData.customOffence || '')} onChange={handleInputChange} placeholder="Type the specific offence here..." className="mt-1.5 w-full text-xs border-blue-400 dark:border-slate-700 rounded shadow-sm border p-1.5 focus:ring-blue-500 bg-blue-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 uppercase disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 disabled:border-gray-300" />
+                  {/* 🟢 Only display the custom manual entry box when creating a brand NEW case */}
+                  {formData.offence === 'Other' && operation === 'new' && (
+                    <input type="text" name="customOffence" required value={stripHtmlTags(formData.customOffence || '')} onChange={handleInputChange} placeholder="Type the specific offence here..." className="mt-1.5 w-full text-xs border-blue-400 dark:border-slate-700 rounded shadow-sm border p-1.5 focus:ring-blue-500 bg-blue-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 uppercase" />
                   )}
                 </div>
 

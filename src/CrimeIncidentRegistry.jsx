@@ -1058,12 +1058,15 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
                         <div key={idx} className="bg-red-50 dark:bg-red-950/40 p-3 rounded-lg border border-red-200 dark:border-red-900 flex items-start space-x-3">
                           <div className="shrink-0">
                             {isValidPhoto ? ( 
-                              <img src={s.photo_url} alt={s.name} className="w-14 h-14 rounded object-cover border-2 border-red-300 dark:border-red-800 shadow-sm" onError={(e) => { e.target.style.display = 'none'; }} /> 
+                              {/* 🟢 Increased image size to w-24 h-24 (96x96 pixels) */}
+                              <img src={s.photo_url} alt={s.name} className="w-24 h-24 rounded object-cover border-2 border-red-300 dark:border-red-800 shadow-sm" onError={(e) => { e.target.style.display = 'none'; }} /> 
                             ) : ( 
-                              <div className="w-14 h-14 rounded bg-red-100 dark:bg-red-900 text-red-400 dark:text-red-300 flex flex-col items-center justify-center font-bold text-[8px] border border-dashed border-red-200 dark:border-red-800 text-center p-1 uppercase leading-tight">
-                                <Camera size={14} className="mb-0.5 opacity-50"/>
+                              <div className="w-24 h-24 rounded bg-red-100 dark:bg-red-900 text-red-400 dark:text-red-300 flex flex-col items-center justify-center font-bold text-[10px] border border-dashed border-red-200 dark:border-red-800 text-center p-1 uppercase leading-tight">
+                                <Camera size={18} className="mb-1 opacity-50"/>
                                 No Photo
                               </div> 
+                            )}
+                          </div> 
                             )}
                           </div>
                           <div className="flex-1 min-w-0">

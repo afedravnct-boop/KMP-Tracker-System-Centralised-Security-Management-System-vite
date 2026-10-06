@@ -34,14 +34,12 @@ const normalizeOffenceCategory = (rawOffence) => {
   return words.join(' ') || clean;
 };
 
-// 🟢 Intelligent Narrative Parser to extract exact phrase mentions, numbers, and recoveries
+// 🟢 Fully integrated intelligent narrative text parser for suspects and quantities
 const parseSuccessStoryNarrative = (rawHtmlNarrative) => {
-  const cleanHtml = rawHtmlNarrative || '';
-  const plainText = stripHtmlTags(cleanHtml);
+  const plainText = stripHtmlTags(rawHtmlNarrative || '');
   const lowerText = plainText.toLowerCase();
   
   let suspectsCount = 0;
-  // Match patterns like "04 suspects", "4 suspects", "arrested 4", etc.
   const suspectMatches = [
     lowerText.match(/(\d+)\s*(?:suspects|suspect|person|persons|culprits|thieves|gang)/i),
     lowerText.match(/(?:arrest(?:ed|ing)?|apprehend(?:ed)?)\s*(?:of)?\s*(\d+)/i)
@@ -53,14 +51,12 @@ const parseSuccessStoryNarrative = (rawHtmlNarrative) => {
     }
   }
 
-  // Extract legal status
   let legalStatus = 'UNDER INVESTIGATION';
   if (lowerText.includes('remand') || lowerText.includes('remanded')) legalStatus = 'REMANDED';
   else if (lowerText.includes('convict') || lowerText.includes('sentenced')) legalStatus = 'CONVICTED';
   else if (lowerText.includes('acquit')) legalStatus = 'ACQUITTED';
   else if (lowerText.includes('court') || lowerText.includes('trial') || lowerText.includes('magistrate')) legalStatus = 'UNDERGOING COURT TRIAL';
 
-  // Extract open-ended property recoveries & quantities (e.g., "3 cows", "2 phones", "cash")
   const recoveriesList = [];
   const recoveryRegex = /(\d+)\s*([a-z\s]+(?:cows|cow|cattle|phones|phone|money|cash|shillings|computers|computer|chairs|chair|tables|table|shoes|shoe|motorcycles|motorcycle|vehicles|vehicle|birds|chicken|produce|maize|beans|items))/gi;
   let match;
@@ -72,7 +68,6 @@ const parseSuccessStoryNarrative = (rawHtmlNarrative) => {
     recoveriesList.push('Recovered exhibits / assets');
   }
 
-  // Dynamic classification summary
   let classification = 'Operational breakthrough & suspect apprehension';
   if (lowerText.includes('cattle') || lowerText.includes('cow') || lowerText.includes('livestock') || lowerText.includes('farm') || lowerText.includes('agric')) {
     classification = 'Arrest of suspects in cattle / agricultural theft & recovery';
@@ -86,8 +81,7 @@ const parseSuccessStoryNarrative = (rawHtmlNarrative) => {
     suspects: suspectsCount,
     recoveries: recoveriesList.length > 0 ? recoveriesList.join(', ') : 'None recorded',
     legalStatus: legalStatus,
-    classification: classification,
-    rawSnippet: plainText.length > 120 ? plainText.slice(0, 120) + '...' : plainText
+    classification: classification
   };
 };
 
@@ -301,7 +295,7 @@ const AnalyticsDashboard = ({
     return baseData;
   }, [activeDomain, resolvedCrimeRegistry, resolvedNominalRolls, resolvedSuccessStories, resolvedOperationalStats, resolvedExhibits, dateFilter, selectedMonth, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
-  // 🟢 Intelligent Parsed Success Stories
+  // 🟢 Parsed Success Stories with intelligent narrative scanning
   const parsedSuccessStories = useMemo(() => {
     return timeFilteredDataset.map(st => {
       const parsed = parseSuccessStoryNarrative(st.narrative || st.title);
@@ -310,8 +304,7 @@ const AnalyticsDashboard = ({
         parsedSuspects: st.suspects_arrested || st.suspects_arrested_count || parsed.suspects,
         parsedRecoveries: st.suspected_stolen_properties_recovered || st.property_recovered || parsed.recoveries,
         parsedLegalStatus: st.legal_status || parsed.legalStatus,
-        parsedClassification: parsed.classification,
-        parsedSnippet: parsed.rawSnippet
+        parsedClassification: parsed.classification
       };
     });
   }, [timeFilteredDataset]);
@@ -565,7 +558,7 @@ const AnalyticsDashboard = ({
         </span>
       </div>
 
-      {/* SUCCESS STORIES TAB (INTELLIGENTLY EXTRACTED FROM NARRATIVES) */}
+      {/* SUCCESS STORIES TAB (INTELLIGENTLY EXTRACTED) */}
       {activeDomain === 'SUCCESS' && (
         <div className="space-y-3 pb-12">
           <div className="bg-[#3a3225] rounded-xl p-3.5 text-[#f4eee2] shadow-sm border border-[#534735]">

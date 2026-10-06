@@ -34,51 +34,60 @@ const normalizeOffenceCategory = (rawOffence) => {
   return words.join(' ') || clean;
 };
 
-// 🟢 Intelligent Narrative Parser to extract suspects, recoveries, and legal status
+// 🟢 Intelligent Narrative Parser to extract exact phrase mentions, numbers, and recoveries
 const parseSuccessStoryNarrative = (rawHtmlNarrative) => {
-  const clean = stripHtmlTags(rawHtmlNarrative || '').toLowerCase();
+  const cleanHtml = rawHtmlNarrative || '';
+  const plainText = stripHtmlTags(cleanHtml);
+  const lowerText = plainText.toLowerCase();
   
-  // Extract suspect count
-  let suspects = 0;
-  const suspectMatch = clean.match(/(\d+)\s*(?:suspects|suspect|person|persons|culprits|thieves|gang)/i);
-  if (suspectMatch) {
-    suspects = parseInt(suspectMatch[1], 10);
+  let suspectsCount = 0;
+  // Match patterns like "04 suspects", "4 suspects", "arrested 4", etc.
+  const suspectMatches = [
+    lowerText.match(/(\d+)\s*(?:suspects|suspect|person|persons|culprits|thieves|gang)/i),
+    lowerText.match(/(?:arrest(?:ed|ing)?|apprehend(?:ed)?)\s*(?:of)?\s*(\d+)/i)
+  ];
+  for (const m of suspectMatches) {
+    if (m && m[1]) {
+      suspectsCount = parseInt(m[1], 10);
+      break;
+    }
   }
 
   // Extract legal status
   let legalStatus = 'UNDER INVESTIGATION';
-  if (clean.includes('remand') || clean.includes('remanded')) legalStatus = 'REMANDED';
-  else if (clean.includes('convict') || clean.includes('sentenced')) legalStatus = 'CONVICTED';
-  else if (clean.includes('acquit')) legalStatus = 'ACQUITTED';
-  else if (clean.includes('court') || clean.includes('trial') || clean.includes('magistrate')) legalStatus = 'UNDERGOING COURT TRIAL';
+  if (lowerText.includes('remand') || lowerText.includes('remanded')) legalStatus = 'REMANDED';
+  else if (lowerText.includes('convict') || lowerText.includes('sentenced')) legalStatus = 'CONVICTED';
+  else if (lowerText.includes('acquit')) legalStatus = 'ACQUITTED';
+  else if (lowerText.includes('court') || lowerText.includes('trial') || lowerText.includes('magistrate')) legalStatus = 'UNDERGOING COURT TRIAL';
 
-  // Extract open-ended property recoveries (cattle, phones, money, chairs, etc.)
+  // Extract open-ended property recoveries & quantities (e.g., "3 cows", "2 phones", "cash")
   const recoveriesList = [];
   const recoveryRegex = /(\d+)\s*([a-z\s]+(?:cows|cow|cattle|phones|phone|money|cash|shillings|computers|computer|chairs|chair|tables|table|shoes|shoe|motorcycles|motorcycle|vehicles|vehicle|birds|chicken|produce|maize|beans|items))/gi;
   let match;
-  while ((match = recoveryRegex.exec(clean)) !== null) {
+  while ((match = recoveryRegex.exec(lowerText)) !== null) {
     recoveriesList.push(`${match[1]} ${match[2].trim()}`);
   }
 
-  if (recoveriesList.length === 0 && (clean.includes('recovery') || clean.includes('recovered') || clean.includes('recover'))) {
-    recoveriesList.push('Recovered properties / exhibits');
+  if (recoveriesList.length === 0 && (lowerText.includes('recovery') || lowerText.includes('recovered') || lowerText.includes('recover'))) {
+    recoveriesList.push('Recovered exhibits / assets');
   }
 
   // Dynamic classification summary
   let classification = 'Operational breakthrough & suspect apprehension';
-  if (clean.includes('cattle') || clean.includes('cow') || clean.includes('livestock') || clean.includes('farm') || clean.includes('agric')) {
-    classification = 'Arrest of suspects in agricultural / cattle theft & property recovery';
-  } else if (clean.includes('phone') || clean.includes('computer') || clean.includes('electronics')) {
-    classification = 'Apprehension of suspects & recovery of electronic assets';
-  } else if (clean.includes('robbery') || clean.includes('gang') || clean.includes('theft')) {
-    classification = 'Dismantling of criminal gang & asset recovery';
+  if (lowerText.includes('cattle') || lowerText.includes('cow') || lowerText.includes('livestock') || lowerText.includes('farm') || lowerText.includes('agric')) {
+    classification = 'Arrest of suspects in cattle / agricultural theft & recovery';
+  } else if (lowerText.includes('phone') || lowerText.includes('computer') || lowerText.includes('electronics')) {
+    classification = 'Apprehension of suspects & electronic asset recovery';
+  } else if (lowerText.includes('robbery') || lowerText.includes('gang') || lowerText.includes('theft')) {
+    classification = 'Dismantling of criminal gang & property recovery';
   }
 
   return {
-    suspects: suspects,
+    suspects: suspectsCount,
     recoveries: recoveriesList.length > 0 ? recoveriesList.join(', ') : 'None recorded',
     legalStatus: legalStatus,
-    classification: classification
+    classification: classification,
+    rawSnippet: plainText.length > 120 ? plainText.slice(0, 120) + '...' : plainText
   };
 };
 
@@ -292,7 +301,7 @@ const AnalyticsDashboard = ({
     return baseData;
   }, [activeDomain, resolvedCrimeRegistry, resolvedNominalRolls, resolvedSuccessStories, resolvedOperationalStats, resolvedExhibits, dateFilter, selectedMonth, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
-  // Success Stories Intelligence Parsing
+  // 🟢 Intelligent Parsed Success Stories
   const parsedSuccessStories = useMemo(() => {
     return timeFilteredDataset.map(st => {
       const parsed = parseSuccessStoryNarrative(st.narrative || st.title);
@@ -301,7 +310,8 @@ const AnalyticsDashboard = ({
         parsedSuspects: st.suspects_arrested || st.suspects_arrested_count || parsed.suspects,
         parsedRecoveries: st.suspected_stolen_properties_recovered || st.property_recovered || parsed.recoveries,
         parsedLegalStatus: st.legal_status || parsed.legalStatus,
-        parsedClassification: parsed.classification
+        parsedClassification: parsed.classification,
+        parsedSnippet: parsed.rawSnippet
       };
     });
   }, [timeFilteredDataset]);
@@ -555,7 +565,7 @@ const AnalyticsDashboard = ({
         </span>
       </div>
 
-      {/* SUCCESS STORIES TAB (INTELLIGENTLY PARSED FROM NARRATIVE) */}
+      {/* SUCCESS STORIES TAB (INTELLIGENTLY EXTRACTED FROM NARRATIVES) */}
       {activeDomain === 'SUCCESS' && (
         <div className="space-y-3 pb-12">
           <div className="bg-[#3a3225] rounded-xl p-3.5 text-[#f4eee2] shadow-sm border border-[#534735]">
@@ -563,7 +573,7 @@ const AnalyticsDashboard = ({
               <Award className="mr-2 text-[#C5A880] w-4 h-4" /> Success Stories & Operational Breakthrough Summaries
             </h2>
             <p className="text-[11px] text-[#b8ab97] mt-0.5 leading-tight">
-              Dynamically extracted details from narrative logs: suspect counts, classified breakthroughs (e.g., arrest of suspects in cattle theft and recovery of suspected stolen cattle), open-ended property recoveries, and legal status.
+              Automatically extracting arrest numbers, classified breakthroughs (e.g., arrest of suspects in cattle theft and recovery of suspected stolen cattle), open-ended property recoveries, and suspect legal status directly from story narratives.
             </p>
           </div>
 

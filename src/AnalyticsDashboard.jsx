@@ -34,22 +34,6 @@ const normalizeOffenceCategory = (rawOffence) => {
   return words.join(' ') || clean;
 };
 
-const normalizeUnitName = (rawUnit) => {
-  if (!rawUnit) return 'GENERAL DUTIES';
-  let clean = String(rawUnit).trim().toUpperCase();
-  clean = clean.replace(/[\.\,\-\/]/g, ' ').replace(/\s+/g, ' ').trim();
-
-  if (['G D', 'GD', 'G DUTIES', 'GENERAL DUTY', 'GENERAL DUTIES'].includes(clean)) return 'GENERAL DUTIES';
-  if (['CCTV', 'CCTV CAMERA', 'CCTV CAMERAS', 'CCTV SURVEILLANCE'].includes(clean)) return 'CCTV';
-  if (['CID', 'CRIME INVESTIGATION', 'CRIME INVESTIGATIONS'].includes(clean)) return 'CID';
-  if (['CI', 'CRIME INT', 'CRIME INTELLIGENCE'].includes(clean)) return 'CRIME INTELLIGENCE';
-  if (['TRAFFIC', 'TRF', 'TRAF'].includes(clean)) return 'TRAFFIC';
-  if (['LOG', 'LOGISTICS', 'LOGIS', 'LOG AND ENG', 'LOGS'].includes(clean)) return 'LOGISTICS';
-  if (['ICT', 'COMMUNICATIONS', 'SIGNAL', 'SIGNALS', 'SIGNAL AND COMM'].includes(clean)) return 'ICT & COMMUNICATIONS';
-
-  return clean;
-};
-
 const isStationEquivalent = (statA, statB) => {
   const a = stripHtmlTags(statA || '').trim().toUpperCase();
   const b = stripHtmlTags(statB || '').trim().toUpperCase();
@@ -100,8 +84,6 @@ const AnalyticsDashboard = ({
   canViewGlobal = false 
 }) => {
   const [fetchedRolls, setFetchedRolls] = useState([]);
-  const [fetchedArchiveRolls, setFetchedArchiveRolls] = useState([]);
-  const [fetchedLockup, setFetchedLockup] = useState([]);
   const [fetchedCrime, setFetchedCrime] = useState([]);
   const [fetchedSuccess, setFetchedSuccess] = useState([]);
   const [fetchedOps, setFetchedOps] = useState([]);
@@ -119,15 +101,13 @@ const AnalyticsDashboard = ({
 
   useEffect(() => {
     let isMounted = true;
-    const fetchData = async () => {
+    const fetchNeonData = async () => {
       if (!hasValidSession()) return;
 
       setLoading(true);
       try {
-        const [rollRes, archiveRes, lockupRes, crimeRes, storyRes, statsRes, exhibitsRes] = await Promise.all([
+        const [rollRes, crimeRes, storyRes, statsRes, exhibitsRes] = await Promise.all([
           authFetch('/api/v1/nominal-roll').catch(() => null),
-          authFetch('/api/v1/nominal-roll-archive').catch(() => null),
-          authFetch('/api/v1/lockup-matrix').catch(() => null),
           authFetch('/api/v1/reports').catch(() => null),
           authFetch('/api/v1/stories').catch(() => null),
           authFetch('/api/v1/stats').catch(() => null),
@@ -135,8 +115,6 @@ const AnalyticsDashboard = ({
         ]);
 
         const rollData = rollRes && rollRes.ok ? await rollRes.json() : [];
-        const archiveData = archiveRes && archiveRes.ok ? await archiveRes.json() : [];
-        const lockupData = lockupRes && lockupRes.ok ? await lockupRes.json() : [];
         const crimeData = crimeRes && crimeRes.ok ? await crimeRes.json() : [];
         const storyData = storyRes && storyRes.ok ? await storyRes.json() : [];
         const statsData = statsRes && statsRes.ok ? await statsRes.json() : [];
@@ -144,8 +122,6 @@ const AnalyticsDashboard = ({
 
         if (isMounted) {
           setFetchedRolls(Array.isArray(rollData) ? rollData : []);
-          setFetchedArchiveRolls(Array.isArray(archiveData) ? archiveData : []);
-          setFetchedLockup(Array.isArray(lockupData) ? lockupData : []);
           setFetchedCrime(Array.isArray(crimeData) ? crimeData : []);
           setFetchedSuccess(Array.isArray(storyData) ? storyData : []);
           setFetchedOps(Array.isArray(statsData) ? statsData : []);
@@ -171,7 +147,6 @@ const AnalyticsDashboard = ({
   const resolvedExhibits = impoundedExhibits.length ? impoundedExhibits : fetchedExhibits;
 
   const [activeDomain, setActiveDomain] = useState('SUCCESS');
-  const [metricCategory, setMetricCategory] = useState('CATEGORY');
   const [selectedMonth, setSelectedMonth] = useState('ALL');
   const [selectedCrimeCategory, setSelectedCrimeCategory] = useState('ALL');
   const [dateFilter, setDateFilter] = useState('ALL'); 
@@ -271,16 +246,14 @@ const AnalyticsDashboard = ({
 
   const manpowerAnalysis = useMemo(() => {
     const rolls = Array.isArray(resolvedNominalRolls) ? resolvedNominalRolls : [];
-    const unitsSet = new Set();
-    const reasonsSet = new Set();
     const regionMap = {};
 
     Object.keys(REGIONAL_HIERARCHY).forEach(reg => {
-      regionMap[reg] = { region: reg, units: {}, reasons: {}, totalDeployable: 0, totalNonDeployable: 0, stations: {} };
+      regionMap[reg] = { region: reg, totalDeployable: 0, stations: {} };
     });
-    regionMap["GENERAL / OTHER"] = { region: "GENERAL / OTHER", units: {}, reasons: {}, totalDeployable: 0, totalNonDeployable: 0, stations: {} };
+    regionMap["GENERAL / OTHER"] = { region: "GENERAL / OTHER", totalDeployable: 0, stations: {} };
 
-    const grandTotals = { deployableTotal: 0, nonDeployableTotal: 0, units: {}, reasons: {} };
+    const grandTotals = { deployableTotal: 0 };
 
     rolls.forEach(o => {
       let stn = stripHtmlTags(o.station || 'UNKNOWN').toUpperCase();
@@ -288,7 +261,6 @@ const AnalyticsDashboard = ({
       const reg = getOfficialRegionForStation(stn, o.region);
 
       const activeTargetRegion = canViewGlobalLevel ? selectedRegion : userRegClean;
-
       if (activeTargetRegion !== 'ALL REGIONS') {
         const belongsToRegion = reg.toUpperCase() === activeTargetRegion.toUpperCase() || 
                                 (o.region && o.region.toUpperCase() === activeTargetRegion.toUpperCase()) ||
@@ -301,67 +273,19 @@ const AnalyticsDashboard = ({
 
       const targetReg = regionMap[reg] || regionMap["GENERAL / OTHER"];
       if (!targetReg.stations[stn]) {
-        targetReg.stations[stn] = { station: stn, units: {}, reasons: {}, totalDeployable: 0, totalNonDeployable: 0 };
+        targetReg.stations[stn] = { station: stn, totalDeployable: 0 };
       }
-      const targetStn = targetReg.stations[stn];
-
-      const depStr = String(o.deployability || o.deployable_status || '').toUpperCase();
-      const statStr = String(o.status || '').toUpperCase();
-      const casStr = String(o.casualty || o.casualty_type || o.reason || '').toUpperCase();
-      
-      const nonDeployableKeywords = [
-        'DISABLED', 'CHRONICALLY SICK', 'SICK', 'MENTAL', 'MATERNITY', 
-        'COURSE', 'INTERDICTED', 'SUSPENDED', 'DISCIPLINARY', 'STUDY', 
-        'MISSION', 'AWOL', 'LEAVE', 'CASUALTY', 'NON'
-      ];
-
-      const combinedText = `${statStr} ${depStr} ${casStr}`;
-      const isNonDeployable = nonDeployableKeywords.some(keyword => combinedText.includes(keyword));
-
-      if (isNonDeployable) {
-          let reason = 'UNSPECIFIED';
-          if (combinedText.includes('MISSION')) reason = 'MISSION';
-          else if (combinedText.includes('MATERNITY')) reason = 'MATERNITY LEAVE';
-          else if (combinedText.includes('SICK') || combinedText.includes('CHRONICALLY')) reason = 'SICK / CHRONICALLY SICK';
-          else if (combinedText.includes('MENTAL')) reason = 'MENTAL HEALTH ISSUE';
-          else if (combinedText.includes('DISABLED')) reason = 'DISABLED';
-          else if (combinedText.includes('COURSE') || combinedText.includes('STUDY')) reason = 'ON COURSE / STUDY LEAVE';
-          else if (combinedText.includes('INTERDICTED')) reason = 'INTERDICTED';
-          else if (combinedText.includes('SUSPENDED')) reason = 'SUSPENDED';
-          else if (combinedText.includes('DISCIPLINARY')) reason = 'DISCIPLINARY COURT';
-          else if (combinedText.includes('AWOL')) reason = 'AWOL';
-          else if (combinedText.includes('ANNUAL') || combinedText.includes('LEAVE')) reason = 'LEAVE';
-          else reason = statStr || casStr || 'NON-DEPLOYABLE';
-
-          reasonsSet.add(reason);
-          targetReg.reasons[reason] = (targetReg.reasons[reason] || 0) + 1;
-          targetStn.reasons[reason] = (targetStn.reasons[reason] || 0) + 1;
-          targetReg.totalNonDeployable += 1;
-          targetStn.totalNonDeployable += 1;
-          
-          grandTotals.reasons[reason] = (grandTotals.reasons[reason] || 0) + 1;
-          grandTotals.nonDeployableTotal += 1;
-      } else {
-          let unit = normalizeUnitName(o.section || o.dir || o.unit || 'GD');
-          unitsSet.add(unit);
-          targetReg.units[unit] = (targetReg.units[unit] || 0) + 1;
-          targetStn.units[unit] = (targetStn.units[unit] || 0) + 1;
-          targetReg.totalDeployable += 1;
-          targetStn.totalDeployable += 1;
-          
-          grandTotals.units[unit] = (grandTotals.units[unit] || 0) + 1;
-          grandTotals.deployableTotal += 1;
-      }
+      targetReg.stations[stn].totalDeployable += 1;
+      targetReg.totalDeployable += 1;
+      grandTotals.deployableTotal += 1;
     });
 
-    const uniqueUnits = Array.from(unitsSet).sort();
-    const uniqueReasons = Array.from(reasonsSet).sort();
-    const rows = Object.values(regionMap).filter(r => r.totalDeployable > 0 || r.totalNonDeployable > 0).map(item => ({
+    const rows = Object.values(regionMap).filter(r => r.totalDeployable > 0).map(item => ({
       ...item,
-      stationList: Object.values(item.stations).filter(s => s.totalDeployable > 0 || s.totalNonDeployable > 0).sort((a,b) => a.station.localeCompare(b.station))
+      stationList: Object.values(item.stations).filter(s => s.totalDeployable > 0).sort((a,b) => a.station.localeCompare(b.station))
     }));
 
-    return { rows, uniqueUnits, uniqueReasons, grandTotals };
+    return { rows, grandTotals };
   }, [resolvedNominalRolls, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
   const crimeCategoryData = useMemo(() => {
@@ -572,15 +496,15 @@ const AnalyticsDashboard = ({
         </span>
       </div>
 
-      {/* SUCCESS STORIES TAB */}
+      {/* SUCCESS STORIES TAB (CONCISE OPERATIONAL SUMMARIES) */}
       {activeDomain === 'SUCCESS' && (
         <div className="space-y-3 pb-12">
           <div className="bg-[#3a3225] rounded-xl p-3.5 text-[#f4eee2] shadow-sm border border-[#534735]">
             <h2 className="text-sm font-extrabold flex items-center tracking-wide text-[#f4eee2]">
-              <Award className="mr-2 text-[#C5A880] w-4 h-4" /> Success Stories & Operational Breakthrough Analytics
+              <Award className="mr-2 text-[#C5A880] w-4 h-4" /> Success Stories & Operational Breakthrough Summaries
             </h2>
             <p className="text-[11px] text-[#b8ab97] mt-0.5 leading-tight">
-              Listing suspects arrested, open-ended recovered properties (phones, shoes, chairs, tables, money, computers, livestock, produce, etc.), and suspect legal status (court, remanded, convicted, acquitted, or undergoing investigations).
+              Classified summaries of tactical operations (e.g., arrest of suspects in cattle theft and recovery of suspected stolen cattle, phones, money, etc.), arrest counts, open-ended property recoveries, and suspect legal status.
             </p>
           </div>
 
@@ -591,9 +515,9 @@ const AnalyticsDashboard = ({
                   <tr>
                     <th className="px-3 py-2 text-left text-[11px] font-bold text-[#594d3c] uppercase">Station / Region</th>
                     <th className="px-3 py-2 text-center text-[11px] font-bold text-[#594d3c] uppercase">Suspects Arrested</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-bold text-[#594d3c] uppercase">Recovered Properties (Open-ended / Quantities)</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-bold text-[#594d3c] uppercase">Classified Breakthrough Summary</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-bold text-[#594d3c] uppercase">Recovered Properties & Quantities</th>
                     <th className="px-3 py-2 text-center text-[11px] font-bold text-[#594d3c] uppercase">Suspect Legal Status</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-bold text-[#594d3c] uppercase">Operational Highlight / Narrative</th>
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
@@ -604,6 +528,9 @@ const AnalyticsDashboard = ({
                           {st.station}<br/><span className="text-[10px] text-[#736450]">{st.region}</span>
                         </td>
                         <td className="px-3 py-2 text-center font-bold text-[#596E47] text-[11px]">{st.suspects_arrested || st.suspects_arrested_count || 0}</td>
+                        <td className="px-3 py-2 text-[11px] font-extrabold text-[#3a3225] uppercase">
+                          {st.category === 'AGRIC_CRIME' ? 'Arrest of suspects in agricultural / cattle theft & property recovery' : 'Operational breakthrough & suspect apprehension'}
+                        </td>
                         <td className="px-3 py-2 text-[11px] text-[#594d3c] font-medium">
                           {st.suspected_stolen_properties_recovered || st.property_recovered || 'None recorded'}
                         </td>
@@ -612,7 +539,6 @@ const AnalyticsDashboard = ({
                             {st.legal_status || 'UNDER INVESTIGATION'}
                           </span>
                         </td>
-                        <td className="px-3 py-2 text-[11px] text-[#3a3225]" dangerouslySetInnerHTML={{ __html: st.narrative }} />
                       </tr>
                     ))
                   ) : (

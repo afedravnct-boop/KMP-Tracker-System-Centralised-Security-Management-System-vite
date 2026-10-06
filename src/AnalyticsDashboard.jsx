@@ -101,7 +101,7 @@ const AnalyticsDashboard = ({
 
   useEffect(() => {
     let isMounted = true;
-    const fetchNeonData = async () => {
+    const fetchData = async () => {
       if (!hasValidSession()) return;
 
       setLoading(true);
@@ -253,8 +253,6 @@ const AnalyticsDashboard = ({
     });
     regionMap["GENERAL / OTHER"] = { region: "GENERAL / OTHER", totalDeployable: 0, stations: {} };
 
-    const grandTotals = { deployableTotal: 0 };
-
     rolls.forEach(o => {
       let stn = stripHtmlTags(o.station || 'UNKNOWN').toUpperCase();
       if (stn === "KIRA DIVISION" || stn === "KIRA DIV" || stn === "KIRA") stn = "KIRA DIV";
@@ -277,7 +275,6 @@ const AnalyticsDashboard = ({
       }
       targetReg.stations[stn].totalDeployable += 1;
       targetReg.totalDeployable += 1;
-      grandTotals.deployableTotal += 1;
     });
 
     const rows = Object.values(regionMap).filter(r => r.totalDeployable > 0).map(item => ({
@@ -285,7 +282,7 @@ const AnalyticsDashboard = ({
       stationList: Object.values(item.stations).filter(s => s.totalDeployable > 0).sort((a,b) => a.station.localeCompare(b.station))
     }));
 
-    return { rows, grandTotals };
+    return { rows };
   }, [resolvedNominalRolls, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
   const crimeCategoryData = useMemo(() => {
@@ -496,7 +493,7 @@ const AnalyticsDashboard = ({
         </span>
       </div>
 
-      {/* SUCCESS STORIES TAB (CONCISE OPERATIONAL SUMMARIES) */}
+      {/* SUCCESS STORIES TAB */}
       {activeDomain === 'SUCCESS' && (
         <div className="space-y-3 pb-12">
           <div className="bg-[#3a3225] rounded-xl p-3.5 text-[#f4eee2] shadow-sm border border-[#534735]">

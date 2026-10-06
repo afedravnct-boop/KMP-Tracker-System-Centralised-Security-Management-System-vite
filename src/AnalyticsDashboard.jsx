@@ -34,6 +34,54 @@ const normalizeOffenceCategory = (rawOffence) => {
   return words.join(' ') || clean;
 };
 
+// 🟢 Intelligent Narrative Parser to extract suspects, recoveries, and legal status
+const parseSuccessStoryNarrative = (rawHtmlNarrative) => {
+  const clean = stripHtmlTags(rawHtmlNarrative || '').toLowerCase();
+  
+  // Extract suspect count
+  let suspects = 0;
+  const suspectMatch = clean.match(/(\d+)\s*(?:suspects|suspect|person|persons|culprits|thieves|gang)/i);
+  if (suspectMatch) {
+    suspects = parseInt(suspectMatch[1], 10);
+  }
+
+  // Extract legal status
+  let legalStatus = 'UNDER INVESTIGATION';
+  if (clean.includes('remand') || clean.includes('remanded')) legalStatus = 'REMANDED';
+  else if (clean.includes('convict') || clean.includes('sentenced')) legalStatus = 'CONVICTED';
+  else if (clean.includes('acquit')) legalStatus = 'ACQUITTED';
+  else if (clean.includes('court') || clean.includes('trial') || clean.includes('magistrate')) legalStatus = 'UNDERGOING COURT TRIAL';
+
+  // Extract open-ended property recoveries (cattle, phones, money, chairs, etc.)
+  const recoveriesList = [];
+  const recoveryRegex = /(\d+)\s*([a-z\s]+(?:cows|cow|cattle|phones|phone|money|cash|shillings|computers|computer|chairs|chair|tables|table|shoes|shoe|motorcycles|motorcycle|vehicles|vehicle|birds|chicken|produce|maize|beans|items))/gi;
+  let match;
+  while ((match = recoveryRegex.exec(clean)) !== null) {
+    recoveriesList.push(`${match[1]} ${match[2].trim()}`);
+  }
+
+  if (recoveriesList.length === 0 && (clean.includes('recovery') || clean.includes('recovered') || clean.includes('recover'))) {
+    recoveriesList.push('Recovered properties / exhibits');
+  }
+
+  // Dynamic classification summary
+  let classification = 'Operational breakthrough & suspect apprehension';
+  if (clean.includes('cattle') || clean.includes('cow') || clean.includes('livestock') || clean.includes('farm') || clean.includes('agric')) {
+    classification = 'Arrest of suspects in agricultural / cattle theft & property recovery';
+  } else if (clean.includes('phone') || clean.includes('computer') || clean.includes('electronics')) {
+    classification = 'Apprehension of suspects & recovery of electronic assets';
+  } else if (clean.includes('robbery') || clean.includes('gang') || clean.includes('theft')) {
+    classification = 'Dismantling of criminal gang & asset recovery';
+  }
+
+  return {
+    suspects: suspects,
+    recoveries: recoveriesList.length > 0 ? recoveriesList.join(', ') : 'None recorded',
+    legalStatus: legalStatus,
+    classification: classification
+  };
+};
+
 const isStationEquivalent = (statA, statB) => {
   const a = stripHtmlTags(statA || '').trim().toUpperCase();
   const b = stripHtmlTags(statB || '').trim().toUpperCase();
@@ -243,6 +291,20 @@ const AnalyticsDashboard = ({
     }
     return baseData;
   }, [activeDomain, resolvedCrimeRegistry, resolvedNominalRolls, resolvedSuccessStories, resolvedOperationalStats, resolvedExhibits, dateFilter, selectedMonth, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
+
+  // Success Stories Intelligence Parsing
+  const parsedSuccessStories = useMemo(() => {
+    return timeFilteredDataset.map(st => {
+      const parsed = parseSuccessStoryNarrative(st.narrative || st.title);
+      return {
+        ...st,
+        parsedSuspects: st.suspects_arrested || st.suspects_arrested_count || parsed.suspects,
+        parsedRecoveries: st.suspected_stolen_properties_recovered || st.property_recovered || parsed.recoveries,
+        parsedLegalStatus: st.legal_status || parsed.legalStatus,
+        parsedClassification: parsed.classification
+      };
+    });
+  }, [timeFilteredDataset]);
 
   const manpowerAnalysis = useMemo(() => {
     const rolls = Array.isArray(resolvedNominalRolls) ? resolvedNominalRolls : [];
@@ -489,11 +551,11 @@ const AnalyticsDashboard = ({
         </div>
 
         <span className="text-[11px] font-extrabold text-[#596E47] bg-[#e9eedf] px-2 py-0.5 rounded border border-[#cfe1b9]">
-          Total Entries: {activeDomain === 'SUCCESS' ? timeFilteredDataset.length : activeDomain === 'CRIME' ? crimeCategoryData.length : activeDomain === 'EXHIBITS' ? exhibitGroupedData.length : timeFilteredDataset.length}
+          Total Entries: {activeDomain === 'SUCCESS' ? parsedSuccessStories.length : activeDomain === 'CRIME' ? crimeCategoryData.length : activeDomain === 'EXHIBITS' ? exhibitGroupedData.length : timeFilteredDataset.length}
         </span>
       </div>
 
-      {/* SUCCESS STORIES TAB */}
+      {/* SUCCESS STORIES TAB (INTELLIGENTLY PARSED FROM NARRATIVE) */}
       {activeDomain === 'SUCCESS' && (
         <div className="space-y-3 pb-12">
           <div className="bg-[#3a3225] rounded-xl p-3.5 text-[#f4eee2] shadow-sm border border-[#534735]">
@@ -501,7 +563,7 @@ const AnalyticsDashboard = ({
               <Award className="mr-2 text-[#C5A880] w-4 h-4" /> Success Stories & Operational Breakthrough Summaries
             </h2>
             <p className="text-[11px] text-[#b8ab97] mt-0.5 leading-tight">
-              Classified summaries of tactical operations (e.g., arrest of suspects in cattle theft and recovery of suspected stolen cattle, phones, money, etc.), arrest counts, open-ended property recoveries, and suspect legal status.
+              Dynamically extracted details from narrative logs: suspect counts, classified breakthroughs (e.g., arrest of suspects in cattle theft and recovery of suspected stolen cattle), open-ended property recoveries, and legal status.
             </p>
           </div>
 
@@ -518,22 +580,22 @@ const AnalyticsDashboard = ({
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
-                  {timeFilteredDataset.length > 0 ? (
-                    timeFilteredDataset.map((st, idx) => (
+                  {parsedSuccessStories.length > 0 ? (
+                    parsedSuccessStories.map((st, idx) => (
                       <tr key={idx} className="hover:bg-[#e9eedf]/30">
                         <td className="px-3 py-2 text-[11px] font-bold text-[#3a3225]">
                           {st.station}<br/><span className="text-[10px] text-[#736450]">{st.region}</span>
                         </td>
-                        <td className="px-3 py-2 text-center font-bold text-[#596E47] text-[11px]">{st.suspects_arrested || st.suspects_arrested_count || 0}</td>
+                        <td className="px-3 py-2 text-center font-bold text-[#596E47] text-[11px]">{st.parsedSuspects}</td>
                         <td className="px-3 py-2 text-[11px] font-extrabold text-[#3a3225] uppercase">
-                          {st.category === 'AGRIC_CRIME' ? 'Arrest of suspects in agricultural / cattle theft & property recovery' : 'Operational breakthrough & suspect apprehension'}
+                          {st.parsedClassification}
                         </td>
                         <td className="px-3 py-2 text-[11px] text-[#594d3c] font-medium">
-                          {st.suspected_stolen_properties_recovered || st.property_recovered || 'None recorded'}
+                          {st.parsedRecoveries}
                         </td>
                         <td className="px-3 py-2 text-center">
                           <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#3a3225] text-[#f4eee2] uppercase">
-                            {st.legal_status || 'UNDER INVESTIGATION'}
+                            {st.parsedLegalStatus}
                           </span>
                         </td>
                       </tr>

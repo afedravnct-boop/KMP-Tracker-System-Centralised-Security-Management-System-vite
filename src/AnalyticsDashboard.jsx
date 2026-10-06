@@ -34,26 +34,6 @@ const normalizeOffenceCategory = (rawOffence) => {
   return words.join(' ') || clean;
 };
 
-const normalizeAnalyticsRank = (rankStr) => {
-  if (!rankStr) return 'UNRANKED';
-  let r = String(rankStr).trim().toUpperCase();
-  if (r === 'DC' || r.startsWith('D/C')) {
-    r = 'PC';
-  } else if (r.startsWith('D/') || r.startsWith('D-') || r.startsWith('D ')) {
-    r = r.replace(/^D[\/\- ]/, '').trim();
-    if (r === 'C') r = 'PC';
-  }
-  if (r.includes('/DRV') || r.includes('-DRV') || r.includes(' DRV') || r === 'DRV' || r.includes('C/DRV')) {
-    if (r === 'C/DRV' || r === 'DRV' || r === 'PC/DRV') {
-      r = 'PC';
-    } else {
-      r = r.replace(/\/DRV|-DRV| DRV|DRV/g, '').trim();
-    }
-  }
-  if (r === 'C' || r === '') r = 'PC';
-  return r;
-};
-
 const normalizeUnitName = (rawUnit) => {
   if (!rawUnit) return 'GENERAL DUTIES';
   let clean = String(rawUnit).trim().toUpperCase();
@@ -139,7 +119,7 @@ const AnalyticsDashboard = ({
 
   useEffect(() => {
     let isMounted = true;
-    const fetchNeonData = async () => {
+    const fetchData = async () => {
       if (!hasValidSession()) return;
 
       setLoading(true);
@@ -225,7 +205,6 @@ const AnalyticsDashboard = ({
     }
   }, [canViewGlobalLevel, userRegClean, currentUser]);
 
-  // 🟢 Declared helper function for time and month filtering
   const timeFilteredData = (list) => {
     const now = new Date();
     return list.filter(item => {

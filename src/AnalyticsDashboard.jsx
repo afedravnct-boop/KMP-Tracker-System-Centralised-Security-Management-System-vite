@@ -225,6 +225,33 @@ const AnalyticsDashboard = ({
     }
   }, [canViewGlobalLevel, userRegClean, currentUser]);
 
+  // 🟢 Declared helper function for time and month filtering
+  const timeFilteredData = (list) => {
+    const now = new Date();
+    return list.filter(item => {
+      const itemDateStr = item.date || item.createdAt || item.timestamp || item.date_impounded;
+      if (!itemDateStr) return true; 
+      const itemDate = new Date(itemDateStr);
+      if (isNaN(itemDate)) return true;
+
+      if (selectedMonth !== 'ALL') {
+        const itemMonth = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}`;
+        if (itemMonth !== selectedMonth) return false;
+      }
+
+      if (dateFilter !== 'ALL') {
+        const diffDays = Math.ceil(Math.abs(now - itemDate) / (1000 * 60 * 60 * 24));
+        if (dateFilter === 'TODAY' || dateFilter === 'today') return itemDate.toDateString() === now.toDateString();
+        if (dateFilter === '1DAY') return diffDays <= 1;
+        if (dateFilter === '7DAYS' || dateFilter === 'WEEK' || dateFilter === 'week') return diffDays <= 7;
+        if (dateFilter === '30DAYS' || dateFilter === 'MONTH') return diffDays <= 30;
+        if (dateFilter === '90DAYS') return diffDays <= 90;
+        if (dateFilter === '1YEAR') return diffDays <= 365;
+      }
+      return true;
+    });
+  };
+
   const timeFilteredDataset = useMemo(() => {
     let baseData = [];
     if (activeDomain === 'CRIME' || activeDomain === 'CRIME_SUMMARY') baseData = resolvedCrimeRegistry.filter(r => !isLockupLog(r)); 
@@ -257,30 +284,8 @@ const AnalyticsDashboard = ({
       return true;
     });
 
-    if (activeDomain !== 'MANPOWER_DEEP' && activeDomain !== 'RELATIONAL' && (dateFilter !== 'ALL' || selectedMonth !== 'ALL')) {
-      const now = new Date();
-      baseData = baseData.filter(item => {
-        const itemDateStr = item.date || item.createdAt || item.timestamp || item.date_impounded;
-        if (!itemDateStr) return true; 
-        const itemDate = new Date(itemDateStr);
-        if (isNaN(itemDate)) return true;
-
-        if (selectedMonth !== 'ALL') {
-          const itemMonth = `${itemDate.getFullYear()}-${String(itemDate.getMonth() + 1).padStart(2, '0')}`;
-          if (itemMonth !== selectedMonth) return false;
-        }
-
-        if (dateFilter !== 'ALL') {
-          const diffDays = Math.ceil(Math.abs(now - itemDate) / (1000 * 60 * 60 * 24));
-          if (dateFilter === 'TODAY' || dateFilter === 'today') return itemDate.toDateString() === now.toDateString();
-          if (dateFilter === '1DAY') return diffDays <= 1;
-          if (dateFilter === '7DAYS' || dateFilter === 'WEEK' || dateFilter === 'week') return diffDays <= 7;
-          if (dateFilter === '30DAYS' || dateFilter === 'MONTH') return diffDays <= 30;
-          if (dateFilter === '90DAYS') return diffDays <= 90;
-          if (dateFilter === '1YEAR') return diffDays <= 365;
-        }
-        return true;
-      });
+    if (activeDomain !== 'MANPOWER_DEEP' && activeDomain !== 'RELATIONAL') {
+      baseData = timeFilteredData(baseData);
     }
     return baseData;
   }, [activeDomain, resolvedCrimeRegistry, resolvedNominalRolls, resolvedSuccessStories, resolvedOperationalStats, resolvedExhibits, dateFilter, selectedMonth, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
@@ -380,7 +385,6 @@ const AnalyticsDashboard = ({
     return { rows, uniqueUnits, uniqueReasons, grandTotals };
   }, [resolvedNominalRolls, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
-  // Crime Categories (Aggregated with month, crime category, station, division, region filters)
   const crimeCategoryData = useMemo(() => {
     const tf = timeFilteredData(resolvedCrimeRegistry);
     const grouped = {};
@@ -405,7 +409,6 @@ const AnalyticsDashboard = ({
     return Object.values(grouped).sort((a, b) => b.count - a.count);
   }, [resolvedCrimeRegistry, selectedCrimeCategory, selectedRegion, selectedStation, selectedMonth, dateFilter, canViewGlobalLevel]);
 
-  // Exhibits Grouped & Summed by category, station, division, region, status
   const exhibitGroupedData = useMemo(() => {
     const tf = timeFilteredData(resolvedExhibits);
     const map = {};
@@ -429,7 +432,6 @@ const AnalyticsDashboard = ({
     }).sort((a, b) => b.total - a.total);
   }, [resolvedExhibits, selectedRegion, selectedStation, selectedMonth, dateFilter, canViewGlobalLevel]);
 
-  // Summary Table Aggregates based on timeframe (1 day to 1 year)
   const summaryAggregates = useMemo(() => {
     const ops = timeFilteredData(resolvedOperationalStats);
     const ss = timeFilteredData(resolvedSuccessStories);
@@ -447,7 +449,6 @@ const AnalyticsDashboard = ({
     };
   }, [resolvedOperationalStats, resolvedSuccessStories, resolvedCrimeRegistry, resolvedExhibits, resolvedNominalRolls, selectedMonth, dateFilter]);
 
-  // Ops Trends: Region and Station as FIRST column, followed by week-over-week comparisons
   const opsTrendsData = useMemo(() => {
     const weeklyMap = {};
     resolvedOperationalStats.forEach(o => {
@@ -542,7 +543,7 @@ const AnalyticsDashboard = ({
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => { setActiveDomain(tab.id); setMetricCategory('CATEGORY'); }}
+            onClick={() => setActiveDomain(tab.id)}
             className={`px-2.5 py-2 rounded-lg font-bold text-[11px] transition border text-center shadow-xs cursor-pointer truncate ${
               activeDomain === tab.id ? 'bg-[#3a3225] text-[#f4eee2] border-[#3a3225]' : 'bg-[#fbf8f3] text-[#594d3c] border-[#e2d6c3] hover:bg-[#f1ebd9]'
             }`}
@@ -588,7 +589,7 @@ const AnalyticsDashboard = ({
         </div>
 
         <span className="text-[11px] font-extrabold text-[#596E47] bg-[#e9eedf] px-2 py-0.5 rounded border border-[#cfe1b9]">
-          Total Entries: {activeDomain === 'SUCCESS' ? filteredSuccessStories.length : activeDomain === 'CRIME' ? crimeCategoryData.length : activeDomain === 'EXHIBITS' ? exhibitGroupedData.length : timeFilteredDataset.length}
+          Total Entries: {activeDomain === 'SUCCESS' ? timeFilteredDataset.length : activeDomain === 'CRIME' ? crimeCategoryData.length : activeDomain === 'EXHIBITS' ? exhibitGroupedData.length : timeFilteredDataset.length}
         </span>
       </div>
 
@@ -617,8 +618,8 @@ const AnalyticsDashboard = ({
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
-                  {filteredSuccessStories.length > 0 ? (
-                    filteredSuccessStories.map((st, idx) => (
+                  {timeFilteredDataset.length > 0 ? (
+                    timeFilteredDataset.map((st, idx) => (
                       <tr key={idx} className="hover:bg-[#e9eedf]/30">
                         <td className="px-3 py-2 text-[11px] font-bold text-[#3a3225]">
                           {st.station}<br/><span className="text-[10px] text-[#736450]">{st.region}</span>

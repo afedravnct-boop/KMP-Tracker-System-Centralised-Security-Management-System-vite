@@ -1232,13 +1232,13 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
 
     if (mode === 'login') {
       try {
-        const response = await authFetch('/api/auth/login', { 
+        // 🟢 Use native fetch directly so authFetch doesn't swallow 403 error payloads
+        const response = await fetch(`${API_URL}/api/auth/login`, { 
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' }, 
           body: JSON.stringify({ username: fnum.trim(), password: password.trim() }) 
         });
 
-        // 🟢 Parse response JSON regardless of success or failure status code
         const data = await response.json().catch(() => ({}));
 
         if (response.ok) {
@@ -1262,7 +1262,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           });
         } else {
           setPassword(''); 
-          // 🟢 Capture data.detail from backend (which contains the precise ACCESS DENIED notice)
+          // 🟢 This will now successfully catch and render: "ACCESS DENIED: Your system access credentials have been revoked by Command..."
           setAuthMessage(data.detail || "Incorrect Force Number or password");
           const newAttempts = attempts + 1; 
           setAttempts(newAttempts);

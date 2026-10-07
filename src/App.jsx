@@ -1237,7 +1237,9 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           headers: { 'Content-Type': 'application/json' }, 
           body: JSON.stringify({ username: fnum.trim(), password: password.trim() }) 
         });
-        const data = await response.json();
+
+        // 🟢 Parse response JSON regardless of success or failure status code
+        const data = await response.json().catch(() => ({}));
 
         if (response.ok) {
           setAuthSession(data.access_token, data.fnum || fnum.trim());
@@ -1260,6 +1262,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           });
         } else {
           setPassword(''); 
+          // 🟢 Capture data.detail from backend (which contains the precise ACCESS DENIED notice)
           setAuthMessage(data.detail || "Incorrect Force Number or password");
           const newAttempts = attempts + 1; 
           setAttempts(newAttempts);

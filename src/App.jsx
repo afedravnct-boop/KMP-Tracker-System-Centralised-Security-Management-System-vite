@@ -3421,7 +3421,7 @@ const isReadOnlyObserver = currentUser?.permissions?.global_observer === true &&
           canViewGlobal={canViewGlobalJurisdiction(currentUser)} 
           onClose={() => {}} 
         />
-      </DashboardLayer>
+      </DashboardLayout>
 
       <WorkspaceSecurityCurtain />
     </>

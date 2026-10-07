@@ -3375,7 +3375,7 @@ const isReadOnlyObserver = currentUser?.permissions?.global_observer === true &&
 
   return (
     <>
-      <DashboardLayout 
+      <DashboardLayer 
         currentUser={currentUser} 
         currentPage={currentPage} 
         setCurrentPage={handlePageChange} 
@@ -3421,7 +3421,7 @@ const isReadOnlyObserver = currentUser?.permissions?.global_observer === true &&
           canViewGlobal={canViewGlobalJurisdiction(currentUser)} 
           onClose={() => {}} 
         />
-      </DashboardLayout>
+      </DashboardLayer>
 
       <WorkspaceSecurityCurtain />
     </>

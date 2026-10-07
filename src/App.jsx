@@ -1629,7 +1629,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                   {attempts > 0 && mode === 'login' && (
                     <div className="text-xs text-red-600 font-bold bg-red-50 p-2 rounded text-center">
-                      Invalid credentials. Attempts remaining: {3 - attempts}
+                      {authMessage || `Invalid credentials. Attempts remaining: ${3 - attempts}`}
                     </div>
                   )}
                   <div>

@@ -3375,7 +3375,7 @@ const isReadOnlyObserver = currentUser?.permissions?.global_observer === true &&
 
   return (
     <>
-      <DashboardLayer 
+      <DashboardLayout 
         currentUser={currentUser} 
         currentPage={currentPage} 
         setCurrentPage={handlePageChange} 

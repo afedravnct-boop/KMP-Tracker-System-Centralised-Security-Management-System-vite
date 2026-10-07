@@ -1383,23 +1383,6 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
             </div>
           ) : (
             <>
-              {authMessage && (
-                <div className={`border px-4 py-3 rounded-lg flex items-start mb-4 transition-all ${
-                  typeof authMessage === 'string' && authMessage.includes('LOCKDOWN')
-                    ? 'bg-red-100 border-red-500 text-red-900 shadow-md animate-pulse'
-                    : authMessage.includes('Error') || authMessage.includes('❌') 
-                      ? 'bg-red-50 border-red-200 text-red-800' 
-                      : 'bg-blue-50 border-blue-200 text-blue-800'
-                }`}>
-                  {typeof authMessage === 'string' && authMessage.includes('LOCKDOWN') && (
-                    <span className="text-xl mr-3 mt-0.5 drop-shadow-sm" role="img" aria-label="padlock">🔒</span>
-                  )}
-                  <span className={`text-sm leading-snug ${typeof authMessage === 'string' && authMessage.includes('LOCKDOWN') ? 'font-extrabold' : 'font-medium'}`}>
-                    {typeof authMessage === 'string' ? authMessage : JSON.stringify(authMessage)}
-                  </span>
-                </div>
-              )}
-              
               {mode === 'signup' ? (
                 <form onSubmit={handleSignupSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
                   <h3 className="text-lg font-bold text-gray-800 border-b pb-2 mb-4">Request Access Authorization</h3>
@@ -1627,8 +1610,8 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
                 </form>
               ) : (
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
-                  {attempts > 0 && mode === 'login' && (
-                    <div className="text-xs text-red-600 font-bold bg-red-50 p-2 rounded text-center">
+                  {(authMessage || (attempts > 0 && mode === 'login')) && (
+                    <div className="text-xs text-red-700 font-bold bg-red-50 p-3 rounded-lg text-center border border-red-200 shadow-sm leading-snug">
                       {authMessage || `Invalid credentials. Attempts remaining: ${3 - attempts}`}
                     </div>
                   )}

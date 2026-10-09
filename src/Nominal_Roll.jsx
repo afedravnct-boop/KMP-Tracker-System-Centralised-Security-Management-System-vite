@@ -610,9 +610,21 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       return true;
     });
 
-    // 🟢 Strict Final Sorting Order: Region (KMP HQs First) -> Position Precedence (Commander/Deputy Top) -> Rank Seniority -> Force Number
+    // 🟢 Strict Instruction Order: Rank Seniority First -> Position Precedence -> Region Hierarchy -> Force Number
     return list.sort((a, b) => {
-      // 1. Region Priority (KMP Headquarters -> North -> East -> South -> Police HQs)
+      // 1. Rank Seniority Weight First (Highest rank like ACP, SSP at the top)
+      const weightA = getRankWeight(a.rank);
+      const weightB = getRankWeight(b.rank);
+
+      if (weightA !== weightB) return weightA - weightB;
+
+      // 2. Position Precedence Second (e.g. Comdr KMP before Deputy within same rank)
+      const posA = getPositionPrecedence(a.position);
+      const posB = getPositionPrecedence(b.position);
+
+      if (posA !== posB) return posA - posB;
+
+      // 3. Region Hierarchy Third (KMP Headquarters downwards)
       const regA = getOfficialRegionForStation(a.station, a.region);
       const regB = getOfficialRegionForStation(b.station, b.region);
 
@@ -620,18 +632,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       const priB = REGION_SORT_PRIORITY[regB] || 50;
 
       if (priA !== priB) return priA - priB;
-
-      // 2. Position Precedence First (Ensures Commander KMP & Deputy KMP sit above others in same rank)
-      const posA = getPositionPrecedence(a.position);
-      const posB = getPositionPrecedence(b.position);
-
-      if (posA !== posB) return posA - posB;
-
-      // 3. Rank Seniority Weight next
-      const weightA = getRankWeight(a.rank);
-      const weightB = getRankWeight(b.rank);
-
-      if (weightA !== weightB) return weightA - weightB;
 
       // 4. Finally Force / File Number
       const fnumA = cleanStr(a.fnum || a.f_num);

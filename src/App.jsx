@@ -1184,7 +1184,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
     if (!signupData.profile_photo_path) return setAuthMessage("⚠️ Error: Profile photo upload is mandatory.");
     if (!/^\d{10}$/.test(signupData.phone)) return setAuthMessage("⚠️ Error: Contact number must be exactly 10 digits.");
 
-    // 🟢 Client-side Password Policy Check
+    // 🟢 Client-side Password Policy Verification
     if (!signupData.password || signupData.password.length < 8) {
       return setAuthMessage("⚠️ Error: Password must be at least 8 characters long.");
     }
@@ -1239,6 +1239,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
 
     if (mode === 'login') {
       try {
+        // 🟢 Use native fetch directly so authFetch doesn't swallow 403 error payloads
         const response = await fetch(`${API_URL}/api/auth/login`, { 
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' }, 
@@ -1268,6 +1269,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           });
         } else {
           setPassword(''); 
+          // 🟢 This will now successfully catch and render: "ACCESS DENIED: Your system access credentials have been revoked by Command..."
           setAuthMessage(data.detail || "Incorrect Force Number or password");
           const newAttempts = attempts + 1; 
           setAttempts(newAttempts);
@@ -1704,10 +1706,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           )}
         </div>
       </div>
-    </div>
-  );
-};
-
+    
       {/* 🟢 POLICY & TERMS MODAL FOR SIGNUP */}
       {showPolicyModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-in fade-in">

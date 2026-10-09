@@ -734,7 +734,10 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
 
   const availableAnalyticsFilterOptions = useMemo(() => {
     const setVals = new Set();
-    currentRollDataset.forEach(n => {
+    const dataset = Array.isArray(currentRollDataset) ? currentRollDataset : [];
+    
+    for (let i = 0; i < dataset.length; i++) {
+      const n = dataset[i];
       if (metricCategory === 'RANK') {
         let r = cleanStr(n.rank);
         if (r.includes('DRV')) r = 'PC';
@@ -754,7 +757,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         setVals.add('MALE');
         setVals.add('FEMALE');
       }
-    });
+    }
     return Array.from(setVals).sort();
   }, [currentRollDataset, metricCategory]);
 

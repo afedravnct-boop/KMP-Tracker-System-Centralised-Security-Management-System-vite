@@ -1184,6 +1184,14 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
     if (!signupData.profile_photo_path) return setAuthMessage("⚠️ Error: Profile photo upload is mandatory.");
     if (!/^\d{10}$/.test(signupData.phone)) return setAuthMessage("⚠️ Error: Contact number must be exactly 10 digits.");
 
+    // 🟢 Client-side Password Policy Check
+    if (!signupData.password || signupData.password.length < 8) {
+      return setAuthMessage("⚠️ Error: Password must be at least 8 characters long.");
+    }
+    if (!/(?=.*[A-Za-z])(?=.*\d)/.test(signupData.password)) {
+      return setAuthMessage("⚠️ Error: Password must contain a mix of letters and numbers.");
+    }
+
     if (signupData.nin) {
       const cleanNin = signupData.nin.trim().toUpperCase();
       if (!/^C[MF][A-Z0-9]{12}$/.test(cleanNin)) {
@@ -1231,7 +1239,6 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
 
     if (mode === 'login') {
       try {
-        // 🟢 Use native fetch directly so authFetch doesn't swallow 403 error payloads
         const response = await fetch(`${API_URL}/api/auth/login`, { 
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' }, 
@@ -1261,7 +1268,6 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           });
         } else {
           setPassword(''); 
-          // 🟢 This will now successfully catch and render: "ACCESS DENIED: Your system access credentials have been revoked by Command..."
           setAuthMessage(data.detail || "Incorrect Force Number or password");
           const newAttempts = attempts + 1; 
           setAttempts(newAttempts);
@@ -1419,7 +1425,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
                         placeholder="123456"
                       />
                     </div>
-                                      
+                                        
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">National ID (NIN) *</label>
                       <input 
@@ -1576,7 +1582,9 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
                       value={signupData.password} 
                       onChange={handleSignupChange} 
                       className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 text-sm" 
+                      placeholder="Min. 8 characters (letters & numbers)"
                     />
+                    <p className="text-[10px] text-slate-500 mt-1">Must be at least 8 characters long with a mix of letters and numbers.</p>
                   </div>
 
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
@@ -1696,6 +1704,9 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           )}
         </div>
       </div>
+    </div>
+  );
+};
 
       {/* 🟢 POLICY & TERMS MODAL FOR SIGNUP */}
       {showPolicyModal && (

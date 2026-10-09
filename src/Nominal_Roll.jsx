@@ -610,7 +610,9 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       return true;
     });
 
+    // 🟢 Strict Final Sorting Order: Region (KMP HQs First) -> Position Precedence (Commander/Deputy Top) -> Rank Seniority -> Force Number
     return list.sort((a, b) => {
+      // 1. Region Priority (KMP Headquarters -> North -> East -> South -> Police HQs)
       const regA = getOfficialRegionForStation(a.station, a.region);
       const regB = getOfficialRegionForStation(b.station, b.region);
 
@@ -619,16 +621,19 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
 
       if (priA !== priB) return priA - priB;
 
+      // 2. Position Precedence First (Ensures Commander KMP & Deputy KMP sit above others in same rank)
       const posA = getPositionPrecedence(a.position);
       const posB = getPositionPrecedence(b.position);
 
       if (posA !== posB) return posA - posB;
 
+      // 3. Rank Seniority Weight next
       const weightA = getRankWeight(a.rank);
       const weightB = getRankWeight(b.rank);
 
       if (weightA !== weightB) return weightA - weightB;
 
+      // 4. Finally Force / File Number
       const fnumA = cleanStr(a.fnum || a.f_num);
       const fnumB = cleanStr(b.fnum || b.f_num);
       return fnumA.localeCompare(fnumB);

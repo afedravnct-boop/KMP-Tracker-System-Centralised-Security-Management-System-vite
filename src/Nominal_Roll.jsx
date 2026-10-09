@@ -9,13 +9,12 @@ import BulkNominalRollUpload from './BulkNominalRollUpload';
 import OfficerDossierModal from './OfficerDossierModal';
 import { formatOfficerHeader, stripHtmlTags } from './adminUtils';
 
-// 🟢 1. DEFINE cleanStr FIRST SO IT IS AVAILABLE GLOBALLY ACROSS ALL HELPERS
+// 🟢 1. GLOBAL UTILITY HELPERS HOISTED TO THE TOP
 const cleanStr = (str) => {
   if (!str) return '';
   return String(str).replace(/\s+/g, ' ').trim().toUpperCase();
 };
 
-// 🟢 2. THEN DEFINE REGIONAL HIERARCHY & SORT PRIORITY
 const REGIONAL_HIERARCHY = {
   "KMP HEADQUARTERS": ["KMP HEADQUARTERS", "KMP CID", "KMP TRAFFIC", "KMP ICT", "KMP FLYING SQUAD", "KMP CRIME INTELLIGENCE"],
   "KMP NORTH": ["KMP NORTH HEADQUARTERS", "KAWEMPE", "KAKIRI", "KASANGATI", "MATUGGA", "NANSANA", "OLD KAMPALA", "WAKISO", "WANDEGEYA"],
@@ -35,7 +34,6 @@ const REGION_SORT_PRIORITY = {
   "POLICE HEADQUARTERS": 8
 };
 
-// 🟢 3. SUBSEQUENT HELPERS THAT RELY ON cleanStr
 const isStationEquivalent = (statA, statB) => {
   const a = cleanStr(statA);
   const b = cleanStr(statB);
@@ -46,6 +44,65 @@ const isStationEquivalent = (statA, statB) => {
   return cleanA === cleanB && cleanA.length > 0;
 };
 
+// 🟢 2. STATION & POST PARSING ENGINE
+const parseStationHierarchy = (rawStation) => {
+  const cleaned = cleanStr(rawStation);
+  if (!cleaned) return { division: 'UNASSIGNED', station: 'UNASSIGNED', subStation: '', post: '', type: 'POST' };
+
+  if (cleaned.includes('/') || cleaned.includes('\\')) {
+    const parts = cleaned.split(/[\/\\]/).map(p => cleanStr(p));
+    const parent = parts[0];
+    const child = parts[1] || '';
+    
+    let type = 'POST';
+    if (child.includes('SUB-STATION') || child.includes('SUBSTATION')) type = 'SUBSTATION';
+    else if (child.includes('STATION')) type = 'STATION';
+
+    return {
+      division: parent,
+      station: parent,
+      subStation: type === 'SUBSTATION' ? child : '',
+      post: type === 'POST' ? child : '',
+      type
+    };
+  }
+
+  if (cleaned.endsWith(' P/P') || cleaned.endsWith(' P.P') || cleaned.includes('POLICE POST')) {
+    const name = cleaned.replace(/P\/P|P\.P|POLICE POST/g, '').trim();
+    return { division: 'GENERAL', station: 'GENERAL', subStation: '', post: name, type: 'POST' };
+  }
+  if (cleaned.endsWith(' P/S') || cleaned.endsWith(' P.S') || cleaned.includes('POLICE STATION')) {
+    const name = cleaned.replace(/P\/S|P\.S|POLICE STATION/g, '').trim();
+    return { division: name, station: name, subStation: '', post: '', type: 'STATION' };
+  }
+
+  for (const stationsList of Object.values(REGIONAL_HIERARCHY)) {
+    if (stationsList.includes(cleaned)) {
+      return { division: cleaned, station: cleaned, subStation: '', post: '', type: 'DIVISION' };
+    }
+  }
+
+  return { division: cleaned, station: cleaned, subStation: '', post: '', type: 'STATION' };
+};
+
+const getOfficialRegionForStation = (stationName, dbRegion) => {
+  const parsed = parseStationHierarchy(stationName);
+  const cleanDbRegion = cleanStr(dbRegion);
+
+  if (REGIONAL_HIERARCHY[cleanDbRegion]) {
+    const matches = REGIONAL_HIERARCHY[cleanDbRegion].some(s => isStationEquivalent(s, parsed.division) || isStationEquivalent(s, parsed.station));
+    if (matches) return cleanDbRegion;
+  }
+
+  for (const [regionName, stationsList] of Object.entries(REGIONAL_HIERARCHY)) {
+    if (stationsList.some(s => isStationEquivalent(s, parsed.division) || isStationEquivalent(s, parsed.station))) {
+      return regionName;
+    }
+  }
+  return cleanDbRegion || 'KMP GENERAL';
+};
+
+// 🟢 3. COMMAND PRECEDENCE & RANK WEIGHTING
 const getPositionPrecedence = (position) => {
   const pos = cleanStr(position);
   if (!pos) return 99;
@@ -63,7 +120,6 @@ const getPositionPrecedence = (position) => {
   return 50;
 };
 
-// 🟢 21-Rank Normalization Engine
 const getRankWeight = (rank) => {
   if (!rank) return 99;
   let r = cleanStr(rank);
@@ -95,9 +151,9 @@ const getRankWeight = (rank) => {
   if (r === 'ASP') return 10;
   if (r === 'IP') return 11;
   if (r === 'AIP') return 12;
-  if (r === 'HCM') return 13; // Head Constable Major
-  if (r === 'HC') return 14;  // Head Constable
-  if (r === 'S/SGT' || r === 'SSGT') return 15; // Station Sergeant
+  if (r === 'HCM') return 13;
+  if (r === 'HC') return 14;
+  if (r === 'S/SGT' || r === 'SSGT') return 15;
   if (r === 'SGT') return 16;
   if (r === 'CPL') return 17;
   if (r === 'L/CPL' || r === 'LCPL') return 18;
@@ -109,7 +165,7 @@ const getRankWeight = (rank) => {
   return 50;
 };
 
-// 🟢 Granular Education Level Parsing
+// 🟢 4. GRANULAR EDUCATION PARSING
 const parseEducationLevel = (educ) => {
   if (!educ) return 'UNEDUCATED / UNRECORDED';
   const e = cleanStr(educ);

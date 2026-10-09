@@ -17,7 +17,6 @@ const REGIONAL_HIERARCHY = {
   "POLICE HEADQUARTERS": ["NAGURU", "OPERATIONS", "CRIME INTELLIGENCE", "CID", "LOGISTICS & ENGINEERING", "ICT", "CT", "FIRE & RESCUE"]
 };
 
-// 🟢 Strict Regional Priority Order for Sorting
 const REGION_SORT_PRIORITY = {
   "KMP HEADQUARTERS": 1,
   "KMP NORTH HEADQUARTERS": 2,
@@ -29,19 +28,18 @@ const REGION_SORT_PRIORITY = {
   "POLICE HEADQUARTERS": 8
 };
 
-const cleanStr = (str) => {
-  if (!str) return '';
-  return String(str).replace(/\s+/g, ' ').trim().toUpperCase();
-};
-
-const isStationEquivalent = (statA, statB) => {
-  const a = cleanStr(statA);
-  const b = cleanStr(statB);
-  if (!a || !b) return false;
-  if (a === b) return true;
-  const cleanA = a.replace(/(\s+HEADQUARTERS|\s+HQ)$/, '');
-  const cleanB = b.replace(/(\s+HEADQUARTERS|\s+HQ)$/, '');
-  return cleanA === cleanB && cleanA.length > 0;
+const getPositionPrecedence = (position) => {
+  const pos = cleanStr(position);
+  if (!pos) return 99;
+  if (pos.includes('COMMANDER KMP') || pos === 'COMD KMP' || pos === 'CDR KMP' || pos === 'KMP COMMANDER') return 1;
+  if (pos.includes('DEPUTY KMP') || pos.includes('DEP COMDR KMP') || pos.includes('DEPUTY COMMANDER KMP')) return 2;
+  if (pos.includes('ADMIN KMP') || pos.includes('ADMIN OFFICER')) return 3;
+  if (pos.includes('RPC') && !pos.includes('DEPUTY')) return 1;
+  if (pos.includes('DEPUTY RPC') || pos.includes('DEP RPC')) return 2;
+  if (pos.includes('OC STATION') || pos.includes('DPC') || pos.includes('DIVISION COMMANDER')) return 4;
+  if (pos.includes('OC CID') || pos.includes('OC CI') || pos.includes('OC')) return 5;
+  if (pos.includes('2I/C') || pos.includes('DEPUTY OC') || pos.includes('I/C')) return 6;
+  return 50;
 };
 
 // 🟢 Intelligent Station & Post Parsing Engine
@@ -110,19 +108,25 @@ const getRankWeight = (rank) => {
   if (!rank) return 99;
   let r = cleanStr(rank);
 
+  // 🟢 Comprehensive Driver Normalization (C/DRV, CPL/DRV, SGT/DRV, DRV/SGT, etc.)
+  if (r.includes('DRV') || r.includes('DRIVER')) {
+    if (r.includes('SGT') || r.includes('SERGEANT')) {
+      r = 'SGT';
+    } else if (r.includes('CPL') || r.includes('CORPORAL')) {
+      r = 'CPL';
+    } else if (r === 'C/DRV' || r === 'DRV' || r === 'DRV/PC' || r === 'PC/DRV') {
+      r = 'PC';
+    } else {
+      // Strip driver tags to reveal base rank (e.g. ASP/DRV -> ASP)
+      r = r.replace(/\/DRV|-DRV| DRV|DRV\/|DRIVER/g, '').trim();
+    }
+  }
+
   if (r === 'DC' || r.startsWith('D/C')) {
     r = 'PC';
   } else if (r.startsWith('D/') || r.startsWith('D-') || r.startsWith('D ')) {
     r = r.replace(/^D[\/\- ]/, '').trim();
     if (r === 'C') r = 'PC';
-  }
-
-  if (r.includes('/DRV') || r.includes('-DRV') || r.includes(' DRV') || r === 'DRV' || r.includes('C/DRV')) {
-    if (r === 'C/DRV' || r === 'DRV') {
-      r = 'PC';
-    } else {
-      r = r.replace(/\/DRV|-DRV| DRV|DRV/g, '').trim();
-    }
   }
 
   if (!r) r = 'PC';
@@ -150,21 +154,6 @@ const getRankWeight = (rank) => {
   if (r === 'SPC') return 21;
   if (r === 'CIVILIAN') return 98;
 
-  return 50;
-};
-
-// 🟢 Command & Supervisory Precedence Weighting for Sorting
-const getPositionPrecedence = (position) => {
-  const pos = cleanStr(position);
-  if (!pos) return 99;
-  if (pos.includes('COMMANDER KMP') || pos === 'COMD KMP' || pos === 'CDR KMP') return 1;
-  if (pos.includes('DEPUTY COMMANDER') || pos.includes('DEP COMDR') || pos.includes('DEPUTY KMP')) return 2;
-  if (pos.includes('ADMIN KMP') || pos.includes('ADMIN OFFICER')) return 3;
-  if (pos.includes('RPC') && !pos.includes('DEPUTY')) return 1;
-  if (pos.includes('DEPUTY RPC') || pos.includes('DEP RPC')) return 2;
-  if (pos.includes('OC STATION') || pos.includes('DPC') || pos.includes('DIVISION COMMANDER')) return 4;
-  if (pos.includes('OC CID') || pos.includes('OC CI') || pos.includes('OC')) return 5;
-  if (pos.includes('2I/C') || pos.includes('DEPUTY OC') || pos.includes('I/C')) return 6;
   return 50;
 };
 
@@ -581,7 +570,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     }
   };
 
-  // 🟢 Enriched Sorting & Filtering Engine based on Strict Hierarchy & Rank Precedence
   const filteredRolls = useMemo(() => {
     const list = (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).filter(n => {
       const statusStr = cleanStr(n.status);
@@ -614,7 +602,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       return true;
     });
 
-    // 🟢 Apply Multi-Tier Strict Sorting Protocol
+    // 🟢 Strict Multi-Tier Sorting Protocol: Region -> Position Precedence -> Rank Seniority -> Force Number
     return list.sort((a, b) => {
       const regA = getOfficialRegionForStation(a.station, a.region);
       const regB = getOfficialRegionForStation(b.station, b.region);

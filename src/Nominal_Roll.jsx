@@ -7,6 +7,13 @@ import {
 import { authFetch } from './api';
 import BulkNominalRollUpload from './BulkNominalRollUpload';
 import OfficerDossierModal from './OfficerDossierModal';
+import { formatOfficerHeader, stripHtmlTags } from './adminUtils';
+
+// 🟢 1. DEFINE cleanStr FIRST TO PREVENT REFERENCE ERRORS
+const cleanStr = (str) => {
+  if (!str) return '';
+  return String(str).replace(/\s+/g, ' ').trim().toUpperCase();
+};
 
 // 🟢 Enriched Regional Hierarchy with Major Divisions / CPS
 const REGIONAL_HIERARCHY = {
@@ -17,6 +24,7 @@ const REGIONAL_HIERARCHY = {
   "POLICE HEADQUARTERS": ["NAGURU", "OPERATIONS", "CRIME INTELLIGENCE", "CID", "LOGISTICS & ENGINEERING", "ICT", "CT", "FIRE & RESCUE"]
 };
 
+// 🟢 Strict Regional Priority Order for Sorting
 const REGION_SORT_PRIORITY = {
   "KMP HEADQUARTERS": 1,
   "KMP NORTH HEADQUARTERS": 2,
@@ -28,18 +36,14 @@ const REGION_SORT_PRIORITY = {
   "POLICE HEADQUARTERS": 8
 };
 
-const getPositionPrecedence = (position) => {
-  const pos = cleanStr(position);
-  if (!pos) return 99;
-  if (pos.includes('COMMANDER KMP') || pos === 'COMD KMP' || pos === 'CDR KMP' || pos === 'KMP COMMANDER') return 1;
-  if (pos.includes('DEPUTY KMP') || pos.includes('DEP COMDR KMP') || pos.includes('DEPUTY COMMANDER KMP')) return 2;
-  if (pos.includes('ADMIN KMP') || pos.includes('ADMIN OFFICER')) return 3;
-  if (pos.includes('RPC') && !pos.includes('DEPUTY')) return 1;
-  if (pos.includes('DEPUTY RPC') || pos.includes('DEP RPC')) return 2;
-  if (pos.includes('OC STATION') || pos.includes('DPC') || pos.includes('DIVISION COMMANDER')) return 4;
-  if (pos.includes('OC CID') || pos.includes('OC CI') || pos.includes('OC')) return 5;
-  if (pos.includes('2I/C') || pos.includes('DEPUTY OC') || pos.includes('I/C')) return 6;
-  return 50;
+const isStationEquivalent = (statA, statB) => {
+  const a = cleanStr(statA);
+  const b = cleanStr(statB);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const cleanA = a.replace(/(\s+HEADQUARTERS|\s+HQ)$/, '');
+  const cleanB = b.replace(/(\s+HEADQUARTERS|\s+HQ)$/, '');
+  return cleanA === cleanB && cleanA.length > 0;
 };
 
 // 🟢 Intelligent Station & Post Parsing Engine
@@ -47,7 +51,6 @@ const parseStationHierarchy = (rawStation) => {
   const cleaned = cleanStr(rawStation);
   if (!cleaned) return { division: 'UNASSIGNED', station: 'UNASSIGNED', subStation: '', post: '', type: 'POST' };
 
-  // Handle slashed compounds e.g., "JINJA ROAD CPS / WAMPEWO P/P" or "CPS KAMPALA/PARLIAMENT"
   if (cleaned.includes('/') || cleaned.includes('\\')) {
     const parts = cleaned.split(/[\/\\]/).map(p => cleanStr(p));
     const parent = parts[0];
@@ -66,7 +69,6 @@ const parseStationHierarchy = (rawStation) => {
     };
   }
 
-  // Handle abbreviation checks e.g., "WAMPEWO P/P" or "WATUBA P.S"
   if (cleaned.endsWith(' P/P') || cleaned.endsWith(' P.P') || cleaned.includes('POLICE POST')) {
     const name = cleaned.replace(/P\/P|P\.P|POLICE POST/g, '').trim();
     return { division: 'GENERAL', station: 'GENERAL', subStation: '', post: name, type: 'POST' };
@@ -76,7 +78,6 @@ const parseStationHierarchy = (rawStation) => {
     return { division: name, station: name, subStation: '', post: '', type: 'STATION' };
   }
 
-  // Check if it's a major Division / CPS in our mapping hierarchy
   for (const stationsList of Object.values(REGIONAL_HIERARCHY)) {
     if (stationsList.includes(cleaned)) {
       return { division: cleaned, station: cleaned, subStation: '', post: '', type: 'DIVISION' };
@@ -103,28 +104,37 @@ const getOfficialRegionForStation = (stationName, dbRegion) => {
   return cleanDbRegion || 'KMP GENERAL';
 };
 
-// 🟢 21-Rank Normalization Engine (Handling Detectives & Drivers cleanly)
+// 🟢 Command & Supervisory Precedence Weighting
+const getPositionPrecedence = (position) => {
+  const pos = cleanStr(position);
+  if (!pos) return 99;
+  if (pos.includes('COMMANDER KMP') || pos === 'COMD KMP' || pos === 'CDR KMP' || pos === 'KMP COMMANDER' || pos === 'IGP' || pos === 'DIGP') return 1;
+  if (pos.includes('DEPUTY KMP') || pos.includes('DEP COMDR KMP') || pos.includes('DEPUTY COMMANDER KMP') || pos.includes('AIGP')) return 2;
+  if (pos.includes('ADMIN KMP') || pos.includes('ADMIN OFFICER') || pos.includes('STAFF OFFICER')) return 3;
+  if (pos.includes('RPC') && !pos.includes('DEPUTY')) return 1;
+  if (pos.includes('DEPUTY RPC') || pos.includes('DEP RPC') || pos.includes('D/RPC')) return 2;
+  if (pos.includes('DPC') || pos.includes('DIVISION COMMANDER') || pos.includes('DIV COMDR')) return 4;
+  if (pos.includes('OC STATION') || pos.includes('OC DIV') || pos.includes('OC') && !pos.includes('CID') && !pos.includes('CI')) return 5;
+  if (pos.includes('OC CID') || pos.includes('HEAD CID')) return 6;
+  if (pos.includes('OC CI') || pos.includes('CRIME INTELLIGENCE')) return 7;
+  if (pos.includes('OC POST') || pos.includes('O/C POST') || pos.includes('IC POST')) return 8;
+  if (pos.includes('2I/C') || pos.includes('DEPUTY OC') || pos.includes('I/C')) return 9;
+  return 50;
+};
+
+// 🟢 21-Rank Normalization Engine
 const getRankWeight = (rank) => {
   if (!rank) return 99;
   let r = cleanStr(rank);
 
-  // 🟢 Comprehensive Driver Normalization (C/DRV, CPL/DRV, SGT/DRV, DRV/SGT, etc.)
   if (r.includes('DRV') || r.includes('DRIVER')) {
-    if (r.includes('SGT') || r.includes('SERGEANT')) {
-      r = 'SGT';
-    } else if (r.includes('CPL') || r.includes('CORPORAL')) {
-      r = 'CPL';
-    } else if (r === 'C/DRV' || r === 'DRV' || r === 'DRV/PC' || r === 'PC/DRV') {
-      r = 'PC';
-    } else {
-      // Strip driver tags to reveal base rank (e.g. ASP/DRV -> ASP)
-      r = r.replace(/\/DRV|-DRV| DRV|DRV\/|DRIVER/g, '').trim();
-    }
+    if (r.includes('SGT') || r.includes('SERGEANT')) r = 'SGT';
+    else if (r.includes('CPL') || r.includes('CORPORAL')) r = 'CPL';
+    else r = 'PC';
   }
 
-  if (r === 'DC' || r.startsWith('D/C')) {
-    r = 'PC';
-  } else if (r.startsWith('D/') || r.startsWith('D-') || r.startsWith('D ')) {
+  if (r === 'DC' || r.startsWith('D/C')) r = 'PC';
+  else if (r.startsWith('D/') || r.startsWith('D-') || r.startsWith('D ')) {
     r = r.replace(/^D[\/\- ]/, '').trim();
     if (r === 'C') r = 'PC';
   }
@@ -139,13 +149,14 @@ const getRankWeight = (rank) => {
   if (r === 'ACP') return 6;
   if (r === 'SSP') return 7;
   if (r === 'SP') return 8;
+  if (r === 'MAJOR') return 8.5;
   if (r === 'SASP') return 9;
   if (r === 'ASP') return 10;
   if (r === 'IP') return 11;
   if (r === 'AIP') return 12;
-  if (r === 'HCM') return 13;
-  if (r === 'HC') return 14;
-  if (r === 'S/SGT' || r === 'SSGT') return 15;
+  if (r === 'HCM') return 13; // Head Constable Major
+  if (r === 'HC') return 14;  // Head Constable
+  if (r === 'S/SGT' || r === 'SSGT') return 15; // Station Sergeant
   if (r === 'SGT') return 16;
   if (r === 'CPL') return 17;
   if (r === 'L/CPL' || r === 'LCPL') return 18;
@@ -157,18 +168,18 @@ const getRankWeight = (rank) => {
   return 50;
 };
 
-// 🟢 Granular Education Bracketing
+// 🟢 Granular Education Level Parsing
 const parseEducationLevel = (educ) => {
   if (!educ) return 'UNEDUCATED / UNRECORDED';
   const e = cleanStr(educ);
   
-  if (e.includes('MASTER') || e.includes('MSC') || e.includes('MA') || e.includes('MBA') || e.includes('PHD') || e.includes('DOCTORATE')) return 'MASTERS / DOCTORATE';
+  if (e.includes('MASTER') || e.includes('MSC') || e.includes('MA') || e.includes('MBA') || e.includes('PHD')) return 'MASTERS / DOCTORATE';
   if (e.includes('PGD') || e.includes('POST GRADUATE')) return 'POST-GRADUATE DIPLOMA (PGD)';
-  if (e.includes('DEGREE') || e.includes('BACHELOR') || e.includes('BA') || e.includes('BSC') || e.includes('BED') || e.includes('LLB') || e.includes('BBA')) return 'DEGREES / BACHELORS';
+  if (e.includes('DEGREE') || e.includes('BACHELOR') || e.includes('BA') || e.includes('BSC') || e.includes('BED') || e.includes('LLB')) return 'DEGREES / BACHELORS';
   if (e.includes('DIPLOMA') || e.includes('DIP')) return 'DIPLOMA';
   if (e.includes('CERTIFICATE') || e.includes('CERT')) return 'CERTIFICATE';
-  if (e.includes('UACE') || e.includes('A LEVEL') || e.includes('A-LEVEL') || e.includes('S.6') || e.includes('S6')) return 'UACE (ADVANCED CERTIFICATE)';
-  if (e.includes('UCE') || e.includes('O LEVEL') || e.includes('O-LEVEL') || e.includes('S.4') || e.includes('S4')) return 'UCE (O-LEVEL)';
+  if (e.includes('UACE') || e.includes('A LEVEL') || e.includes('A-LEVEL') || e.includes('S.6')) return 'UACE (ADVANCED CERTIFICATE)';
+  if (e.includes('UCE') || e.includes('O LEVEL') || e.includes('O-LEVEL') || e.includes('S.4')) return 'UCE (O-LEVEL)';
   if (e.includes('S.3') || e.includes('S3')) return 'S.3';
   if (e.includes('S.2') || e.includes('S2')) return 'S.2';
   if (e.includes('S.1') || e.includes('S1')) return 'S.1';
@@ -185,7 +196,7 @@ const parseEducationLevel = (educ) => {
 };
 
 const MetricCard = ({ title, value, colorClass }) => (
-  <div className="bg-white p-2 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
+  <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
     <h4 className="text-[8px] sm:text-[9px] font-extrabold mb-1 uppercase tracking-wider text-slate-500 leading-tight">{title}</h4>
     <div className={`text-sm sm:text-base font-black leading-none ${colorClass}`}>{value}</div>
   </div>
@@ -602,7 +613,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       return true;
     });
 
-    // 🟢 Strict Multi-Tier Sorting Protocol: Region -> Position Precedence -> Rank Seniority -> Force Number
     return list.sort((a, b) => {
       const regA = getOfficialRegionForStation(a.station, a.region);
       const regB = getOfficialRegionForStation(b.station, b.region);
@@ -697,11 +707,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
 
           if (metricCategory === 'RANK') {
               let r = cleanStr(n.rank);
-              if (r === 'DC' || r.startsWith('D/C')) r = 'PC';
-              else if (r.startsWith('D/') || r.startsWith('D-') || r.startsWith('D ')) {
-                  r = r.replace(/^D[\/\- ]/, '').trim();
-                  if (r === 'C') r = 'PC';
-              }
+              if (r.includes('DRV')) r = 'PC';
               key = r || 'UNRANKED';
           }
           else if (metricCategory === 'UNIT') key = parsedStn.division || parsedStn.station || 'UNKNOWN DIVISION';
@@ -730,7 +736,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       return Object.values(grouped).sort((a, b) => b.total - a.total);
   }, [currentRollDataset, metricCategory]);
 
-  // 🟢 Fixed Entity Tiers for Accurate Metrics Counting
   const metricsData = useMemo(() => {
     let maleCount = 0;
     let femaleCount = 0;
@@ -829,7 +834,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
           </div>
         </div>
 
-        {/* 🟢 Resized & Wrapped Metric Tabs */}
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2">
            <MetricCard title="Total Personnel" value={metricsData.total} colorClass={viewMode === 'archive' ? "text-red-700" : "text-blue-700"} />
            <MetricCard title="Male Officers" value={metricsData.male} colorClass="text-indigo-600" />
@@ -1441,5 +1445,4 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   );
 };
 
-self.Nominal_Roll = Nominal_Roll;
 export default Nominal_Roll;

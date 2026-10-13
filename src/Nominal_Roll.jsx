@@ -270,7 +270,10 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
 
   const isSuperAdmin = userRoleClean === 'SUPER_ADMIN';
 
-  // 1. Define Master Override & Top Command flags safely first
+  // 1. Read-Only Observer restriction check (must be declared first)
+  const isReadOnlyObserver = currentUser?.permissions?.global_observer === true && !currentUser?.permissions?.global_open && !isSuperAdmin;
+
+  // 2. Master Override & Top Command flags
   const hasMasterOverride = useMemo(() => {
     const p = currentUser?.permissions || {};
     return isSuperAdmin || p.global_open === true || p.bypass_jurisdiction === true;
@@ -286,7 +289,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     userPosClean.includes('RPC') || 
     userPosClean.includes('REGIONAL POLICE COMMANDER');
 
-  // 2. Declare isTopCommand explicitly right here before any usage
   const isTopCommand = isGlobalTier || isRPC || 
     ['ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN'].includes(userRoleClean) || 
     userPosClean.includes('HR');
@@ -297,7 +299,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   const canViewGlobalLevel = propCanViewGlobal !== undefined ? propCanViewGlobal : (isGlobalTier || isKmpSystemManager || isKmpSpecialist || hasMasterOverride);
   const isRegionalCommand = ['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN', 'ASSISTANT_REGIONAL_ADMIN'].includes(userRoleClean) && !canViewGlobalLevel;
 
-  // 3. Now safe to evaluate hasHrClearance
+  // 3. HR Clearance & Form Access Evaluation
   const perms = currentUser?.permissions || {};
   const hasHrClearance = 
     isTopCommand ||
@@ -306,6 +308,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     perms.acc_hr === true ||
     perms.upload_hr === true;
 
+  // Enforces that read-only observers are blocked, while cleared HR users get full form access
   const canEditRecords = hasHrClearance && !isReadOnlyObserver;
   
   const [filterRegion, setFilterRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);

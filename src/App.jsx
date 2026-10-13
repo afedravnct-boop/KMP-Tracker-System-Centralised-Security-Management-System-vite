@@ -1062,6 +1062,19 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
   // 🟢 NEW: State for the Help / Support Guide
   const [showHelpModal, setShowHelpModal] = useState(false);
   
+  useEffect(() => {
+    let animationFrameId;
+    const syncGlobalGlobe = () => {
+      // 25-second universal loop cycle driven by epoch time for absolute cross-user sync
+      const elapsed = Date.now() / 1000;
+      const position = (elapsed % 25) * 20; // 20px movement per second
+      document.documentElement.style.setProperty('--globe-universal-pos', `${position}px`);
+      animationFrameId = requestAnimationFrame(syncGlobalGlobe);
+    };
+    animationFrameId = requestAnimationFrame(syncGlobalGlobe);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
+  
   const [signupData, setSignupData] = useState({
     fnum: '', 
     ipps: '', 
@@ -1340,13 +1353,31 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           </div>
 
           <div className="mt-4 relative z-20 inline-flex items-center space-x-2 bg-[#6b1d2f]/95 px-5 py-2.5 rounded-full border border-emerald-300 shadow-xl backdrop-blur-md">
-            <Lock size={16} className="text-amber-300 animate-bounce" />
-            <span className="text-xs sm:text-sm font-bold text-blue-400 tracking-wider">
-            KMP TRACKER SYSTEM - KMPCSDMS160626 • LOGIN SCREEN STANDBY MODE
+            
+            {/* Universally synchronized lock bounce using epoch time */}
+            <span 
+              className="inline-flex items-center justify-center shrink-0"
+              style={{
+                transform: `translateY(${Math.sin(Date.now() / 200) * -4}px)`
+              }}
+            >
+              <Lock size={16} className="text-amber-300" />
             </span>
-            <span className="inline-flex items-center justify-center shrink-0 animate-spin" style={{ animationDuration: '8s' }}>
+            
+            <span className="text-xs sm:text-sm font-bold text-blue-400 tracking-wider">
+              KMP TRACKER SYSTEM - KMPCSDMS160626 • LOGIN SCREEN STANDBY MODE
+            </span>
+            
+            {/* Universally synchronized mini globe rotation using epoch time */}
+            <span 
+              className="inline-flex items-center justify-center shrink-0"
+              style={{
+                transform: `rotate(${(Date.now() / 20) % 360}deg)`
+              }}
+            >
               <Globe size={18} className="text-amber-300" />
             </span>
+
           </div>
 
           <p className="text-xs text-slate-300 mt-4 font-medium tracking-wide relative z-20">

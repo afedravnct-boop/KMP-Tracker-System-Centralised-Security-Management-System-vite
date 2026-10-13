@@ -1339,12 +1339,12 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
             </h2>
           </div>
 
-          <div className="mt-6 inline-flex items-center space-x-2 bg-slate-900/90 px-5 py-2.5 rounded-full border border-cyan-500/30 shadow-xl backdrop-blur-md">
-            <Lock size={16} className="text-yellow-400 animate-bounce" />
-            <span className="text-xs sm:text-sm font-bold text-blue-200 tracking-wider">
-              KMP TRACKER SYSTEM - KMPCSDMS160626 • IDLE STANDBY MODE
+          <div className="mt-6 inline-flex items-center space-x-2 bg-[#1b4d3e]/90 px-5 py-2.5 rounded-full border border-emerald-500/30 shadow-xl backdrop-blur-md">
+            <Lock size={16} className="text-red-400 animate-bounce" />
+            <span className="text-xs sm:text-sm font-bold text-cyan-200 tracking-wider">
+              KMP TRACKER SYSTEM - KMPCSDMS160626 • LOGIN SCREEN IDLE STANDBY MODE
             </span>
-            <Globe size={18} className="text-cyan-400 animate-spin-globe" />
+            <Globe size={18} className="text-red-400 animate-spin-globe" />
           </div>
 
           <p className="text-xs text-slate-400 mt-4 font-medium tracking-wide">
@@ -1364,7 +1364,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           {/* 🟢 HELP BUTTON */}
           <button
             onClick={() => setShowHelpModal(true)}
-            className="absolute top-5 right-5 text-slate-400 hover:text-blue-400 transition-colors cursor-pointer bg-slate-800/50 hover:bg-slate-800 p-2 rounded-full border border-slate-700 shadow-sm"
+            className="absolute top-5 right-5 text-slate-400 hover:text-gray-400 transition-colors cursor-pointer bg-slate-800/50 hover:bg-slate-800 p-2 rounded-full border border-slate-700 shadow-sm"
             title="System Access Help Guide"
           >
             <HelpCircle size={20} />

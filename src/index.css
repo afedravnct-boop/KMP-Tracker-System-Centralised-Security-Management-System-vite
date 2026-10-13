@@ -91,7 +91,10 @@
 }
 
 .animate-spin-globe {
-  animation: spinGlobe 12s linear infinite;
+  background-image: url('/UPF Flag Emblem.png');
+  background-size: cover;
+  background-repeat: repeat-x;
+  animation: spinGlobeSeamless 12s linear infinite;
 }
 
 @keyframes pulseSpin {

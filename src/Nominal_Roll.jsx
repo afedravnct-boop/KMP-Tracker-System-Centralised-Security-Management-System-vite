@@ -270,16 +270,26 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
 
   const isSuperAdmin = userRoleClean === 'SUPER_ADMIN';
 
-  // 🟢 Master Override / Admin Approval Bypass Check
+  // 1. Master Override / Admin Approval Bypass Check
   const hasMasterOverride = useMemo(() => {
     const p = currentUser?.permissions || {};
     return isSuperAdmin || p.global_open === true || p.bypass_jurisdiction === true;
   }, [currentUser, isSuperAdmin]);
 
   const isGlobalTier = hasMasterOverride || isSuperAdmin || 
-    ['SUPER_ADMIN', 'ADMIN', 'ASSISTANT_SUPER_ADMIN'].includes(userRoleClean) || 
+    ['SUPER_ADMIN', 'ASSISTANT_SUPER_ADMIN'].includes(userRoleClean) || 
     ['KMP COMMANDER', 'DEPUTY KMP COMMANDER', 'KMP ADMIN OFFICER'].includes(userPosClean) || 
     currentUser?.permissions?.view_global_roster === true;
+
+  const isRPC = ['RPC', 'DEPUTY_RPC'].includes(userRoleClean) || 
+    (userRoleClean === 'SYSTEM_MANAGER' && !isGlobalTier) ||
+    userPosClean.includes('RPC') || 
+    userPosClean.includes('REGIONAL POLICE COMMANDER');
+
+  // 2. Declare isTopCommand FIRST so it's fully defined when evaluated below
+  const isTopCommand = isGlobalTier || isRPC || 
+    ['ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN'].includes(userRoleClean) || 
+    userPosClean.includes('HR');
 
   const isKmpSystemManager = userRoleClean === 'SYSTEM_MANAGER' && ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(userRegClean) && userPosClean.includes('KMP');
   const isKmpSpecialist = userRoleClean === 'ASSISTANT_SYSTEM_MANAGER' && ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(userRegClean) && userPosClean.includes('KMP');
@@ -287,7 +297,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   const canViewGlobalLevel = propCanViewGlobal !== undefined ? propCanViewGlobal : (isGlobalTier || isKmpSystemManager || isKmpSpecialist || hasMasterOverride);
   const isRegionalCommand = ['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN', 'ASSISTANT_REGIONAL_ADMIN'].includes(userRoleClean) && !canViewGlobalLevel;
 
-  // 🟢 Enriched Clearance Check for Form Access (Nominal Roll Clearance / HR Permissions)
+  // 3. Now safe to evaluate hasHrClearance using isTopCommand
   const perms = currentUser?.permissions || {};
   const hasHrClearance = 
     isTopCommand ||

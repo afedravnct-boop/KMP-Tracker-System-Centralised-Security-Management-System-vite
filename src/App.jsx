@@ -1699,7 +1699,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
                       <Lock className="w-3 h-3 mr-1"/> Protected by Central Command Security Protocols
                     </p>
                     <p className="text-[10px] text-slate-500 font-mono tracking-wider uppercase">
-                      © 2026 Uganda Police Force — Kampala Metropolitan Police (KMP-CSDMS)
+                      © 2026 Kampala Metropolitan Police (KMP-CSDMS) - Uganda Police Force
                     </p>
                   </div>
                 </form>

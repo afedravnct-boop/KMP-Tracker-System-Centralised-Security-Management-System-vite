@@ -1062,18 +1062,23 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
   // 🟢 NEW: State for the Help / Support Guide
   const [showHelpModal, setShowHelpModal] = useState(false);
   
-  useEffect(() => {
-    let animationFrameId;
-    const syncGlobalGlobe = () => {
-      // 25-second universal loop cycle driven by epoch time for absolute cross-user sync
-      const elapsed = Date.now() / 1000;
-      const position = (elapsed % 25) * 20; // 20px movement per second
-      document.documentElement.style.setProperty('--globe-universal-pos', `${position}px`);
-      animationFrameId = requestAnimationFrame(syncGlobalGlobe);
-    };
-    animationFrameId = requestAnimationFrame(syncGlobalGlobe);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, []);
+// Place this inside your Login or Workspace Standby component
+useEffect(() => {
+  let animationFrameId;
+  const syncGlobesToEpoch = () => {
+    // 20-second complete rotation cycle mapped to Epoch milliseconds
+    const currentTime = Date.now() / 20; 
+    const rotationPosition = currentTime % 500; // Loops every 500px of background texture
+    
+    // Push the synchronized coordinate directly to the HTML root
+    document.documentElement.style.setProperty('--universal-globe-pos', `${rotationPosition}px`);
+    
+    animationFrameId = requestAnimationFrame(syncGlobesToEpoch);
+  };
+  
+  animationFrameId = requestAnimationFrame(syncGlobesToEpoch);
+  return () => cancelAnimationFrame(animationFrameId);
+}, []);
   
   const [signupData, setSignupData] = useState({
     fnum: '', 

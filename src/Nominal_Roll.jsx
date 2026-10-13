@@ -9,11 +9,13 @@ import BulkNominalRollUpload from './BulkNominalRollUpload';
 import OfficerDossierModal from './OfficerDossierModal';
 import { formatOfficerHeader, stripHtmlTags } from './adminUtils';
 
+// 🟢 1. GLOBAL UTILITY HELPERS HOISTED TO THE TOP
 const cleanStr = (str) => {
   if (!str) return '';
   return String(str).replace(/\s+/g, ' ').trim().toUpperCase();
 };
 
+// 🟢 Enriched Regional Hierarchy with Major Divisions / CPS
 const REGIONAL_HIERARCHY = {
   "KMP HEADQUARTERS": ["KMP HEADQUARTERS", "KMP CID", "KMP TRAFFIC", "KMP ICT", "KMP FLYING SQUAD", "KMP CRIME INTELLIGENCE"],
   "KMP NORTH": ["KMP NORTH HEADQUARTERS", "KAWEMPE", "KAKIRI", "KASANGATI", "MATUGGA", "NANSANA", "OLD KAMPALA", "WAKISO", "WANDEGEYA"],
@@ -22,6 +24,7 @@ const REGIONAL_HIERARCHY = {
   "POLICE HEADQUARTERS": ["NAGURU", "OPERATIONS", "CRIME INTELLIGENCE", "CID", "LOGISTICS & ENGINEERING", "ICT", "CT", "FIRE & RESCUE"]
 };
 
+// 🟢 Strict Regional Priority Order for Sorting
 const REGION_SORT_PRIORITY = {
   "KMP HEADQUARTERS": 1,
   "KMP NORTH HEADQUARTERS": 2,
@@ -43,6 +46,7 @@ const isStationEquivalent = (statA, statB) => {
   return cleanA === cleanB && cleanA.length > 0;
 };
 
+// 🟢 2. STATION & POST PARSING ENGINE (Substations Omitted entirely)
 const parseStationHierarchy = (rawStation) => {
   const cleaned = cleanStr(rawStation);
   if (!cleaned) return { division: 'UNASSIGNED', station: 'UNASSIGNED', post: '', type: 'POST' };
@@ -54,7 +58,7 @@ const parseStationHierarchy = (rawStation) => {
     
     let type = 'POST';
     if (child.includes('SUB-STATION') || child.includes('SUBSTATION')) {
-      return { division: parent, station: parent, post: '', type: 'STATION' }; 
+      return { division: parent, station: parent, post: '', type: 'STATION' }; // Map directly to parent
     } else if (child.includes('STATION')) {
       type = 'STATION';
     }
@@ -102,6 +106,7 @@ const getOfficialRegionForStation = (stationName, dbRegion) => {
   return cleanDbRegion || 'KMP GENERAL';
 };
 
+// 🟢 3. COMMAND PRECEDENCE & RANK WEIGHTING
 const getPositionPrecedence = (position) => {
   const pos = cleanStr(position);
   if (!pos) return 99;
@@ -173,6 +178,7 @@ const getRankWeight = (rank) => {
   return 50;
 };
 
+// 🟢 4. GRANULAR EDUCATION PARSING
 const parseEducationLevel = (educ) => {
   if (!educ) return 'UNEDUCATED / UNRECORDED';
   const e = cleanStr(educ);
@@ -216,13 +222,10 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
   };
 
   return (
-    <div className={`shadow-2xl border overflow-hidden flex flex-col transition-all duration-300 ${
-      expanded 
-        ? 'fixed inset-0 z-[99999] rounded-none h-screen w-screen m-0 p-0 bg-white dark:bg-slate-950' 
-        : 'rounded-xl w-full mt-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+    <div className={`shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col transition-all duration-300 ${
+      expanded ? 'fixed inset-0 z-[99999] rounded-none h-screen w-screen m-0 p-0 bg-white dark:bg-slate-900' : 'rounded-xl w-full mt-3 bg-white dark:bg-slate-900'
     }`}>
-      {/* 🟢 Adaptive Dark/Light Header with lowered vertical positioning */}
-      <div className="bg-slate-900 dark:bg-slate-950 border-b border-slate-800 px-4 py-3.5 flex justify-between items-center shrink-0 relative z-30">
+      <div className="bg-slate-900 dark:bg-slate-950 px-4 py-3.5 flex justify-between items-center shrink-0">
         <h3 className="font-extrabold text-white text-xs sm:text-sm uppercase tracking-wider flex items-center">
           {title} {expanded && <span className="ml-2 text-[10px] bg-blue-600 px-2 py-0.5 rounded text-white font-mono">FULL SCREEN VIEW</span>}
         </h3>
@@ -255,6 +258,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   
   const [analyticsMetricFilterValue, setAnalyticsMetricFilterValue] = useState('ALL');
   
+  // 🟢 Analytics Dossier States
   const [showAnalyticsDossier, setShowAnalyticsDossier] = useState(false);
   const [analyticsSelectedOfficer, setAnalyticsSelectedOfficer] = useState(null);
 
@@ -376,33 +380,35 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     return Array.from(list).sort();
   }, [Nominal_Rolls, filterRegion, filterStation]);
 
-  const populateUpdateForm = (data) => setFormData({
-    sn: data.sn !== undefined ? data.sn : null,
-    fnum: data.fnum || data.f_num || '',
-    rank: data.rank || '',
-    name: data.name || '',
-    sex: data.sex || 'MALE',
-    position: data.position || '',
-    dob: data.dob || '',
-    doe: data.doe || '',
-    dopost: data.dopost || data.do_post || data.dop || '',
-    dopro: data.dopro || data.do_pro || '',
-    contact: data.contact || '',
-    educlevel: data.educlevel || data.educ_level || data.education || '',
-    ipps: data.ipps || '',
-    tin: data.tin || '',
-    nin: data.nin || '',
-    homedist: data.homedist || data.home_dist || data.district || '',
-    tribe: data.tribe || '',
-    accno: data.accno || data.acc_no || '',
-    bankbranch: data.bankbranch || data.bank_branch || '',
-    station: data.station || '',
-    district: data.district || '',
-    region: data.region || currentUser?.region || '',
-    section: data.section || '',
-    dir: data.dir || '',
-    status: data.status || 'ACTIVE'
-  });
+  const populateUpdateForm = (data) => {
+    setFormData({
+      sn: data.sn !== undefined ? data.sn : null,
+      fnum: data.fnum || data.f_num || '',
+      rank: data.rank || '',
+      name: data.name || '',
+      sex: data.sex || 'MALE',
+      position: data.position || '',
+      dob: data.dob || '',
+      doe: data.doe || '',
+      dopost: data.dopost || data.do_post || data.dop || '',
+      dopro: data.dopro || data.do_pro || '',
+      contact: data.contact || '',
+      educlevel: data.educlevel || data.educ_level || data.education || '',
+      ipps: data.ipps || '',
+      tin: data.tin || '',
+      nin: data.nin || '',
+      homedist: data.homedist || data.home_dist || data.district || '',
+      tribe: data.tribe || '',
+      accno: data.accno || data.acc_no || '',
+      bankbranch: data.bankbranch || data.bank_branch || '',
+      station: data.station || '',
+      district: data.district || '',
+      region: data.region || currentUser?.region || '',
+      section: data.section || '',
+      dir: data.dir || '',
+      status: data.status || 'ACTIVE'
+    });
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -472,36 +478,23 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     }
   };
 
-  // 🟢 Updated Analytics Export to use the Secure AES-256 `.zip` Endpoint
   const handleExecuteAnalyticsExport = async () => {
     try {
-      setNotification("⏳ Generating AES-256 secure encrypted analytics archive. Please wait...");
-      const endpoint = `/api/v1/nominal-roll/export-analytics?region=${encodeURIComponent(filterRegion)}&station=${encodeURIComponent(filterStation)}`;
+      const endpoint = `/api/v1/nominal-roll/export-filtered-ledger?region=${encodeURIComponent(filterRegion)}&station=${encodeURIComponent(filterStation)}&filter_type=${encodeURIComponent(metricCategory)}&filter_value=${encodeURIComponent(analyticsMetricFilterValue)}`;
       
       const response = await authFetch(endpoint, { method: 'GET' });
-      if (!response.ok) throw new Error("Secure analytics export failed on server.");
+      if (!response.ok) throw new Error("Filtered export generation failed.");
 
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      
-      const disposition = response.headers.get('Content-Disposition');
-      let filename = 'SECURE_NOMINAL_ANALYTICS.zip';
-      if (disposition && disposition.indexOf('filename=') !== -1) {
-          filename = disposition.split('filename=')[1].replace(/["']/g, '');
-      }
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      setNotification("✅ Secure AES-256 analytics archive downloaded successfully! Use your Force Number to unlock.");
-      setTimeout(() => setNotification(null), 6000);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Nominal_List_${metricCategory}_${analyticsMetricFilterValue.replace(/\s+/g, '_')}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Export error:", err);
-      setNotification("❌ Failed to generate secure analytics export archive.");
+      alert(`Export Error: ${err.message}`);
     }
   };
 
@@ -849,6 +842,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     });
   }, [Nominal_Rolls, userRegClean, updateSearch, isGlobalTier, canViewGlobalLevel]);
 
+  // 🟢 OMIT SUBSTATIONS ENTIRELY FROM METRICS
   const metricsData = useMemo(() => {
     let maleCount = 0;
     let femaleCount = 0;
@@ -870,7 +864,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         const parsed = parseStationHierarchy(n.station);
         if (parsed.division && parsed.division !== 'UNASSIGNED') divisionsSet.add(parsed.division);
         if (parsed.station && parsed.station !== 'UNASSIGNED') stationsSet.add(parsed.station);
-        if (parsed.post) postsSet.add(parsed.post);
+        if (parsed.post) postsSet.add(parsed.post); // Substations omitted entirely
       }
     });
 
@@ -892,7 +886,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">Master Nominal Roll</h1>
         <h3 className="text-xs sm:text-sm text-blue-700 mt-0.5 font-semibold uppercase tracking-wider">Man-Power Auditing & Deployment Registry</h3>
       </div>
-      
+        
       <div className="bg-white/90 backdrop-blur p-3.5 rounded-xl border border-slate-200 shadow-sm relative">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
           <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center">
@@ -945,6 +939,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
           </div>
         </div>
 
+        {/* 🟢 OMIT SUBSTATIONS ENTIRELY FROM METRICS CARDS */}
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2">
            <MetricCard title="Total Personnel" value={metricsData.total} colorClass={viewMode === 'archive' ? "text-red-700" : "text-blue-700"} />
            <MetricCard title="Male Officers" value={metricsData.male} colorClass="text-indigo-600" />
@@ -1018,6 +1013,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         </div>
       )}
 
+      {/* 🟢 STATION NOMINAL LIST BLUE BUTTON MODAL WITH OPTION TO VIEW OR DOWNLOAD */}
       {showModal && (
         <div className="fixed inset-0 z-[99999] bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md p-5 space-y-4">
@@ -1240,7 +1236,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                     )}
 
                     {operation === 'update' && (formData.sn || formData.fnum) && <div className="bg-slate-800 text-white text-[11px] font-bold px-2.5 py-1.5 rounded">Editing: {formData.fnum}</div>}
-                          
+                         
                     <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-200 space-y-2">
                       <h4 className="text-[10px] font-bold text-gray-500 uppercase border-b pb-0.5">1. Identifiers</h4>
                       <div className="grid grid-cols-2 gap-2">
@@ -1316,7 +1312,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                               className="w-full text-xs py-1.5 px-2 border border-slate-300 rounded shadow-xs focus:ring-1 focus:ring-amber-500 outline-none bg-white text-slate-800"
                             />
                           </div>
-                            
+                             
                           <div>
                             <label className="block text-[10px] font-bold text-slate-700 mb-0.5 flex items-center">
                               Previous Force No. <span className="text-slate-400 font-normal ml-1">(If promoted to Gazetted File No.)</span>
@@ -1489,9 +1485,9 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                 <button
                     type="button"
                     onClick={handleExecuteAnalyticsExport}
-                    className="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-1.5 text-xs font-black rounded-lg border border-emerald-800 transition-all flex items-center whitespace-nowrap shadow-sm cursor-pointer ring-2 ring-emerald-500/20 ml-2"
+                    className="bg-indigo-700 hover:bg-indigo-800 text-white px-3 py-1.5 text-xs font-bold rounded shadow transition flex items-center cursor-pointer ml-2"
                 >
-                    <Download className="w-3.5 h-3.5 mr-1" /> Export Secure Excel (.zip)
+                    <Download className="w-3.5 h-3.5 mr-1" /> Download This List
                 </button>
             </div>
         </div>
@@ -1586,6 +1582,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                              />
                           </th>
                         )}
+                        {/* 🟢 FULL RESTORED 28-COLUMN HEADER STRUCTURE */}
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">S/No</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">F/NO</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Rank</th>
@@ -1654,6 +1651,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                                 />
                               </td>
                           )}
+                          {/* 🟢 FULL RESTORED 28-COLUMN ROW RENDER */}
                           <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-gray-900">{index + 1}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-blue-800">{cleanStr(n.f_num || n.fnum)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-slate-800">{cleanStr(n.rank)}</td>
@@ -1707,6 +1705,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         />
       )}
       
+      {/* 🟢 DOSSIER MODAL FOR ANALYTICS VIEW */}
       {showAnalyticsDossier && analyticsSelectedOfficer && (
         <OfficerDossierModal 
           officer={analyticsSelectedOfficer} 

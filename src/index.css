@@ -374,3 +374,22 @@ body, html {
   max-width: 100% !important;
 }
 
+/* =========================================================
+   9. GLOBAL SYSTEM FONT & ROOT SCALING (TAHOMA ENFORCED)
+   ========================================================= */
+@layer base {
+  html {
+    font-size: 12px !important; 
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+  }
+  body, button, input, select, textarea {
+    font-family: 'Tahoma', Geneva, Verdana, sans-serif !important;
+  }
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    overflow-x: hidden;
+    letter-spacing: -0.01em;
+  }
+}

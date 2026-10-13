@@ -249,7 +249,13 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
 
   const isReadOnlyObserver = currentUser?.permissions?.global_observer === true && !currentUser?.permissions?.global_open && !isSuperAdmin;
 
-  const isGlobalTier = isSuperAdmin || 
+  // 🟢 Master Override / Bypass Check (Supersedes signup and tier restrictions)
+  const hasMasterOverride = useMemo(() => {
+    const p = currentUser?.permissions || {};
+    return isSuperAdmin || p.global_open === true || p.bypass_jurisdiction === true;
+  }, [currentUser, isSuperAdmin]);
+
+  const isGlobalTier = hasMasterOverride || isSuperAdmin || 
     userRoleClean === 'ASSISTANT_SUPER_ADMIN' ||
     ['KMP COMMANDER', 'DEPUTY KMP COMMANDER', 'KMP ADMIN OFFICER'].includes(userPosClean) ||
     currentUser?.permissions?.view_global_roster === true;
@@ -283,9 +289,10 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
 
   const canControlTargetUser = useCallback((targetUser) => {
     if (isReadOnlyObserver || !targetUser) return false;
+    if (hasMasterOverride) return true; // Master clearance overrides all signup and tier restrictions!
+
     const targetRole = (targetUser.role || '').toUpperCase();
     if (targetRole === 'SUPER_ADMIN' && !isSuperAdmin) return false; 
-    if (isSuperAdmin) return true; 
 
     const tierWeight = {
       'SUPER_ADMIN': 100, 'ASSISTANT_SUPER_ADMIN': 90, 'SYSTEM_MANAGER': 80, 'ASSISTANT_SYSTEM_MANAGER': 70, 
@@ -300,7 +307,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
 
     if (!isGlobalTier && !belongsToMyRegion) return false;
     return true;
-  }, [isSuperAdmin, userRoleClean, isGlobalTier, currentUser, isReadOnlyObserver]);
+  }, [hasMasterOverride, isSuperAdmin, userRoleClean, isGlobalTier, currentUser, isReadOnlyObserver]);
 
   const handleManualBriefDispatch = async (briefType) => {
     if (isReadOnlyObserver || !canTriggerBriefs) {

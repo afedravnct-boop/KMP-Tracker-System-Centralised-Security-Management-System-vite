@@ -217,9 +217,10 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
 
   return (
     <div className={`bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col transition-all duration-300 ${
-      expanded ? 'fixed inset-0 z-[99999] rounded-none h-screen w-screen m-0 p-0 bg-white' : 'rounded-xl w-full'
+      expanded ? 'fixed inset-0 z-[99999] rounded-none h-screen w-screen m-0 p-0 bg-white' : 'rounded-xl w-full mt-2' // 🟢 Added mt-2 to drop it safely below overlapping watermarks/toolbars
     }`}>
-      <div className="bg-slate-900 px-4 py-3 flex justify-between items-center shrink-0">
+      {/* 🟢 Increased vertical padding py-3.5 to create comfortable clearance */}
+      <div className="bg-slate-900 px-4 py-3.5 flex justify-between items-center shrink-0 relative z-30">
         <h3 className="font-extrabold text-white text-xs sm:text-sm uppercase tracking-wider flex items-center">
           {title} {expanded && <span className="ml-2 text-[10px] bg-blue-600 px-2 py-0.5 rounded text-white font-mono">FULL SCREEN VIEW</span>}
         </h3>

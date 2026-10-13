@@ -268,7 +268,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
   const canToggleKillSwitch = isSuperAdmin || userRoleClean === 'ASSISTANT_SUPER_ADMIN' || hasDelegatedApprovalPower || currentUser?.permissions?.ai_hr_access === true;
   const canViewGlobalActive = canViewGlobal || isGlobalTier || isReadOnlyObserver;
   
-  // 🟢 STRICT COMMAND HIERARCHY CLEARANCE FOR MANUAL BRIEF TRIGGER
   const canTriggerBriefs = 
     ['SUPER_ADMIN', 'ASSISTANT_SUPER_ADMIN', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER'].includes(userRoleClean) ||
     ['PRINCIPAL SUPER ADMIN', 'SUPER ADMIN', 'ASSISTANT SUPER ADMIN', 'SYSTEM MANAGER', 'ASSISTANT SYSTEM MANAGER', 'KMP COMMANDER', 'DEPUTY KMP COMMANDER', 'KMP ADMIN OFFICER', 'KMP CID COMMANDER', 'KMP CI COMMANDER', 'CI COMMANDER (KMP)', 'CID COMMANDER (KMP)'].some(pos => userPosClean.includes(pos)) ||
@@ -637,9 +636,15 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     setLoadingPending(true);
     try {
       const res = await authFetch("/api/v1/admin/pending-users");
-      if (res && res.ok) setRealPendingUsers((Array.isArray(await res.json()) ? await res.json() : []).filter(u => isSuperAdmin || u.role !== 'SUPER_ADMIN'));
-    } catch (err) { console.error(err); } 
-    finally { setLoadingPending(false); }
+      if (res && res.ok) {
+        const data = await res.json();
+        setRealPendingUsers(Array.isArray(data) ? data.filter(u => isSuperAdmin || u.role !== 'SUPER_ADMIN') : []);
+      }
+    } catch (err) { 
+      setRealPendingUsers([]); 
+    } finally { 
+      setLoadingPending(false); 
+    }
   }, [isSuperAdmin]);
 
   const fetchResets = useCallback(async () => {
@@ -647,9 +652,15 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     setLoadingResets(true);
     try {
       const res = await authFetch("/api/v1/admin/reset-requests");
-      if (res && res.ok) setResetRequests(Array.isArray(res) ? res : await res.json());
-    } catch (err) { console.error(err); } 
-    finally { setLoadingResets(false); }
+      if (res && res.ok) {
+        const data = await res.json();
+        setResetRequests(Array.isArray(data) ? data : []);
+      }
+    } catch (err) { 
+      setResetRequests([]); 
+    } finally { 
+      setLoadingResets(false); 
+    }
   }, []);
 
   const fetchAllSystemUsers = useCallback(async () => {
@@ -657,9 +668,15 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     setLoadingUsers(true);
     try {
       const res = await authFetch("/api/v1/users");
-      if (res && res.ok) setAllSystemUsers((Array.isArray(await res.json()) ? await res.json() : []).filter(u => u.fnum !== 'A/2408' && (isSuperAdmin || u.role !== 'SUPER_ADMIN')));
-    } catch (err) { console.error(err); } 
-    finally { setLoadingUsers(false); }
+      if (res && res.ok) {
+        const data = await res.json();
+        setAllSystemUsers(Array.isArray(data) ? data.filter(u => u.fnum !== 'A/2408' && (isSuperAdmin || u.role !== 'SUPER_ADMIN')) : []);
+      }
+    } catch (err) { 
+      setAllSystemUsers([]); 
+    } finally { 
+      setLoadingUsers(false); 
+    }
   }, [isSuperAdmin]);
 
   const fetchModRequests = useCallback(async () => {
@@ -667,9 +684,15 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     setLoadingRequests(true);
     try {
       const res = await authFetch("/api/v1/requests");
-      if (res && res.ok) setModRequests(Array.isArray(res) ? res : await res.json());
-    } catch (err) { console.error(err); } 
-    finally { setLoadingRequests(false); }
+      if (res && res.ok) {
+        const data = await res.json();
+        setModRequests(Array.isArray(data) ? data : []);
+      }
+    } catch (err) { 
+      setModRequests([]); 
+    } finally { 
+      setLoadingRequests(false); 
+    }
   }, []);
 
   const fetchAuditLogs = useCallback(async () => {
@@ -677,9 +700,15 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     setLoadingLogs(true);
     try {
       const res = await authFetch("/api/v1/audit-logs");
-      if (res && res.ok) setAuditLogs(Array.isArray(res) ? res : await res.json());
-    } catch (err) { console.error(err); } 
-    finally { setLoadingLogs(false); }
+      if (res && res.ok) {
+        const data = await res.json();
+        setAuditLogs(Array.isArray(data) ? data : []);
+      }
+    } catch (err) { 
+      setAuditLogs([]); 
+    } finally { 
+      setLoadingLogs(false); 
+    }
   }, []);
 
   useEffect(() => {
@@ -745,7 +774,8 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
 
   const getRevocationReason = useCallback((fnum) => {
     const cleanF = String(fnum || '').trim().toUpperCase();
-    const log = auditLogs.find(l => (l.event_type === 'REVOKE_USER_ACCESS' || l.event_type === 'REVOCATION') && (String(l.target_user || '').trim().toUpperCase() === cleanF || String(l.details || '').toUpperCase().includes(cleanF)));
+    const safeLogs = Array.isArray(auditLogs) ? auditLogs : [];
+    const log = safeLogs.find(l => (l.event_type === 'REVOKE_USER_ACCESS' || l.event_type === 'REVOCATION') && (String(l.target_user || '').trim().toUpperCase() === cleanF || String(l.details || '').toUpperCase().includes(cleanF)));
     if (log && log.details) {
       const match = log.details.match(/Reason:\s*(.*)/i) || log.details.match(/Remarks:\s*(.*)/i);
       if (match && match[1]) return match[1].trim();
@@ -771,7 +801,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* 🟢 RETURN HOME / DASHBOARD BUTTON */}
           <button 
             onClick={() => window.location.href = '/'}
             className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold px-4 py-2 rounded-xl text-xs flex items-center shadow-md transition cursor-pointer border border-slate-700"
@@ -1057,13 +1086,13 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
                         <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedPendingUser(u); }} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-[10px] shadow-sm inline-flex items-center transition cursor-pointer">
                           <Eye size={12} className="mr-1.5"/> Inspect Dossier
                         </button>
-                          
+                         
                         {!isReadOnlyObserver && (
                           <button onClick={() => handleRegrantAccess(u.fnum, u.name)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] shadow-sm flex items-center inline-flex transition cursor-pointer">
                             <Unlock size={12} className="mr-1.5"/> Restore
                           </button>
                         )}
-                          
+                         
                         {isSuperAdmin && !isReadOnlyObserver ? (
                           <button onClick={() => handlePermanentDelete(u.fnum, u.name)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] shadow-sm flex items-center inline-flex transition cursor-pointer">
                             <Trash2 size={12} className="mr-1.5"/> Purge

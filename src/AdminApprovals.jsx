@@ -698,7 +698,8 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
   };
 
   const filterByRegionStation = (items, itemRegionKey = 'region', itemStationKey = 'station', searchFields = []) => {
-    return items.filter(item => {
+    const safeItems = Array.isArray(items) ? items : [];
+    return safeItems.filter(item => {
       const itemRegion = stripHtmlTags(item[itemRegionKey] || '').trim().toUpperCase();
       const itemStation = stripHtmlTags(item[itemStationKey] || '').trim().toUpperCase();
       const activeReg = stripHtmlTags(filterRegion || '').trim().toUpperCase();
@@ -714,8 +715,8 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
     });
   };
 
-  const pendingAuthsList = useMemo(() => realPendingUsers.filter(u => u.role !== 'REVOKED'), [realPendingUsers]);
-  const revokedUsersList = useMemo(() => realPendingUsers.filter(u => u.role === 'REVOKED'), [realPendingUsers]);
+  const pendingAuthsList = useMemo(() => (Array.isArray(realPendingUsers) ? realPendingUsers : []).filter(u => u.role !== 'REVOKED'), [realPendingUsers]);
+  const revokedUsersList = useMemo(() => (Array.isArray(realPendingUsers) ? realPendingUsers : []).filter(u => u.role === 'REVOKED'), [realPendingUsers]);
 
   const filteredPending = useMemo(() => filterByRegionStation(pendingAuthsList, 'region', 'station', ['fnum', 'name', 'rank', 'station', 'region', 'nin', 'ipps', 'phone', 'email']), [pendingAuthsList, filterRegion, filterStation, canViewGlobalActive, searchTerm]);
   const filteredRevoked = useMemo(() => filterByRegionStation(revokedUsersList, 'region', 'station', ['fnum', 'name', 'rank', 'station', 'region', 'nin', 'ipps', 'phone', 'email']), [revokedUsersList, filterRegion, filterStation, canViewGlobalActive, searchTerm]);
@@ -724,8 +725,9 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false }) => {
   const filteredSystemUsers = useMemo(() => filterByRegionStation(allSystemUsers, 'region', 'station', ['fnum', 'name', 'rank', 'station', 'region', 'ipps', 'phone', 'email', 'role']), [allSystemUsers, filterRegion, filterStation, canViewGlobalActive, searchTerm]);
 
   const filteredLogs = useMemo(() => {
-    return auditLogs.filter(log => {
-      const logUser = allSystemUsers.find(u => u.fnum === log.user_fnum);
+    const safeLogs = Array.isArray(auditLogs) ? auditLogs : [];
+    return safeLogs.filter(log => {
+      const logUser = (Array.isArray(allSystemUsers) ? allSystemUsers : []).find(u => u.fnum === log.user_fnum);
       const logRegion = stripHtmlTags(log.region || logUser?.region || '').trim().toUpperCase();
       const logStation = stripHtmlTags(log.station || logUser?.station || '').trim().toUpperCase();
       const activeReg = stripHtmlTags(filterRegion || '').trim().toUpperCase();

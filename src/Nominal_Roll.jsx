@@ -270,7 +270,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
 
   const isSuperAdmin = userRoleClean === 'SUPER_ADMIN';
 
-  // 1. Master Override / Admin Approval Bypass Check
+  // 1. Define Master Override & Top Command flags safely first
   const hasMasterOverride = useMemo(() => {
     const p = currentUser?.permissions || {};
     return isSuperAdmin || p.global_open === true || p.bypass_jurisdiction === true;
@@ -286,7 +286,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     userPosClean.includes('RPC') || 
     userPosClean.includes('REGIONAL POLICE COMMANDER');
 
-  // 2. Declare isTopCommand FIRST so it's fully defined when evaluated below
+  // 2. Declare isTopCommand explicitly right here before any usage
   const isTopCommand = isGlobalTier || isRPC || 
     ['ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN'].includes(userRoleClean) || 
     userPosClean.includes('HR');
@@ -297,7 +297,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   const canViewGlobalLevel = propCanViewGlobal !== undefined ? propCanViewGlobal : (isGlobalTier || isKmpSystemManager || isKmpSpecialist || hasMasterOverride);
   const isRegionalCommand = ['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN', 'ASSISTANT_REGIONAL_ADMIN'].includes(userRoleClean) && !canViewGlobalLevel;
 
-  // 3. Now safe to evaluate hasHrClearance using isTopCommand
+  // 3. Now safe to evaluate hasHrClearance
   const perms = currentUser?.permissions || {};
   const hasHrClearance = 
     isTopCommand ||

@@ -1342,7 +1342,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           <div className="mt-4 relative z-20 inline-flex items-center space-x-2 bg-[#6b1d2f]/95 px-5 py-2.5 rounded-full border border-emerald-300 shadow-xl backdrop-blur-md">
             <Lock size={16} className="text-amber-400 animate-bounce" />
             <span className="text-xs sm:text-sm font-bold text-blue-500 tracking-wider">
-              KMP TRACKER SYSTEM - KMPCSDMS160626 • LOGIN SCREEN IDLE STANDBY MODE
+            KMP TRACKER SYSTEM - KMPCSDMS160626 • LOGIN SCREEN STANDBY MODE
             </span>
             <span className="inline-flex items-center justify-center shrink-0 animate-spin" style={{ animationDuration: '8s' }}>
               <Globe size={18} className="text-amber-600" />

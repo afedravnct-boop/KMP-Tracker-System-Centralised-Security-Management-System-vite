@@ -38,7 +38,7 @@ import LockupMatrixLedger from './LockupMatrixLedger';
 // ====================================================================
 // 1. CONSTANTS & CONFIGURATION
 // ====================================================================
-const API_URL = import.meta.env.VITE_API_URL || "https://kmp-tracker-system-centralised-security.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "https://kmp-ops-data.onrender.com";
 
 const REGIONAL_HIERARCHY = {
   "KMP NORTH": ["KMP NORTH HEADQUARTERS", "KAWEMPE", "KAKIRI", "KASANGATI", "MATUGGA", "NANSANA", "OLD KAMPALA", "WAKISO", "WANDEGEYA"],
@@ -1340,12 +1340,12 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
           </div>
 
           <div className="mt-4 relative z-20 inline-flex items-center space-x-2 bg-[#6b1d2f]/95 px-5 py-2.5 rounded-full border border-emerald-300 shadow-xl backdrop-blur-md">
-            <Lock size={16} className="text-amber-400 animate-bounce" />
-            <span className="text-xs sm:text-sm font-bold text-blue-500 tracking-wider">
+            <Lock size={16} className="text-amber-300 animate-bounce" />
+            <span className="text-xs sm:text-sm font-bold text-blue-400 tracking-wider">
             KMP TRACKER SYSTEM - KMPCSDMS160626 • LOGIN SCREEN STANDBY MODE
             </span>
             <span className="inline-flex items-center justify-center shrink-0 animate-spin" style={{ animationDuration: '8s' }}>
-              <Globe size={18} className="text-amber-600" />
+              <Globe size={18} className="text-amber-300" />
             </span>
           </div>
 
@@ -1696,10 +1696,10 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
 
                   <div className="text-center mt-6 space-y-1 relative z-10">
                     <p className="text-xs text-gray-400 flex items-center justify-center">
-                      <Lock className="w-3 h-3 mr-1"/> Protected by Central Command Security Protocols
+                      <Lock className="w-3 h-3 mr-1"/> Protected by System Security Protocols
                     </p>
                     <p className="text-[10px] text-slate-500 font-mono tracking-wider uppercase">
-                      © 2026 Kampala Metropolitan Police (KMP-CSDMS) - Uganda Police Force
+                      © 2026 Kampala Metropolitan Police (CSDMS) - Uganda Police Force
                     </p>
                   </div>
                 </form>

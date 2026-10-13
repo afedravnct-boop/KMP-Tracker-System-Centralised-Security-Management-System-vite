@@ -80,21 +80,33 @@
               0 0 25px rgba(234, 179, 8, 0.4);
 }
 
+/* 🟢 Fixes the login globe snap */
 @keyframes spinFauxGlobe {
-  0% { background-position: 0 0; }
-  100% { background-position: 500px 0; }
+  0% {
+    background-position-x: 0px;
+  }
+  100% {
+    /* Using negative movement on background-position-x creates a smooth continuous scroll */
+    background-position-x: -1000px; 
+  }
 }
 
-@keyframes spinGlobe {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* 🟢 Fixes the class matching issue where it referenced a missing keyframe */
+@keyframes spinGlobeSeamless {
+  0% {
+    background-position-x: 0px;
+  }
+  100% {
+    background-position-x: -1000px;
+  }
 }
 
 .animate-spin-globe {
   background-image: url('/UPF Flag Emblem.png');
   background-size: cover;
   background-repeat: repeat-x;
-  animation: spinGlobeSeamless 12s linear infinite;
+  /* Now correctly points to the existing seamless keyframe */
+  animation: spinGlobeSeamless 16s linear infinite;
 }
 
 @keyframes pulseSpin {

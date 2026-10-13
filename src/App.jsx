@@ -1339,15 +1339,15 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
             </h2>
           </div>
 
-          <div className="mt-4 inline-flex items-center space-x-2 bg-[#1b4d3e]/90 px-5 py-2.5 rounded-full border border-emerald-500/30 shadow-xl backdrop-blur-md">
-            <Lock size={16} className="text-red-400 animate-bounce" />
-            <span className="text-xs sm:text-sm font-bold text-cyan-600 tracking-wider">
+          <div className="mt-4 relative z-20 inline-flex items-center space-x-2 bg-[#e8f5e9]/95 px-5 py-2.5 rounded-full border border-emerald-300 shadow-xl backdrop-blur-md">
+            <Lock size={16} className="text-red-600 animate-bounce" />
+            <span className="text-xs sm:text-sm font-bold text-[#1b4d3e] tracking-wider">
               KMP TRACKER SYSTEM - KMPCSDMS160626 • LOGIN SCREEN IDLE STANDBY MODE
             </span>
-            <Globe size={18} className="text-red-400 animate-spin-globe" />
+            <Globe size={18} className="text-red-600 animate-spin-globe" />
           </div>
 
-          <p className="text-xs text-slate-400 mt-4 font-medium tracking-wide">
+          <p className="text-xs text-slate-300 mt-4 font-medium tracking-wide relative z-20">
             Move your mouse, click, or press any key to return to the login interface.
           </p>
         </div>

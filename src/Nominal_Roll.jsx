@@ -263,16 +263,25 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   }, [Nominal_Rolls, filterRegion]);
 
   const availablePostsList = useMemo(() => {
-    const list = new Set();
-    (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).forEach(n => {
-      if (n.station) {
-        const cleaned = cleanStr(n.station);
-        const parsed = parseStationHierarchy(cleaned);
-        if (parsed.post) list.add(parsed.post);
+  const list = new Set();
+  const activeStn = cleanStr(filterStation);
+
+  (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).forEach(n => {
+    if (n.station) {
+      const cleaned = cleanStr(n.station);
+      const parsed = parseStationHierarchy(cleaned);
+      
+      // If a specific station is selected, only pull posts belonging to it
+      if (activeStn === 'ALL STATIONS' || isStationEquivalent(parsed.station, activeStn) || cleaned.includes(activeStn)) {
+        if (parsed.post) {
+          list.add(parsed.post);
+        }
       }
-    });
-    return Array.from(list).sort();
-  }, [Nominal_Rolls]);
+    }
+  });
+
+  return Array.from(list).sort();
+}, [Nominal_Rolls, filterStation]);
 
   const populateUpdateForm = (data) => {
     setFormData({
@@ -495,86 +504,49 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   };
 
   const filteredRolls = useMemo(() => {
-    const list = (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).filter(n => {
-      const statusStr = cleanStr(n.status);
-      if (statusStr === 'ARCHIVED' || n.is_archived === true) return false;
+  const list = (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).filter(n => {
+    const statusStr = cleanStr(n.status);
+    if (statusStr === 'ARCHIVED' || n.is_archived === true) return false;
 
-      const stn = cleanStr(n.station);
-      const reg = getOfficialRegionForStation(stn, cleanStr(n.region));
-      const parsedStn = parseStationHierarchy(stn);
+    const stn = cleanStr(n.station);
+    const reg = cleanStr(n.region);
+    const parsedStn = parseStationHierarchy(stn);
 
-      const selRegion = cleanStr(filterRegion);
-      const selStation = cleanStr(filterStation);
-      const selPost = cleanStr(filterPost);
+    const selRegion = cleanStr(filterRegion);
+    const selStation = cleanStr(filterStation);
+    const selPost = cleanStr(filterPost);
 
-      if (selRegion && selRegion !== 'ALL REGIONS' && reg !== selRegion) return false;
+    if (selRegion && selRegion !== 'ALL REGIONS' && !reg.includes(selRegion)) return false;
+    
+    if (selStation && selStation !== 'ALL STATIONS') {
+      // 🟢 Matches parent station or division equivalents including embedded posts
+      const matchesStation = isStationEquivalent(parsedStn.station, selStation) || 
+                             isStationEquivalent(parsedStn.division, selStation) || 
+                             stn.includes(selStation);
+      if (!matchesStation) return false;
+    }
+
+    if (selPost && selPost !== 'ALL POSTS') {
+      if (!isStationEquivalent(parsedStn.post, selPost)) return false;
+    }
+
+    if (searchTerm.trim()) {
+      const query = searchTerm.trim().toLowerCase();
+      const fnum = cleanStr(n.f_num || n.fnum).toLowerCase();
+      const name = cleanStr(n.name).toLowerCase();
+      const rank = cleanStr(n.rank).toLowerCase();
+      const ipps = cleanStr(n.ipps).toLowerCase();
+      const nin = cleanStr(n.nin).toLowerCase();
       
-      if (selStation && selStation !== 'ALL STATIONS') {
-        if (!isStationEquivalent(parsedStn.station, selStation) && !isStationEquivalent(stn, selStation)) return false;
+      if (!fnum.includes(query) && !name.includes(query) && !rank.includes(query) && !ipps.includes(query) && !nin.includes(query)) {
+        return false;
       }
+    }
+    return true;
+  });
 
-      if (selPost && selPost !== 'ALL POSTS') {
-        if (!isStationEquivalent(parsedStn.post, selPost)) return false;
-      }
-
-      if (searchTerm.trim()) {
-        const query = searchTerm.trim().toLowerCase();
-        const fnum = cleanStr(n.f_num || n.fnum).toLowerCase();
-        const name = cleanStr(n.name).toLowerCase();
-        const rank = cleanStr(n.rank).toLowerCase();
-        const ipps = cleanStr(n.ipps).toLowerCase();
-        const station = cleanStr(n.station).toLowerCase();
-        const nin = cleanStr(n.nin).toLowerCase();
-        
-        if (!fnum.includes(query) && !name.includes(query) && !rank.includes(query) && !ipps.includes(query) && !station.includes(query) && !nin.includes(query)) {
-          return false;
-        }
-      }
-      return true;
-    });
-
-    return list;
-  }, [Nominal_Rolls, filterRegion, filterStation, filterPost, searchTerm]);
-
-  const filteredNominal_Roll_archives = useMemo(() => {
-    if (!Array.isArray(Nominal_Roll_archives)) return [];
-
-    return Nominal_Roll_archives.filter(n => {
-      const stn = cleanStr(n.station);
-      const reg = getOfficialRegionForStation(stn, cleanStr(n.region));
-      const parsedStn = parseStationHierarchy(stn);
-
-      const selRegion = cleanStr(filterRegion);
-      const selStation = cleanStr(filterStation);
-      const selPost = cleanStr(filterPost);
-
-      if (selRegion && selRegion !== 'ALL REGIONS' && reg !== selRegion) return false;
-      
-      if (selStation && selStation !== 'ALL STATIONS') {
-        if (!isStationEquivalent(parsedStn.station, selStation) && !isStationEquivalent(stn, selStation)) return false;
-      }
-
-      if (selPost && selPost !== 'ALL POSTS') {
-        if (!isStationEquivalent(parsedStn.post, selPost)) return false;
-      }
-
-      if (searchTerm.trim()) {
-        const query = searchTerm.trim().toLowerCase();
-        const fnum = cleanStr(n.f_num || n.fnum).toLowerCase();
-        const name = cleanStr(n.name).toLowerCase();
-        const rank = cleanStr(n.rank).toLowerCase();
-        const ipps = cleanStr(n.ipps).toLowerCase();
-        const station = cleanStr(n.station).toLowerCase();
-        const nin = cleanStr(n.nin).toLowerCase();
-        const reason = cleanStr(n.archive_reason).toLowerCase();
-        
-        if (!fnum.includes(query) && !name.includes(query) && !rank.includes(query) && !ipps.includes(query) && !station.includes(query) && !nin.includes(query) && !reason.includes(query)) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [Nominal_Roll_archives, filterRegion, filterStation, filterPost, searchTerm]);
+  return list;
+}, [Nominal_Rolls, filterRegion, filterStation, filterPost, searchTerm]);
 
   const currentRollDataset = useMemo(() => {
     return viewMode === 'archive' ? filteredNominal_Roll_archives : filteredRolls;

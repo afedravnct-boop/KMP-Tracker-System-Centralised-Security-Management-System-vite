@@ -2974,7 +2974,7 @@ const App = () => {
     };   
 
     fetchAllData();
-    const pollingInterval = setInterval(fetchAllData, 15000);
+    const pollingInterval = setInterval(fetchAllData, 60000);
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {

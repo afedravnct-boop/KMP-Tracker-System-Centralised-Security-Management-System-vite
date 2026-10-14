@@ -1,6 +1,6 @@
 // src/components/ConsolidatedLedger.jsx
 import React, { useState, useMemo } from 'react';
-import { Eye, Filter, X } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 // 🟢 Enriched hierarchy ensuring both "REGION HEADQUARTERS" and "REGION" designations exist
 const REGIONAL_HIERARCHY = {

@@ -328,8 +328,23 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
 
   const finalFilteredReports = useMemo(() => {
     if (!Array.isArray(serverReports)) return [];
-    return [...serverReports].sort((a, b) => (b.sn || b.id || 0) - (a.sn || a.id || 0));
-  }, [serverReports]);
+    return serverReports.filter(report => {
+      const repStn = stripHtmlTags(report.station || '').trim().toUpperCase();
+      const repReg = getOfficialRegionForStation(repStn, report.region);
+
+      // Enforce region filter
+      if (filterRegion && filterRegion !== 'ALL REGIONS') {
+        if (repReg !== filterRegion.toUpperCase()) return false;
+      }
+
+      // Enforce station filter
+      if (filterStation && filterStation !== 'ALL STATIONS') {
+        if (!isStationEquivalent(repStn, filterStation)) return false;
+      }
+
+      return true;
+    }).sort((a, b) => (b.sn || b.id || 0) - (a.sn || a.id || 0));
+  }, [serverReports, filterRegion, filterStation]);
 
   const isStationSpecific = filterStation && filterStation !== 'ALL STATIONS';
 

@@ -252,8 +252,23 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
 
   const filteredStories = useMemo(() => {
     if (!Array.isArray(serverStories)) return [];
-    return [...serverStories].sort((a, b) => (b.sn || b.id || 0) - (a.sn || a.id || 0));
-  }, [serverStories]);
+    return serverStories.filter(story => {
+      const storyStn = stripHtmlTags(story.station || '').trim().toUpperCase();
+      const storyReg = getOfficialRegionForStation(storyStn, story.region);
+
+      // If a specific region is selected, ensure the story matches that region
+      if (filterRegion && filterRegion !== 'ALL REGIONS') {
+        if (storyReg !== filterRegion.toUpperCase()) return false;
+      }
+
+      // If a specific station is selected, ensure the story matches that station
+      if (filterStation && filterStation !== 'ALL STATIONS') {
+        if (!isStationEquivalent(storyStn, filterStation)) return false;
+      }
+
+      return true;
+    }).sort((a, b) => (b.sn || b.id || 0) - (a.sn || a.id || 0));
+  }, [serverStories, filterRegion, filterStation]);
 
   const availableUpdateStories = useMemo(() => {
     return (Array.isArray(serverStories) ? serverStories : []).filter(s => {

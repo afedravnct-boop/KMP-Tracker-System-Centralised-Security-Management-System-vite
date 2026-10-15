@@ -1,4 +1,3 @@
-// src/components/AdminApprovals.jsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Shield, CheckCircle, AlertTriangle, X, Lock, Unlock, 
@@ -230,6 +229,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage }) 
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   const [selectedPendingUser, setSelectedPendingUser] = useState(null);
+  const [selectedClearanceUser, setSelectedClearanceUser] = useState(null); // 🟢 Fixed State Hook placement
   const [selectedModRequest, setSelectedModRequest] = useState(null);
   const [viewingPhotoModal, setViewingPhotoModal] = useState(null);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
@@ -423,7 +423,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage }) 
     try {
       let assignedRole = customAssignedRole;
       const pos = stripHtmlTags(userToApprove.position || '').toUpperCase();
-        
+      
       if (pos.includes('KMP COMMANDER') || pos.includes('DEPUTY KMP COMMANDER') || pos === 'KMP ADMIN OFFICER') assignedRole = 'ASSISTANT_SUPER_ADMIN';
       else if (pos.includes('RPC') && !pos.includes('DEPUTY')) assignedRole = 'SYSTEM_MANAGER';
       else if (pos.includes('DEPUTY RPC')) assignedRole = 'ASSISTANT_SYSTEM_MANAGER';
@@ -808,7 +808,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage }) 
 
   return (
     <div className="dark p-4 max-w-[1800px] mx-auto space-y-6 relative z-10 animate-in fade-in duration-300 text-slate-100">
-        
+      
       <div className="bg-slate-900 dark:bg-slate-950 text-white px-6 py-5 rounded-2xl shadow-lg border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center space-x-4">
           <img src="/upf_badge.png" alt="UPF Logo" className="w-12 h-12 object-contain contrast-200 brightness-110 drop-shadow-md" onError={(e) => e.target.style.display = 'none'} />
@@ -876,7 +876,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage }) 
               </>
             ) : <option value={currentUser?.station}>{stripHtmlTags(currentUser?.station)}</option>}
           </select>
-            
+          
           <div className="relative flex items-center min-w-[240px]">
             <Search size={14} className="absolute left-3 text-slate-400 dark:text-slate-500" />
             <input 
@@ -1025,7 +1025,17 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage }) 
 
                       return (
                         <tr key={u.fnum} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <td className="p-2.5 md:sticky md:left-0 z-10 bg-white dark:bg-slate-900 font-extrabold text-[11px] text-slate-900 dark:text-slate-100 w-[240px] min-w-[240px] truncate" title={formatOfficerHeader(u)}>{formatOfficerHeader(u)}</td>
+                          <td className="p-2.5 md:sticky md:left-0 z-10 bg-white dark:bg-slate-900 font-extrabold text-[11px] text-slate-900 dark:text-slate-100 w-[240px] min-w-[240px] truncate">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedClearanceUser(u)}
+                              className="text-left font-extrabold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 cursor-pointer truncate w-full bg-transparent border-none p-0"
+                              title="Click to inspect officer clearance dossier"
+                            >
+                              <Eye size={12} className="shrink-0 text-blue-500" />
+                              <span className="truncate">{formatOfficerHeader(u)}</span>
+                            </button>
+                          </td>
                           <td className="p-2.5 text-center md:sticky md:left-[240px] z-10 bg-white dark:bg-slate-900 w-[120px] min-w-[120px]">
                             <select value={u.role || 'USER'} onChange={(e) => handleRoleTierChange(u.fnum, e.target.value)} disabled={isSelf || !canModifyThisUser || isReadOnlyObserver} className="border border-slate-300 dark:border-slate-700 rounded-md px-1.5 py-1 font-bold outline-none uppercase text-[10px] w-full truncate bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 disabled:opacity-50">
                               <option value="USER">USER</option>
@@ -1360,6 +1370,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage }) 
 
       {/* MODALS */}
       <SignupDossierModal user={selectedPendingUser} onClose={() => setSelectedPendingUser(null)} setViewingPhotoModal={setViewingPhotoModal} currentUser={currentUser} isProcessingAction={isProcessingAction} handleRejectUser={handleRejectUser} handleApproveUser={handleApproveUser} handleRegrantAccess={handleRegrantAccess} handlePermanentDelete={handlePermanentDelete} isSuperAdmin={isSuperAdmin} canModifyUser={canControlTargetUser} isReadOnlyObserver={isReadOnlyObserver} />
+      <UserClearanceDossierModal user={selectedClearanceUser} onClose={() => setSelectedClearanceUser(null)} currentUser={currentUser} onUpdatePermissions={handleGranularPermissionChange} />
       <TransferDossierModal req={selectedModRequest} onClose={() => setSelectedModRequest(null)} handleReviewRequest={handleReviewRequest} isReadOnlyObserver={isReadOnlyObserver} />
       <LockdownMatrixModal isOpen={showLockdownModal} onClose={() => setShowLockdownModal(false)} activeLockdownSummary={activeLockdownSummary} lockdownData={lockdownData} handleToggleLockdown={handleToggleLockdown} lockdownRegionFilter={lockdownRegionFilter} setLockdownRegionFilter={setLockdownRegionFilter} />
       <RevocationModal prompt={revokePrompt} setPrompt={setRevokePrompt} executeRoleChange={() => {}} executePermissionChange={() => {}} />

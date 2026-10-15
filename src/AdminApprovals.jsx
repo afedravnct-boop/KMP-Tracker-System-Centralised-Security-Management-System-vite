@@ -237,7 +237,8 @@ const UserClearanceDossierModal = ({ user, onClose, currentUser, onUpdatePermiss
   const clearanceLocks = userPerms._clearance_locks || {};
 
   const actorFnum = (currentUser?.fnum || "").trim().toUpperCase();
-  const isPrincipalSuperAdmin = "A/2408" in actorFnum || currentUser?.role === "SUPER_ADMIN";
+  // FIXED: Changed "in" operator to strict equality "==="
+  const isPrincipalSuperAdmin = actorFnum === "A/2408" || currentUser?.role === "SUPER_ADMIN";
 
   const handleToggleBox = (permKey, currentVal) => {
     const lockInfo = clearanceLocks[permKey];

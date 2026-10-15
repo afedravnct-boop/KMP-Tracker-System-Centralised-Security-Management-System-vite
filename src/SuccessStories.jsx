@@ -234,8 +234,8 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
 
   const [formData, setFormData] = useState({
     sn: null, 
-    region: canViewGlobalActive ? 'KMP NORTH' : userRegClean, 
-    station: canViewGlobalActive ? REGIONAL_HIERARCHY['KMP NORTH'][0] : userStnClean,
+    region: userRegClean || 'KMP HEADQUARTERS', 
+    station: userStnClean || 'HQ',
     date: getTodayString(), 
     time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }).replace(':', '') + 'Hrs',
     headline: '',
@@ -340,8 +340,8 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
     if (op === 'new') {
       setFormData({
         sn: null, 
-        region: canViewGlobalActive ? 'KMP NORTH' : userRegClean, 
-        station: canViewGlobalActive ? REGIONAL_HIERARCHY['KMP NORTH'][0] : userStnClean,
+        region: userRegClean || 'KMP HEADQUARTERS', 
+        station: userStnClean || 'HQ',
         date: getTodayString(), time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }).replace(':', '') + 'Hrs',
         headline: '', narrative: '', status: 'COMPLETED / SUCCESS', updateText: '', photo_url: '',
         category: 'GENERAL CRIMES'
@@ -458,7 +458,7 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
       return;
     }
     
-    setNotification("⏳ Generating official CSV export from database. Please wait...");
+    setNotification("⏳ Generating AES-256 secure encrypted spreadsheet archive. Please wait...");
     
     try {
       const params = new URLSearchParams();
@@ -472,19 +472,18 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
       if (end) params.append('end_date', end);
 
       const response = await authFetch(`/api/v1/stories/export?${params.toString()}`);
-      if (!response.ok) throw new Error("Export failed on server.");
+      if (!response.ok) throw new Error("Secure export failed on server.");
       
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       
       const disposition = response.headers.get('Content-Disposition');
-      let filename = 'KMP_SUCCESS_STORIES_EXPORT.csv';
+      let filename = 'KMP_SUCCESS_STORIES_SECURE_EXPORT.zip';
       if (disposition && disposition.indexOf('filename=') !== -1) {
           filename = disposition.split('filename=')[1].replace(/["']/g, '');
       } else {
           const timestamp = new Date().toISOString().split('T')[0];
-          const fileLabel = categoryFilter === 'ALL CATEGORIES' ? 'ALL_STORIES' : categoryFilter.replace(/\s+/g, '_');
-          filename = `KMP_SUCCESS_STORIES_${fileLabel}_${timestamp}.csv`;
+          filename = `KMP_SUCCESS_STORIES_SECURE_EXPORT_${timestamp}.zip`;
       }
 
       const link = document.createElement('a');
@@ -494,10 +493,11 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      setNotification(null);
+      setNotification("✅ Secure AES-256 archive downloaded successfully! Use your Force Number to unlock.");
+      setTimeout(() => setNotification(null), 6000);
     } catch (err) {
       console.error("Export error:", err);
-      setNotification("❌ Failed to generate export file.");
+      setNotification("❌ Failed to generate secure export archive.");
     }
   };
 
@@ -689,9 +689,9 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
               <option value="LAST 180 DAYS">LAST 180 DAYS</option>
             </select>
 
-            <button type="button" onClick={handleExportFilteredData} className="px-4 py-2 text-sm font-black rounded-lg border transition-all flex items-center whitespace-nowrap shadow-sm cursor-pointer bg-blue-700 text-white border-blue-800 hover:bg-blue-800 ring-2 ring-blue-500/20">
+            <button type="button" onClick={handleExportFilteredData} className="px-4 py-2 text-sm font-black rounded-lg border transition-all flex items-center whitespace-nowrap shadow-sm cursor-pointer bg-emerald-700 text-white border-emerald-800 hover:bg-emerald-800 ring-2 ring-emerald-500/20">
               <HardDrive className="w-4 h-4 mr-1.5" />
-              Export CSV
+              Export Secure Excel (.zip)
             </button>
           </div>
           
@@ -715,7 +715,6 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
                     const rowId = story.sn || story.id;
                     const isRowExpanded = Boolean(expandedRows[rowId]);
                     
-                    // Retrieve backend-attached case data
                     const linkedCase = story.linked_case || null;
                     const isAgricCrime = (story.category || '').toUpperCase() === 'AGRIC_CRIME';
 

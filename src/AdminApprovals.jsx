@@ -217,21 +217,6 @@ const BriefingPreviewModal = ({ isOpen, onClose, onDispatch, isDispatching }) =>
 const UserClearanceDossierModal = ({ user, onClose, currentUser, onUpdatePermissions }) => {
   if (!user) return null;
 
-  const permissionsList = [
-    { key: "view_global_roster", label: "View Global Roster" },
-    { key: "view_regional_roster", label: "View Regional Roster" },
-    { key: "manage_station_users", label: "Manage Station Users" },
-    { key: "upload_hr", label: "Upload HR Files" },
-    { key: "log_crime", label: "Log Crime Incidents" },
-    { key: "can_approve", label: "Admin Approvals" },
-    { key: "global_observer", label: "Global Observer" },
-    { key: "global_open", label: "Global Open Bypass" },
-    { key: "bypass_jurisdiction", label: "Bypass Jurisdiction" },
-    { key: "manual_delegation", label: "Manual Delegation" },
-    { key: "export_records", label: "Secure Export Archives" },
-    { key: "system_maintenance", label: "System Maintenance" }
-  ];
-
   const userPerms = user.permissions || {};
   const auditHistory = userPerms._audit_history || [];
   const clearanceLocks = userPerms._clearance_locks || {};
@@ -246,9 +231,9 @@ const UserClearanceDossierModal = ({ user, onClose, currentUser, onUpdatePermiss
       return;
     }
 
-    const updatedPerms = { ...userPerms, [permKey]: !currentVal };
+    // Pass the exact signature the parent table expects: (fnum, permissionKey, value)
     if (onUpdatePermissions) {
-      onUpdatePermissions(user.fnum, updatedPerms);
+      onUpdatePermissions(user.fnum, permKey, !currentVal);
     }
   };
 
@@ -273,7 +258,6 @@ const UserClearanceDossierModal = ({ user, onClose, currentUser, onUpdatePermiss
                 )}
               </div>
               <div>
-                {/* Formatting update implemented here */}
                 <h4 className="text-sm font-black text-slate-900 uppercase">
                   {user.fnum} {user.rank} {user.name}
                 </h4>
@@ -293,19 +277,33 @@ const UserClearanceDossierModal = ({ user, onClose, currentUser, onUpdatePermiss
               <Lock size={14} className="mr-1.5 text-blue-600"/> Granular Access Clearances Matrix
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
-              {permissionsList.map(({ key, label }) => {
-                const isChecked = !!userPerms[key];
+              {CLEARANCE_MATRIX_COLS.map((col) => {
+                const key = col.key;
+                const label = col.label;
+                const isChecked = userPerms[key] !== false ? (['SUPER_ADMIN', 'ADMIN'].includes(user.role) || Boolean(userPerms[key])) : false;
+                
                 const lockInfo = clearanceLocks[key];
                 const isLockedByApex = lockInfo && lockInfo.revoked_by_fnum?.includes("A/2408");
+
+                // Enforce the same disable rules used in the table
+                const isSelf = user.fnum === currentUser?.fnum;
+                const isObserverCol = key === 'global_observer';
+                const isOpenCol = key === 'global_open';
+                const isMutuallyDisabled = (isObserverCol && Boolean(userPerms.global_open)) || (isOpenCol && Boolean(userPerms.global_observer));
+                const isDisabled = isSelf || isMutuallyDisabled || (isOpenCol && !isPrincipalSuperAdmin);
 
                 return (
                   <div 
                     key={key} 
-                    onClick={() => handleToggleBox(key, isChecked)}
-                    className={`p-3 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${
-                      isChecked 
+                    onClick={() => { if (!isDisabled) handleToggleBox(key, isChecked); }}
+                    className={`p-3 rounded-xl border flex flex-col justify-between transition-all ${
+                      isDisabled 
+                        ? 'opacity-60 bg-slate-100 border-slate-200 cursor-not-allowed' 
+                        : 'cursor-pointer hover:border-slate-300'
+                    } ${
+                      isChecked && !isDisabled
                         ? 'bg-emerald-50 border-emerald-300 shadow-xs' 
-                        : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                        : !isDisabled ? 'bg-slate-50 border-slate-200' : ''
                     }`}
                   >
                     <div className="flex justify-between items-start mb-2">
@@ -313,8 +311,9 @@ const UserClearanceDossierModal = ({ user, onClose, currentUser, onUpdatePermiss
                       <input 
                         type="checkbox" 
                         checked={isChecked} 
+                        disabled={isDisabled}
                         onChange={() => {}} 
-                        className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer h-3.5 w-3.5" 
+                        className={`rounded text-emerald-600 h-3.5 w-3.5 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer focus:ring-emerald-500'}`} 
                       />
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-[9px]">
@@ -1523,7 +1522,12 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage }) 
 
       {/* MODALS */}
       <SignupDossierModal user={selectedPendingUser} onClose={() => setSelectedPendingUser(null)} setViewingPhotoModal={setViewingPhotoModal} currentUser={currentUser} isProcessingAction={isProcessingAction} handleRejectUser={handleRejectUser} handleApproveUser={handleApproveUser} handleRegrantAccess={handleRegrantAccess} handlePermanentDelete={handlePermanentDelete} isSuperAdmin={isSuperAdmin} canModifyUser={canControlTargetUser} isReadOnlyObserver={isReadOnlyObserver} />
-      <UserClearanceDossierModal user={selectedClearanceUser} onClose={() => setSelectedClearanceUser(null)} currentUser={currentUser} onUpdatePermissions={handleGranularPermissionChange} />
+      <UserClearanceDossierModal 
+        user={allSystemUsers.find(u => u.fnum === selectedClearanceUser?.fnum) || selectedClearanceUser} 
+        onClose={() => setSelectedClearanceUser(null)} 
+        currentUser={currentUser} 
+        onUpdatePermissions={handleGranularPermissionChange} 
+      />
       <TransferDossierModal req={selectedModRequest} onClose={() => setSelectedModRequest(null)} handleReviewRequest={handleReviewRequest} isReadOnlyObserver={isReadOnlyObserver} />
       <LockdownMatrixModal isOpen={showLockdownModal} onClose={() => setShowLockdownModal(false)} activeLockdownSummary={activeLockdownSummary} lockdownData={lockdownData} handleToggleLockdown={handleToggleLockdown} lockdownRegionFilter={lockdownRegionFilter} setLockdownRegionFilter={setLockdownRegionFilter} />
       <RevocationModal prompt={revokePrompt} setPrompt={setRevokePrompt} executeRoleChange={() => {}} executePermissionChange={() => {}} />

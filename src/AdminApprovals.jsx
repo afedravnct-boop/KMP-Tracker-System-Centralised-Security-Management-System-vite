@@ -237,7 +237,6 @@ const UserClearanceDossierModal = ({ user, onClose, currentUser, onUpdatePermiss
   const clearanceLocks = userPerms._clearance_locks || {};
 
   const actorFnum = (currentUser?.fnum || "").trim().toUpperCase();
-  // FIXED: Changed "in" operator to strict equality "==="
   const isPrincipalSuperAdmin = actorFnum === "A/2408" || currentUser?.role === "SUPER_ADMIN";
 
   const handleToggleBox = (permKey, currentVal) => {
@@ -274,8 +273,11 @@ const UserClearanceDossierModal = ({ user, onClose, currentUser, onUpdatePermiss
                 )}
               </div>
               <div>
-                <h4 className="text-sm font-black text-slate-900">{user.rank} {user.name}</h4>
-                <p className="text-xs font-mono font-bold text-emerald-700">{user.fnum} | IPPS: {user.ipps || 'N/A'}</p>
+                {/* Formatting update implemented here */}
+                <h4 className="text-sm font-black text-slate-900 uppercase">
+                  {user.fnum} {user.rank} {user.name}
+                </h4>
+                <p className="text-xs font-mono font-bold text-emerald-700">IPPS: {user.ipps || 'N/A'} {user.nin ? `| NIN: ${user.nin}` : ''}</p>
                 <p className="text-[11px] text-slate-500 uppercase font-semibold">{user.station} ({user.region})</p>
               </div>
             </div>

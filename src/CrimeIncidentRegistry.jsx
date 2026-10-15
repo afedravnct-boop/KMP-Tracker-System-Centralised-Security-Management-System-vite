@@ -1,3 +1,4 @@
+// src/components/CrimeIncidentRegistry.jsx
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {  
   Shield, Users, PlusCircle, Edit, Search, X, AlertTriangle, CheckCircle, Lock, Camera, Filter, HardDrive, Save, Sprout, Loader2

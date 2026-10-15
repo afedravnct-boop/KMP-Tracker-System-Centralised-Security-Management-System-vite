@@ -3092,6 +3092,7 @@ const App = () => {
           />
         );
 
+      case 'success': // 🟢 Matches id: 'success' in navItems and home dashboard card
       case 'stories':  
         return checkClearance(currentUser, 'acc_stories', true) ? (
           <SuccessStories 

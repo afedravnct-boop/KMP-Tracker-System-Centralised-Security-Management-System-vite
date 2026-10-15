@@ -1083,54 +1083,49 @@ const CrimeIncidentRegistry = ({ currentUser, canViewGlobal = false, setReports,
                {showAgriculturalOnly ? 'Agri-Crimes: ON' : 'Filter Agri-Crimes'}
              </button>
 
-            <select value={filterRegion} onChange={(e) => { setFilterRegion(stripHtmlTags(e.target.value)); setFilterStation('ALL STATIONS'); }} disabled={!canViewGlobalActive} className="border dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs shadow-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer">
-              {canViewGlobalActive ? <><option value="ALL REGIONS">ALL REGIONS</option>{Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)}</> : <option value={userRegClean}>{stripHtmlTags(userRegClean)}</option>}
+            <select 
+              value={filterRegion} 
+              onChange={(e) => { 
+                setFilterRegion(stripHtmlTags(e.target.value)); 
+                setFilterStation('ALL STATIONS'); 
+              }} 
+              disabled={!canViewGlobalActive} 
+              className="border dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs shadow-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer"
+            >
+              {canViewGlobalActive ? (
+                <>
+                  <option value="ALL REGIONS">ALL REGIONS</option>
+                  {Object.keys(REGIONAL_HIERARCHY).map(reg => (
+                    <option key={reg} value={reg}>{reg}</option>
+                  ))}
+                </>
+              ) : (
+                <option value={userRegClean}>{stripHtmlTags(userRegClean)}</option>
+              )}
             </select>
             
-            {/* 🟢 Corrected cascading station filter linking ALL REGIONS to all stations and specific regions to their exact stations */}
             <select 
-  value={filterRegion} 
-  onChange={(e) => { 
-    setFilterRegion(stripHtmlTags(e.target.value)); 
-    setFilterStation('ALL STATIONS'); 
-  }} 
-  disabled={!canViewGlobalActive} 
-  className="border dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs shadow-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer"
->
-  {canViewGlobalActive ? (
-    <>
-      <option value="ALL REGIONS">ALL REGIONS</option>
-      {Object.keys(REGIONAL_HIERARCHY).map(reg => (
-        <option key={reg} value={reg}>{reg}</option>
-      ))}
-    </>
-  ) : (
-    <option value={userRegClean}>{stripHtmlTags(userRegClean)}</option>
-  )}
-</select>
-
-<select 
-  value={filterStation} 
-  onChange={(e) => setFilterStation(stripHtmlTags(e.target.value))} 
-  disabled={!(canViewGlobalActive || isRegionalCommand)} 
-  className="border dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs shadow-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer"
->
-  {(canViewGlobalActive || isRegionalCommand) ? (
-    <>
-      <option value="ALL STATIONS">ALL STATIONS</option>
-      {filterRegion === 'ALL REGIONS' 
-        ? Object.values(REGIONAL_HIERARCHY).flat().map(stat => (
-            <option key={stat} value={stat}>{stat}</option>
-          ))
-        : (REGIONAL_HIERARCHY[filterRegion] || []).map(stat => (
-            <option key={stat} value={stat}>{stat}</option>
-          ))
-      }
-    </>
-  ) : (
-    <option value={currentUser?.station}>{stripHtmlTags(currentUser?.station)}</option>
-  )}
-</select>
+              value={filterStation} 
+              onChange={(e) => setFilterStation(stripHtmlTags(e.target.value))} 
+              disabled={!(canViewGlobalActive || isRegionalCommand)} 
+              className="border dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs shadow-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer"
+            >
+              {(canViewGlobalActive || isRegionalCommand) ? (
+                <>
+                  <option value="ALL STATIONS">ALL STATIONS</option>
+                  {filterRegion === 'ALL REGIONS' 
+                    ? Object.values(REGIONAL_HIERARCHY).flat().map(stat => (
+                        <option key={stat} value={stat}>{stat}</option>
+                      ))
+                    : (REGIONAL_HIERARCHY[filterRegion] || []).map(stat => (
+                        <option key={stat} value={stat}>{stat}</option>
+                      ))
+                  }
+                </>
+              ) : (
+                <option value={currentUser?.station}>{stripHtmlTags(currentUser?.station)}</option>
+              )}
+            </select>
 
             <select value={filterOffence} onChange={(e) => setFilterOffence(e.target.value)} className="border dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs shadow-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer max-w-[200px] truncate">
               <option value="ALL OFFENCES">ALL OFFENCES</option>

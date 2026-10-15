@@ -3099,7 +3099,7 @@ const App = () => {
             canViewGlobal={canViewGlobal} 
             stories={stories} 
             setStories={setStories}
-            isReadOnlyObserver={isReadOnlyObserver} // 🟢 Enforces read-only lock
+            isReadOnlyObserver={isReadOnlyObserver}
           />
         ) : (
           <HomeDashboard 

@@ -53,9 +53,19 @@ const LockupMatrixLedger = ({ lockupEntries, allTimeLockupTotal, onClose, select
   const [registerFilterStation, setRegisterFilterStation] = useState(selectedStation || 'ALL STATIONS');
 
   const userRole = stripHtmlTags(currentUser?.role || '').toUpperCase();
-  const isGlobalLevel = ['SUPER_ADMIN', 'ADMIN', 'ASSISTANT_SUPER_ADMIN', 'RPC', 'DEPUTY COMMANDER'].includes(userRole) || 
-                        currentUser?.permissions?.view_global_roster === true ||
-                        ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(stripHtmlTags(currentUser?.region || '').toUpperCase());
+const userPos = stripHtmlTags(currentUser?.position || '').toUpperCase();
+const userRegClean = stripHtmlTags(currentUser?.region || '').toUpperCase();
+  const isAbsoluteGlobal = ['SUPER_ADMIN', 'ADMIN', 'ASSISTANT_SUPER_ADMIN'].includes(userRole) || 
+                          currentUser?.permissions?.view_global_roster === true ||
+                          ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(userRegClean);
+
+// Regional Command tier (RPC, Deputy RPC / Deputy Commander)
+const isRegionalCommandTier = ['RPC', 'DEPUTY_RPC'].includes(userRole) || 
+                              userPos.includes('RPC') || 
+                              userPos.includes('DEPUTY COMMANDER');
+
+const canSelectAnyRegion = isAbsoluteGlobal;
+const effectiveRegion = isAbsoluteGlobal ? ledgerFilterRegion : userRegClean;
 
   // Form Inputs
   const [matrixOperation, setMatrixOperation] = useState('new');
@@ -413,16 +423,42 @@ const LockupMatrixLedger = ({ lockupEntries, allTimeLockupTotal, onClose, select
             <div className="bg-amber-50 dark:bg-slate-900 px-6 py-3 border-b border-amber-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-3 shrink-0">
               <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                 <div className="flex items-center space-x-2">
-                  <Filter className="w-4 h-4 text-amber-800 dark:text-amber-400 shrink-0" />
-                  <select value={ledgerFilterRegion} onChange={e => { setLedgerFilterRegion(e.target.value); setLedgerFilterStation('ALL STATIONS'); }} disabled={!isGlobalLevel} className="border border-amber-300 dark:border-slate-700 text-amber-900 dark:text-amber-200 font-bold rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-slate-950 outline-none cursor-pointer">
-                    <option value="ALL REGIONS">ALL REGIONS</option>
-                    {Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)}
-                  </select>
-                  <select value={ledgerFilterStation} onChange={e => setLedgerFilterStation(e.target.value)} disabled={!isGlobalLevel} className="border border-amber-300 dark:border-slate-700 text-amber-900 dark:text-amber-200 font-bold rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-slate-950 outline-none cursor-pointer">
-                    <option value="ALL STATIONS">ALL STATIONS</option>
-                    {ledgerFilterRegion !== 'ALL REGIONS' && REGIONAL_HIERARCHY[ledgerFilterRegion] ? REGIONAL_HIERARCHY[ledgerFilterRegion].map(stat => <option key={stat} value={stat}>{stat}</option>) : null}
-                  </select>
-                </div>
+  <Filter className="w-4 h-4 text-amber-800 dark:text-amber-400 shrink-0" />
+  
+  {/* Region Selector */}
+  <select 
+    value={ledgerFilterRegion} 
+    onChange={e => { 
+      setLedgerFilterRegion(e.target.value); 
+      setLedgerFilterStation('ALL STATIONS'); 
+    }} 
+    disabled={!isAbsoluteGlobal} // Locked if they are an RPC (forced to their region), enabled only for Super Admins/Admins
+    className="border border-amber-300 dark:border-slate-700 text-amber-900 dark:text-amber-200 font-bold rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-slate-950 outline-none cursor-pointer disabled:opacity-90 disabled:cursor-not-allowed"
+  >
+    {isAbsoluteGlobal && <option value="ALL REGIONS">ALL REGIONS</option>}
+    {isAbsoluteGlobal ? (
+      Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)
+    ) : (
+      <option value={userRegClean}>{userRegClean}</option>
+    )}
+  </select>
+
+  {/* Station Selector */}
+  <select 
+    value={ledgerFilterStation} 
+    onChange={e => setLedgerFilterStation(e.target.value)} 
+    className="border border-amber-300 dark:border-slate-700 text-amber-900 dark:text-amber-200 font-bold rounded-lg px-2.5 py-1.5 text-xs bg-white dark:bg-slate-950 outline-none cursor-pointer"
+  >
+    <option value="ALL STATIONS">ALL STATIONS ({ledgerFilterRegion})</option>
+    {ledgerFilterRegion !== 'ALL REGIONS' && REGIONAL_HIERARCHY[ledgerFilterRegion] ? (
+      REGIONAL_HIERARCHY[ledgerFilterRegion].map(stat => <option key={stat} value={stat}>{stat}</option>)
+    ) : (
+      !isAbsoluteGlobal && REGIONAL_HIERARCHY[userRegClean] ? (
+        REGIONAL_HIERARCHY[userRegClean].map(stat => <option key={stat} value={stat}>{stat}</option>)
+      ) : null
+    )}
+  </select>
+</div>
                 <div className="relative flex items-center min-w-[200px]">
                   <Search className="w-3.5 h-3.5 absolute left-2.5 text-amber-700 dark:text-amber-400" />
                   <input type="text" placeholder="Search station, date..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-slate-950 border border-amber-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-amber-900 dark:text-amber-200 outline-none focus:ring-1 focus:ring-amber-500" />

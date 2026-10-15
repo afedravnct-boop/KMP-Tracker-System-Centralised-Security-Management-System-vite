@@ -7,9 +7,9 @@ import { authFetch, hasValidSession } from './api';
 import { stripHtmlTags } from './App';
 
 const REGIONAL_HIERARCHY = {
-  "KMP NORTH": ["KMP NORTH HEADQUARTERS", "KAWEMPE", "KAKIRI", "KASANGATI", "MATUGGA", "NANSANA", "OLD KAMPALA", "WAKISO", "WANDEGEYA"],
-  "KMP EAST": ["KMP EAST HEADQUARTERS", "JINJA ROAD", "KIRA", "KIRA DIV", "KIRA ROAD", "MUKONO", "NAGGALAMA", "SEETA"],
-  "KMP SOUTH": ["KMP SOUTH HEADQUARTERS", "NATEETE", "CPS KAMPALA", "PARLIAMENT", "ENTEBBE", "KABALAGALA", "KAJJANSI", "KASENYI", "KATWE", "KYENGERA", "NSANGI"],
+  "KMP NORTH": ["KMP NORTH HEADQUARTERS", "KMP NORTH", "KAWEMPE", "KAKIRI", "KASANGATI", "MATUGGA", "NANSANA", "OLD KAMPALA", "WAKISO", "WANDEGEYA"],
+  "KMP EAST": ["KMP EAST HEADQUARTERS", "KMP EAST", "JINJA ROAD", "KIRA", "KIRA DIV", "KIRA ROAD", "MUKONO", "NAGGALAMA", "SEETA"],
+  "KMP SOUTH": ["KMP SOUTH HEADQUARTERS", "KMP SOUTH", "NATEETE", "CPS KAMPALA", "PARLIAMENT", "ENTEBBE", "KABALAGALA", "KAJJANSI", "KASENYI", "KATWE", "KYENGERA", "NSANGI"],
   "KMP HEADQUARTERS": ["KMP HEADQUARTERS", "FLYING SQUAD", "CRIME INTELLIGENCE"],
   "POLICE HEADQUARTERS": ["NAGURU"]
 };
@@ -254,21 +254,28 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
     if (!Array.isArray(serverStories)) return [];
     return serverStories.filter(story => {
       const storyStn = stripHtmlTags(story.station || '').trim().toUpperCase();
-      const storyReg = getOfficialRegionForStation(storyStn, story.region);
+      const storyReg = getOfficialRegionForStation(storyStn, story.region).toUpperCase();
 
-      // If a specific region is selected, ensure the story matches that region
+      // Enforce role-based boundaries for non-global users
+      if (!canViewGlobalActive) {
+        const belongsToUserRegion = storyReg === userRegClean || 
+                                    (REGIONAL_HIERARCHY[userRegClean] && REGIONAL_HIERARCHY[userRegClean].some(st => isStationEquivalent(st, storyStn)));
+        if (!belongsToUserRegion) return false;
+      }
+
+      // Enforce active region filter
       if (filterRegion && filterRegion !== 'ALL REGIONS') {
         if (storyReg !== filterRegion.toUpperCase()) return false;
       }
 
-      // If a specific station is selected, ensure the story matches that station
+      // Enforce active station filter
       if (filterStation && filterStation !== 'ALL STATIONS') {
         if (!isStationEquivalent(storyStn, filterStation)) return false;
       }
 
       return true;
     }).sort((a, b) => (b.sn || b.id || 0) - (a.sn || a.id || 0));
-  }, [serverStories, filterRegion, filterStation]);
+  }, [serverStories, filterRegion, filterStation, canViewGlobalActive, userRegClean]);
 
   const availableUpdateStories = useMemo(() => {
     return (Array.isArray(serverStories) ? serverStories : []).filter(s => {
@@ -896,4 +903,4 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
   );
 };
 
-export default SuccessStories;
+export default CrimeIncidentRegistry;

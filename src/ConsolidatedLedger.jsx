@@ -23,10 +23,26 @@ const ConsolidatedLedger = ({ onClose, currentUser, canViewGlobal = false }) => 
   const [startDate, setStartDate] = useState(lastWeek.toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
-  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false); // NEW STATE
+  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
   const [ledgerData, setLedgerData] = useState(null);
 
-  // ... (Role classification logic remains the same) ...
+  // RESTORED: OPSEC Role Classification Engine & Filter States
+  const userRoleClean = cleanStr(currentUser?.role);
+  const userPosClean = cleanStr(currentUser?.position);
+  const userRegClean = cleanStr(currentUser?.region);
+
+  const isGlobalTier = ['SUPER_ADMIN', 'ADMIN', 'ASSISTANT_SUPER_ADMIN'].includes(userRoleClean) || 
+    ['KMP COMMANDER', 'DEPUTY KMP COMMANDER', 'KMP ADMIN OFFICER'].includes(userPosClean) || 
+    currentUser?.permissions?.view_global_roster === true;
+
+  const isKmpSystemManager = userRoleClean === 'SYSTEM_MANAGER' && ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(userRegClean) && userPosClean.includes('KMP');
+  const isKmpSpecialist = userRoleClean === 'ASSISTANT_SYSTEM_MANAGER' && ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(userRegClean) && userPosClean.includes('KMP');
+
+  const canViewGlobalLevel = canViewGlobal || isGlobalTier || isKmpSystemManager || isKmpSpecialist;
+  const isRegionalCommand = ['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN', 'ASSISTANT_REGIONAL_ADMIN'].includes(userRoleClean) && !canViewGlobalLevel;
+
+  const [filterRegion, setFilterRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);
+  const [filterStation, setFilterStation] = useState((canViewGlobalLevel || isRegionalCommand) ? 'ALL STATIONS' : cleanStr(currentUser?.station));
 
   // Progressive Fetching Engine
   useEffect(() => {
@@ -111,7 +127,7 @@ const ConsolidatedLedger = ({ onClose, currentUser, canViewGlobal = false }) => 
     return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).toUpperCase();
   };
 
-  // Safe defaults if data is still loading
+  // Safe defaults mapped to receive the backend's pre-calculated totals
   const dataMapping = ledgerData || {
       crimeRegional: {}, crimeRegionalTotals: {}, crimeGeneral: {}, sortedCrimeRegions: [], grandCrimeCases: 0, grandCrimeSuspects: 0,
       opsRegional: {}, opsGeneral: { arrested: 0, given_bond: 0, cautioned: 0, pending_court: 0, taken_to_court: 0, released: 0, remanded: 0, convicted: 0 }, sortedOpsRegions: [],
@@ -183,7 +199,6 @@ const ConsolidatedLedger = ({ onClose, currentUser, canViewGlobal = false }) => 
             <input type="date" value={endDate} disabled={loading} onChange={e => setEndDate(e.target.value)} className="text-sm font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 outline-none disabled:opacity-50" />
           </div>
 
-          {/* 🟢 SECURE AES-256 EXPORT BUTTON */}
           <button 
             onClick={handleExportLedger} 
             disabled={loading}
@@ -218,8 +233,6 @@ const ConsolidatedLedger = ({ onClose, currentUser, canViewGlobal = false }) => 
             <tbody className={loading ? 'opacity-50' : ''}>
               {dataMapping.sortedCrimeRegions.map(region => {
                 const offences = Object.keys(dataMapping.crimeRegional[region]);
-                
-                // Fetch pre-calculated totals from backend payload
                 const regionTotals = dataMapping.crimeRegionalTotals[region] || { cases: 0, suspects: 0 };
                 
                 const rows = offences.map((off, idx) => {
@@ -396,7 +409,7 @@ const ConsolidatedLedger = ({ onClose, currentUser, canViewGlobal = false }) => 
               </tr>
             </thead>
             <tbody className={loading ? 'opacity-50' : ''}>
-  {dataMapping.sortedStoryRegions.map((region, idx) => (
+              {dataMapping.sortedStoryRegions.map((region, idx) => (
                 <tr key={`story-${region}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-3 py-2 border border-slate-400 dark:border-slate-700 text-center font-medium text-slate-600 dark:text-slate-400">{idx + 1}</td>
                   <td className="px-3 py-2 border border-slate-400 dark:border-slate-700 text-center font-bold text-slate-900 dark:text-slate-100">{region}</td>

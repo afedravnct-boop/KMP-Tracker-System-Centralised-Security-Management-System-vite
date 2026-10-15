@@ -7,9 +7,6 @@ import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { authFetch, hasValidSession } from './api';
 
-// 🟢 Lazy-load LockupMatrixLedger to completely sever any transitive circular dependency with App.jsx
-const LockupMatrixLedger = lazy(() => import('./LockupMatrixLedger'));
-
 export const stripHtmlTags = (str) => {
   if (str === null || str === undefined) return '';
   return String(str).replace(/<[^>]*>?/gm, '');

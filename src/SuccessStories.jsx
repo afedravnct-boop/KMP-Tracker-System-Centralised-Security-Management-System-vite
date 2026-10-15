@@ -903,4 +903,4 @@ const SuccessStories = ({ currentUser, canViewGlobal = false, stories, setStorie
   );
 };
 
-export default CrimeIncidentRegistry;
+export default success_stories;

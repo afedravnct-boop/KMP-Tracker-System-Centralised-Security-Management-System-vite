@@ -7,6 +7,7 @@ import {
 import { authFetch } from './api';
 import BulkNominalRollUpload from './BulkNominalRollUpload';
 import OfficerDossierModal from './OfficerDossierModal';
+import { formatOfficerHeader, stripHtmlTags } from './adminUtils';
 
 const cleanStr = (str) => {
   if (!str) return '';
@@ -21,58 +22,74 @@ const REGIONAL_HIERARCHY = {
   "POLICE HEADQUARTERS": ["NAGURU", "OPERATIONS", "CRIME INTELLIGENCE", "CID", "LOGISTICS & ENGINEERING", "ICT", "CT", "FIRE & RESCUE"]
 };
 
+const REGION_SORT_PRIORITY = {
+  "KMP HEADQUARTERS": 1,
+  "KMP NORTH HEADQUARTERS": 2,
+  "KMP NORTH": 3,
+  "KMP EAST HEADQUARTERS": 4,
+  "KMP EAST": 5,
+  "KMP SOUTH HEADQUARTERS": 6,
+  "KMP SOUTH": 7,
+  "POLICE HEADQUARTERS": 8
+};
+
 // 🟢 NEW: Aggressive Base Name Extractor (Strips all variations of Post/Station)
-const getBaseStationName = (stn) => {
-  if (!stn) return "UNKNOWN";
-  let val = cleanStr(stn);
-  if (["OLD KLA", "OK", "OLD K", "O/K", "OLD KAMPALA DIVISION", "OLD KAMPALA"].includes(val)) return "OLD KAMPALA";
-  val = val.replace(/\s+(P\.?S\.?|P\/S|PS|P\s*STN|P\/STN|POL\s*STN|POLICE\s*STATION|DIVISION|P\.?P\.?|P\/P|PP|P|POLICE\s*POST|HEADQUARTERS|HQ)$/, '');
-  return val.trim();
+const getBaseName = (str) => {
+    if (!str) return '';
+    let val = cleanStr(str);
+    if (["OLD KLA", "OK", "OLD K", "O/K", "OLD KAMPALA DIVISION"].includes(val)) return "OLD KAMPALA";
+    return val.replace(/\s+(P\.?S\.?|P\/S|PS|P\s*STN|P\/STN|POL\s*STN|POLICE\s*STATION|DIVISION|P\.?P\.?|P\/P|PP|P|POLICE\s*POST|HEADQUARTERS|HQ)$/, '').trim();
 };
 
-// 🟢 NEW: Standardizes station naming perfectly (Translates PP to Police Post, PS to Police Station)
-const normalizeStationName = (stationStr) => {
-  if (!stationStr) return "UNKNOWN";
-  let val = cleanStr(stationStr);
-  
-  if (["OLD KLA", "OK", "OLD K", "O/K", "OLD KAMPALA DIVISION", "OLD KAMPALA"].includes(val)) {
-    return "OLD KAMPALA POLICE STATION";
-  }
-      
-  const postPattern = /\s+(P\.?P\.?|P\/P|PP|P|POLICE\s*POST)$/;
-  if (postPattern.test(val)) return `${val.replace(postPattern, '').trim()} POLICE POST`;
-      
-  const stationPattern = /\s+(P\.?S\.?|P\/S|PS|P\s*STN|P\/STN|POL\s*STN|POLICE\s*STATION|DIVISION)$/;
-  if (stationPattern.test(val)) return `${val.replace(stationPattern, '').trim()} POLICE STATION`;
-      
-  if (val.endsWith(" HQ")) return val.slice(0, -3).trim() + " HEADQUARTERS";
-      
-  return val;
-};
+// 🟢 NEW: Smart Parent/Child Hierarchy Parser (Puts Posts in the same row as their Parent Station)
+const parseStationHierarchy = (rawStation) => {
+    const cleaned = cleanStr(rawStation);
+    if (!cleaned) return { station: 'UNASSIGNED', post: '' };
 
-// 🟢 NEW: Checks if two names mean the same thing
-const isStationEquivalent = (statA, statB) => {
-  const baseA = getBaseStationName(statA);
-  const baseB = getBaseStationName(statB);
-  if (!baseA || !baseB) return false;
-  return baseA === baseB;
+    // 1. Explicit Parent/Child mapping (e.g. "KASANGATI / WAMPEWO P.P")
+    if (cleaned.includes('/') || cleaned.includes('\\')) {
+        const parts = cleaned.split(/[\/\\]/).map(p => cleanStr(p));
+        const parentBase = getBaseName(parts[0]);
+        const childStr = parts[1] || '';
+
+        if (/\s+(P\.?P\.?|P\/P|PP|P|POLICE\s*POST)$/.test(childStr)) {
+            return { station: `${parentBase} POLICE STATION`, post: `${getBaseName(childStr)} POLICE POST` };
+        }
+        return { station: `${getBaseName(childStr)} POLICE STATION`, post: '' };
+    }
+
+    // 2. It's a Police Post (e.g. "WAMPEWO P.P") -> Assigns it to merely "WAMPEWO POLICE STATION"
+    if (/\s+(P\.?P\.?|P\/P|PP|P|POLICE\s*POST)$/.test(cleaned)) {
+        const base = getBaseName(cleaned);
+        return { station: `${base} POLICE STATION`, post: `${base} POLICE POST` };
+    }
+
+    // 3. It's a Police Station / Division (e.g. "BUJJUKO PS")
+    if (/\s+(P\.?S\.?|P\/S|PS|P\s*STN|P\/STN|POL\s*STN|POLICE\s*STATION|DIVISION)$/.test(cleaned)) {
+        return { station: `${getBaseName(cleaned)} POLICE STATION`, post: '' };
+    }
+
+    if (cleaned.endsWith(" HQ")) {
+        return { station: cleaned.replace(" HQ", " HEADQUARTERS"), post: "" };
+    }
+
+    // Fallback: Assume it's a station
+    return { station: `${cleaned} POLICE STATION`, post: '' };
 };
 
 const getOfficialRegionForStation = (stationName, dbRegion) => {
-  const baseStation = getBaseStationName(stationName);
-  const cleanDbRegion = cleanStr(dbRegion);
+    const baseStation = getBaseName(stationName);
+    const cleanDbRegion = cleanStr(dbRegion);
 
-  if (REGIONAL_HIERARCHY[cleanDbRegion]) {
-    const matches = REGIONAL_HIERARCHY[cleanDbRegion].some(s => getBaseStationName(s) === baseStation);
-    if (matches) return cleanDbRegion;
-  }
-
-  for (const [regionName, stationsList] of Object.entries(REGIONAL_HIERARCHY)) {
-    if (stationsList.some(s => getBaseStationName(s) === baseStation)) {
-      return regionName;
+    if (REGIONAL_HIERARCHY[cleanDbRegion]) {
+        const matches = REGIONAL_HIERARCHY[cleanDbRegion].some(s => getBaseName(s) === baseStation);
+        if (matches) return cleanDbRegion;
     }
-  }
-  return cleanDbRegion || 'KMP GENERAL';
+
+    for (const [regionName, stationsList] of Object.entries(REGIONAL_HIERARCHY)) {
+        if (stationsList.some(s => getBaseName(s) === baseStation)) return regionName;
+    }
+    return cleanDbRegion || 'KMP GENERAL';
 };
 
 const MetricCard = ({ title, value, colorClass }) => (
@@ -178,6 +195,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   
   const [filterRegion, setFilterRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);
   const [filterStation, setFilterStation] = useState((canViewGlobalLevel || isRegionalCommand) ? 'ALL STATIONS' : cleanStr(currentUser?.station));
+  const [filterPost, setFilterPost] = useState('ALL POSTS');
 
   const [targetRegion, setTargetRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);
   const [targetStation, setTargetStation] = useState('ALL STATIONS');
@@ -206,44 +224,52 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     sn: null, fnum: '', rank: '', name: '', sex: 'MALE', position: '',
     dob: '', doe: '', dopost: '', dopro: '', contact: '', educlevel: '',
     ipps: '', tin: '', nin: '', homedist: '', tribe: '', accno: '', bankbranch: '',
-    station: normalizeStationName(currentUser?.station) || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '', 
+    station: currentUser?.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '', 
     district: '', region: currentUser?.region, section: '', dir: '', status: 'ACTIVE'
   });
 
-  // 🟢 Unified Dynamic Station/Post Normalizer & Hierarchy Builder
-  const { primaryStations, policePosts } = useMemo(() => {
-    const list = new Set();
-    const activeReg = filterRegion;
-    
-    if (activeReg && activeReg !== 'ALL REGIONS' && REGIONAL_HIERARCHY[activeReg]) {
-      REGIONAL_HIERARCHY[activeReg].forEach(stn => list.add(normalizeStationName(stn)));
-    } else if (activeReg === 'ALL REGIONS') {
-      Object.values(REGIONAL_HIERARCHY).forEach(arr => arr.forEach(stn => list.add(normalizeStationName(stn))));
+  // 🟢 1. Dynamic Dropdown Population (Major CPS Stations vs Ordinary Stations)
+  const { majorDivisions, otherStations } = useMemo(() => {
+    if (!filterRegion || filterRegion === 'ALL REGIONS') return { majorDivisions: [], otherStations: [] };
+
+    const majorSet = new Set();
+    const otherSet = new Set();
+
+    // Pull Official Hierarchies first
+    if (REGIONAL_HIERARCHY[filterRegion]) {
+        REGIONAL_HIERARCHY[filterRegion].forEach(s => majorSet.add(`${getBaseName(s)} POLICE STATION`));
     }
 
+    // Pull Actual Database Records to find other stations
     (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).forEach(n => {
-      if (n.station) {
-        const cleaned = normalizeStationName(n.station);
-        const reg = getOfficialRegionForStation(cleaned, cleanStr(n.region));
-        if (activeReg === 'ALL REGIONS' || reg === activeReg) {
-          list.add(cleaned);
+        const reg = getOfficialRegionForStation(n.station, n.region);
+        if (reg === filterRegion) {
+            const parsed = parseStationHierarchy(n.station);
+            if (parsed.station && parsed.station !== 'UNASSIGNED') {
+                if (!majorSet.has(parsed.station)) {
+                    otherSet.add(parsed.station);
+                }
+            }
         }
-      }
     });
 
-    const primary = [];
-    const posts = [];
-
-    Array.from(list).forEach(stn => {
-      if (stn.includes("POLICE POST")) {
-        posts.push(stn);
-      } else {
-        primary.push(stn);
-      }
-    });
-
-    return { primaryStations: primary.sort(), policePosts: posts.sort() };
+    return { majorDivisions: Array.from(majorSet).sort(), otherStations: Array.from(otherSet).sort() };
   }, [Nominal_Rolls, filterRegion]);
+
+  // 🟢 2. Dynamic Post Population (Populates the 3rd Dropdown strictly based on 2nd Dropdown)
+  const availablePostsList = useMemo(() => {
+    if (!filterStation || filterStation === 'ALL STATIONS') return [];
+
+    const list = new Set();
+    (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).forEach(n => {
+        const parsed = parseStationHierarchy(n.station);
+        if (parsed.station === filterStation && parsed.post) {
+            list.add(parsed.post);
+        }
+    });
+
+    return Array.from(list).sort();
+  }, [Nominal_Rolls, filterStation]);
 
   const populateUpdateForm = (data) => {
     setFormData({
@@ -291,7 +317,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         sn: null, fnum: '', rank: '', name: '', sex: 'MALE', position: '',
         dob: '', doe: '', dopost: '', dopro: '', contact: '', educlevel: '',
         ipps: '', tin: '', nin: '', homedist: '', tribe: '', accno: '', bankbranch: '',
-        station: normalizeStationName(currentUser?.station) || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '', 
+        station: currentUser?.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '', 
         district: '', region: currentUser?.region, section: '', dir: '', status: 'ACTIVE'
       });
       setUpdateSearch('');
@@ -465,35 +491,37 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     }
   };
 
-  // 🟢 1. Active Roll Lightweight Client Filtering
-  const filteredRolls = useMemo(() => {
-    const list = (Array.isArray(Nominal_Rolls) ? Nominal_Rolls : []).filter(n => {
-      const statusStr = cleanStr(n.status);
-      if (statusStr === 'ARCHIVED' || n.is_archived === true) return false;
+  // 🟢 3. The Core Ledger Filter Engine (Handles Region -> Station -> Post filtering dynamically)
+  const filterDataset = (dataset) => {
+    if (!Array.isArray(dataset)) return [];
 
-      const stn = cleanStr(n.station);
-      const reg = cleanStr(n.region);
+    return dataset.filter(n => {
+      if (viewMode === 'active') {
+          const statusStr = cleanStr(n.status);
+          if (statusStr === 'ARCHIVED' || n.is_archived === true) return false;
+      }
+
+      const parsedStn = parseStationHierarchy(n.station);
+      const officialReg = getOfficialRegionForStation(n.station, n.region);
 
       const selRegion = cleanStr(filterRegion);
       const selStation = cleanStr(filterStation);
+      const selPost = cleanStr(filterPost);
 
-      if (selRegion && selRegion !== 'ALL REGIONS' && !reg.includes(selRegion)) return false;
+      // 1. Filter by Region
+      if (selRegion && selRegion !== 'ALL REGIONS' && officialReg !== selRegion) return false;
       
+      // 2. Filter by Parent Station
       if (selStation && selStation !== 'ALL STATIONS') {
-        const normalizedItemStation = normalizeStationName(stn);
-        const isPostSelected = selStation.includes('POLICE POST');
-        
-        if (isPostSelected) {
-          // If a user explicitly selected a Post, only show that specific post
-          if (normalizedItemStation !== selStation) return false;
-        } else {
-          // If a Station is selected, show the Station AND all its Police Posts
-          const baseSelected = getBaseStationName(selStation);
-          const baseItem = getBaseStationName(stn);
-          if (baseSelected !== baseItem && !stn.includes(selStation)) return false;
-        }
+        if (parsedStn.station !== selStation) return false;
       }
 
+      // 3. Filter by Specific Police Post
+      if (selPost && selPost !== 'ALL POSTS') {
+        if (parsedStn.post !== selPost) return false;
+      }
+
+      // 4. Text Search
       if (searchTerm.trim()) {
         const query = searchTerm.trim().toLowerCase();
         const fnum = cleanStr(n.f_num || n.fnum).toLowerCase();
@@ -501,57 +529,18 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         const rank = cleanStr(n.rank).toLowerCase();
         const ipps = cleanStr(n.ipps).toLowerCase();
         const nin = cleanStr(n.nin).toLowerCase();
+        const reason = viewMode === 'archive' ? cleanStr(n.archive_reason).toLowerCase() : '';
         
-        if (!fnum.includes(query) && !name.includes(query) && !rank.includes(query) && !ipps.includes(query) && !nin.includes(query)) {
+        if (!fnum.includes(query) && !name.includes(query) && !rank.includes(query) && !ipps.includes(query) && !nin.includes(query) && !reason.includes(query)) {
           return false;
         }
       }
       return true;
     });
+  };
 
-    return list;
-  }, [Nominal_Rolls, filterRegion, filterStation, searchTerm]);
-
-  // 🟢 2. Archived Roll Lightweight Client Filtering
-  const filteredNominal_Roll_archives = useMemo(() => {
-    if (!Array.isArray(Nominal_Roll_archives)) return [];
-
-    return Nominal_Roll_archives.filter(n => {
-      const stn = cleanStr(n.station);
-      const reg = cleanStr(n.region);
-
-      const selRegion = cleanStr(filterRegion);
-      const selStation = cleanStr(filterStation);
-
-      if (selRegion && selRegion !== 'ALL REGIONS' && !reg.includes(selRegion)) return false;
-      
-      if (selStation && selStation !== 'ALL STATIONS') {
-        const normalizedItemStation = normalizeStationName(stn);
-        const isPostSelected = selStation.includes('POLICE POST');
-        
-        if (isPostSelected) {
-          if (normalizedItemStation !== selStation) return false;
-        } else {
-          const baseSelected = getBaseStationName(selStation);
-          const baseItem = getBaseStationName(stn);
-          if (baseSelected !== baseItem && !stn.includes(selStation)) return false;
-        }
-      }
-
-      if (searchTerm.trim()) {
-        const query = searchTerm.trim().toLowerCase();
-        const fnum = cleanStr(n.f_num || n.fnum).toLowerCase();
-        const name = cleanStr(n.name).toLowerCase();
-        const rank = cleanStr(n.rank).toLowerCase();
-        const reason = cleanStr(n.archive_reason).toLowerCase();
-        
-        if (!fnum.includes(query) && !name.includes(query) && !rank.includes(query) && !reason.includes(query)) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [Nominal_Roll_archives, filterRegion, filterStation, searchTerm]);
+  const filteredRolls = useMemo(() => filterDataset(Nominal_Rolls), [Nominal_Rolls, filterRegion, filterStation, filterPost, searchTerm, viewMode]);
+  const filteredNominal_Roll_archives = useMemo(() => filterDataset(Nominal_Roll_archives), [Nominal_Roll_archives, filterRegion, filterStation, filterPost, searchTerm, viewMode]);
 
   const currentRollDataset = useMemo(() => {
     return viewMode === 'archive' ? filteredNominal_Roll_archives : filteredRolls;
@@ -566,7 +555,8 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       if (r.includes('DRV')) r = 'PC';
       return r === analyticsMetricFilterValue;
     } else if (metricCategory === 'UNIT') {
-      return getBaseStationName(n.station) === getBaseStationName(analyticsMetricFilterValue);
+      const parsed = parseStationHierarchy(n.station);
+      return parsed.station === analyticsMetricFilterValue;
     } else if (metricCategory === 'STATUS') {
       const normStatus = n.normalized_status || cleanStr(n.status);
       return normStatus === analyticsMetricFilterValue;
@@ -585,7 +575,6 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   });
 }, [currentRollDataset, metricCategory, analyticsMetricFilterValue]);
 
-// 🟢 Unified Category Filter Options
   const availableAnalyticsFilterOptions = useMemo(() => {
     const setVals = new Set();
     const dataset = Array.isArray(currentRollDataset) ? currentRollDataset : [];
@@ -596,8 +585,8 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         const r = cleanStr(n.rank);
         if (r) setVals.add(r);
       } else if (metricCategory === 'UNIT') {
-        const base = getBaseStationName(n.station);
-        if (base && base !== 'UNASSIGNED') setVals.add(base);
+        const parsed = parseStationHierarchy(n.station);
+        if (parsed.station && parsed.station !== 'UNASSIGNED') setVals.add(parsed.station);
       } else if (metricCategory === 'STATUS') {
         setVals.add('ACTIVE (DEPLOYABLE)');
         setVals.add('NON-DEPLOYABLE (HEALTH/LEAVE)');
@@ -648,9 +637,9 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
       }
 
       if (n.station) {
-        const norm = normalizeStationName(n.station);
-        if (norm.includes("POLICE POST")) postsSet.add(norm);
-        else stationsSet.add(norm);
+        const parsed = parseStationHierarchy(n.station);
+        if (parsed.station && parsed.station !== 'UNASSIGNED') stationsSet.add(parsed.station);
+        if (parsed.post) postsSet.add(parsed.post); 
       }
     });
 
@@ -838,14 +827,14 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                   {(canViewGlobalLevel || isRegionalCommand) ? (
                     <>
                       <option value="ALL STATIONS">ALL STATIONS / POSTS</option>
-                      {primaryStations.length > 0 && (
-                          <optgroup label="CPS / POLICE STATIONS">
-                              {primaryStations.map(stat => <option key={stat} value={stat}>{stat}</option>)}
+                      {majorDivisions.length > 0 && (
+                          <optgroup label="CPS / MAJOR DIVISIONS">
+                              {majorDivisions.map(stat => <option key={stat} value={stat}>{stat}</option>)}
                           </optgroup>
                       )}
-                      {policePosts.length > 0 && (
-                          <optgroup label="POLICE POSTS">
-                              {policePosts.map(post => <option key={post} value={post}>{post}</option>)}
+                      {otherStations.length > 0 && (
+                          <optgroup label="OTHER POLICE STATIONS">
+                              {otherStations.map(stat => <option key={stat} value={stat}>{stat}</option>)}
                           </optgroup>
                       )}
                     </>
@@ -877,6 +866,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                     onClick={() => { 
                       setFilterStation(targetStation); 
                       setFilterRegion(targetRegion); 
+                      setFilterPost('ALL POSTS');
                       setShowModal(false); 
                       setShowAnalytics(false); 
                       setViewMode('active'); 
@@ -1221,42 +1211,40 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
             </div>
           )}
 
-          {/* JURISDICTION DROPDOWNS & SEARCH */}
+          {/* 🟢 THE 3 HIERARCHICAL DROPDOWNS & SEARCH */}
           <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
             <div className="flex flex-col sm:flex-row gap-2.5 flex-1">
-              <select 
-                value={filterRegion} 
-                onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); }} 
-                disabled={!canViewGlobalLevel} 
-                className="border rounded-lg px-3 py-1.5 text-xs font-bold shadow-xs bg-white text-slate-800 border-slate-300 disabled:bg-gray-100 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer"
-              >
+              
+              {/* DROPDOWN 1: REGIONS */}
+              <select value={filterRegion} onChange={(e) => { setFilterRegion(e.target.value); setFilterStation('ALL STATIONS'); setFilterPost('ALL POSTS'); }} disabled={!canViewGlobalLevel} className="border rounded-lg px-3 py-1.5 text-xs font-bold shadow-xs bg-white text-slate-800 border-slate-300 disabled:bg-gray-100 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer">
                 {canViewGlobalLevel ? (
                   <><option value="ALL REGIONS">ALL REGIONS</option>{Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>)}</>
                 ) : <option value={userRegClean}>{userRegClean}</option>}
               </select>
 
-              {/* 🟢 UNIFIED HIERARCHICAL STATION & POST DROPDOWN */}
-              <select 
-                value={filterStation} 
-                onChange={(e) => setFilterStation(e.target.value)} 
-                disabled={!(canViewGlobalLevel || isRegionalCommand)} 
-                className="border rounded-lg px-3 py-1.5 text-xs font-bold shadow-xs bg-white text-slate-800 border-slate-300 disabled:bg-gray-100 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer"
-              >
+              {/* DROPDOWN 2: STATIONS / CPS */}
+              <select value={filterStation} onChange={(e) => { setFilterStation(e.target.value); setFilterPost('ALL POSTS'); }} disabled={!(canViewGlobalLevel || isRegionalCommand)} className="border rounded-lg px-3 py-1.5 text-xs font-bold shadow-xs bg-white text-slate-800 border-slate-300 disabled:bg-gray-100 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer">
                 {(canViewGlobalLevel || isRegionalCommand) ? (
                   <>
-                    <option value="ALL STATIONS">ALL STATIONS / POSTS</option>
-                    {primaryStations.length > 0 && (
-                        <optgroup label="CPS / POLICE STATIONS">
-                            {primaryStations.map(stat => <option key={stat} value={stat}>{stat}</option>)}
+                    <option value="ALL STATIONS">ALL STATIONS</option>
+                    {majorDivisions.length > 0 && (
+                        <optgroup label="CPS / MAJOR DIVISIONS">
+                            {majorDivisions.map(stat => <option key={stat} value={stat}>{stat}</option>)}
                         </optgroup>
                     )}
-                    {policePosts.length > 0 && (
-                        <optgroup label="POLICE POSTS">
-                            {policePosts.map(post => <option key={post} value={post}>-- {post}</option>)}
+                    {otherStations.length > 0 && (
+                        <optgroup label="OTHER POLICE STATIONS">
+                            {otherStations.map(stat => <option key={stat} value={stat}>{stat}</option>)}
                         </optgroup>
                     )}
                   </>
                 ) : <option value={currentUser?.station}>{normalizeStationName(currentUser?.station)}</option>}
+              </select>
+
+              {/* DROPDOWN 3: POLICE POSTS */}
+              <select value={filterPost} onChange={(e) => setFilterPost(e.target.value)} className="border rounded-lg px-3 py-1.5 text-xs font-bold shadow-xs bg-white text-slate-800 border-slate-300 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer">
+                <option value="ALL POSTS">ALL POSTS</option>
+                {availablePostsList.map(post => <option key={post} value={post}>{post}</option>)}
               </select>
             </div>
 
@@ -1350,7 +1338,11 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                             <th className="px-3 py-2.5 text-left font-bold text-indigo-800 dark:text-indigo-300 uppercase whitespace-nowrap bg-indigo-50 dark:bg-slate-950">Tribe</th>
                             <th className="px-3 py-2.5 text-left font-bold text-indigo-800 uppercase whitespace-nowrap bg-indigo-50 dark:bg-slate-950">Acc No</th>
                             <th className="px-3 py-2.5 text-left font-bold text-indigo-800 uppercase whitespace-nowrap bg-indigo-50 dark:bg-slate-950">Bank Branch</th>
-                            <th className="px-3 py-2.5 text-left font-bold text-indigo-800 uppercase whitespace-nowrap bg-indigo-50 dark:bg-slate-950">Station</th>
+                            
+                            {/* 🟢 NEW: Split Station and Post Columns */}
+                            <th className="px-3 py-2.5 text-left font-bold text-indigo-800 uppercase whitespace-nowrap bg-indigo-50 dark:bg-slate-950">Station / Division</th>
+                            <th className="px-3 py-2.5 text-left font-bold text-indigo-800 uppercase whitespace-nowrap bg-indigo-50 dark:bg-slate-950">Police Post</th>
+                            
                             <th className="px-3 py-2.5 text-left font-bold text-indigo-800 uppercase whitespace-nowrap bg-indigo-50 dark:bg-slate-950">District</th>
                             <th className="px-3 py-2.5 text-left font-bold text-indigo-800 uppercase whitespace-nowrap bg-indigo-50 dark:bg-slate-950">Region</th>
                             <th className="px-3 py-2.5 text-left font-bold text-indigo-800 uppercase whitespace-nowrap bg-indigo-50 dark:bg-slate-950">Section</th>
@@ -1360,7 +1352,9 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-100 dark:divide-slate-800">
-                        {analyticsFilteredDataset.map((n, idx) => (
+                        {analyticsFilteredDataset.map((n, idx) => {
+                            const parsedStn = parseStationHierarchy(n.station);
+                            return (
                             <tr 
                               key={n.sn || n.fnum} 
                               onClick={() => { setAnalyticsSelectedOfficer(n); setShowAnalyticsDossier(true); }} 
@@ -1385,7 +1379,11 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                                 <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{cleanStr(n.tribe)}</td>
                                 <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{cleanStr(n.acc_no || n.accno)}</td>
                                 <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{cleanStr(n.bank_branch || n.bankbranch)}</td>
-                                <td className="px-3 py-2 whitespace-nowrap font-bold text-blue-700 dark:text-blue-400">{cleanStr(n.station)}</td>
+                                
+                                {/* 🟢 NEW: Dynamically Populated Side-by-side Columns */}
+                                <td className="px-3 py-2 whitespace-nowrap font-bold text-blue-700 dark:text-blue-400">{parsedStn.station}</td>
+                                <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{parsedStn.post || '-'}</td>
+                                
                                 <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{cleanStr(n.district)}</td>
                                 <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{cleanStr(n.region)}</td>
                                 <td className="px-3 py-2 whitespace-nowrap text-slate-700 dark:text-slate-300">{cleanStr(n.section)}</td>
@@ -1393,8 +1391,9 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                                 <td className="px-3 py-2 whitespace-nowrap font-bold text-green-700 dark:text-green-400">{cleanStr(n.status) || 'ACTIVE'}</td>
                                 <td className="px-3 py-2 whitespace-nowrap text-gray-500 dark:text-slate-400">{n.last_updated_by || ''}</td>
                             </tr>
-                        ))}
-                        {analyticsFilteredDataset.length === 0 && <tr><td colSpan="26" className="text-center p-6 text-xs text-gray-500 dark:text-slate-400 font-medium">No personnel records match this specific filter.</td></tr>}
+                            );
+                        })}
+                        {analyticsFilteredDataset.length === 0 && <tr><td colSpan="27" className="text-center p-6 text-xs text-gray-500 dark:text-slate-400 font-medium">No personnel records match this specific filter.</td></tr>}
                     </tbody>
                 </table>
               </div>
@@ -1438,7 +1437,11 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap bg-gray-50 dark:bg-slate-950">Tribe</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap bg-gray-50 dark:bg-slate-950">Acc No</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap bg-gray-50 dark:bg-slate-950">Bank Branch</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap bg-gray-50 dark:bg-slate-950">Station</th>
+
+                        {/* 🟢 NEW: Split Station and Post Columns */}
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap bg-gray-50 dark:bg-slate-950">Station / Division</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap bg-gray-50 dark:bg-slate-950">Police Post</th>
+                        
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap bg-gray-50 dark:bg-slate-950">District</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap bg-gray-50 dark:bg-slate-950">Region</th>
                         <th className="px-3 py-2.5 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase whitespace-nowrap bg-gray-50 dark:bg-slate-950">Section</th>
@@ -1457,7 +1460,9 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                       {(Array.isArray(viewMode === 'active' ? filteredRolls : filteredNominal_Roll_archives) 
                         ? (viewMode === 'active' ? filteredRolls : filteredNominal_Roll_archives) 
                         : []
-                      ).map((n, index) => (
+                      ).map((n, index) => {
+                        const parsedStn = parseStationHierarchy(n.station);
+                        return (
                         <tr 
                           key={n.sn || n.id || n.f_num || n.fnum} 
                           className={`${viewMode === 'archive' ? 'bg-slate-50 dark:bg-slate-900/60 opacity-80' : bulkSelectMode && Array.isArray(selectedOfficers) && selectedOfficers.includes(n.f_num || n.fnum) ? 'bg-red-50 dark:bg-red-950/30' : 'hover:bg-blue-50 dark:hover:bg-slate-800'} transition-colors ${canEditRecords ? 'cursor-pointer' : ''}`} 
@@ -1509,7 +1514,11 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{cleanStr(n.tribe)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{cleanStr(n.acc_no || n.accno)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{cleanStr(n.bank_branch || n.bankbranch)}</td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-blue-700 dark:text-blue-400">{cleanStr(n.station)}</td>
+                          
+                          {/* 🟢 NEW: Split Station and Post Render */}
+                          <td className="px-3 py-2 whitespace-nowrap text-xs font-bold text-blue-800 dark:text-blue-400">{parsedStn.station}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{parsedStn.post || '-'}</td>
+                          
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{cleanStr(n.district)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{cleanStr(n.region)}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700 dark:text-slate-300">{cleanStr(n.section)}</td>
@@ -1523,12 +1532,13 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                             </>
                           )}
                         </tr>
-                      ))}
+                        );
+                      })}
                       {(Array.isArray(viewMode === 'active' ? filteredRolls : filteredNominal_Roll_archives) 
                         ? (viewMode === 'active' ? filteredRolls : filteredNominal_Roll_archives) 
                         : []
                       ).length === 0 && (
-                        <tr><td colSpan={viewMode === 'archive' ? "28" : (bulkSelectMode ? "27" : "26")} className="text-center py-6 text-xs text-gray-500 dark:text-slate-400 font-medium">No personnel records found in this view.</td></tr>
+                        <tr><td colSpan={viewMode === 'archive' ? "29" : (bulkSelectMode ? "28" : "27")} className="text-center py-6 text-xs text-gray-500 dark:text-slate-400 font-medium">No personnel records found in this view.</td></tr>
                       )}
                     </tbody>
                   </table>

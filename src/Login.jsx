@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { User, Lock, ShieldAlert, X, HelpCircle, Wrench, Send, AlertTriangle } from 'lucide-react';
 import { API_BASE_URL, setAuthSession, authFetch } from './api';
+import SystemAssistant from './SystemAssistant';
 
 export default function Login({ onLoginSuccess, setIsSignUp }) {
   const [fileOrForceNumber, setFileOrForceNumber] = useState('');
@@ -14,7 +15,7 @@ export default function Login({ onLoginSuccess, setIsSignUp }) {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
 
-  // 🟢 Help & Glitch Report Modal States
+  // Help & Glitch Report Modal States
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [helpCategory, setHelpCategory] = useState('LOGIN_AUTH_FAILURE');
   const [helpDescription, setHelpDescription] = useState('');
@@ -105,7 +106,7 @@ export default function Login({ onLoginSuccess, setIsSignUp }) {
     }
   };
 
-  // 🟢 Handler to dispatch login glitches/help tickets straight to Admin Communications
+  // Handler to dispatch login glitches/help tickets straight to Admin Communications
   const handleSendHelpTicket = async (e) => {
     e.preventDefault();
     if (!helpDescription.trim()) return;
@@ -316,73 +317,88 @@ export default function Login({ onLoginSuccess, setIsSignUp }) {
         🛡️ Protected by KMP Tracker System - KMPCSDMS160626
       </p>
 
-      {/* 🟢 Report Login Issue / Help Modal */}
+      {/* Report Login Issue / Help Modal with reduced & lowered elements labeled "help" */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-300 flex flex-col">
-            <div className="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center shrink-0">
-              <h3 className="font-extrabold uppercase text-xs tracking-wider flex items-center gap-1.5">
-                <Wrench size={15} className="text-amber-400" /> Sign-In Fault & Technical Support
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-300 flex flex-col max-h-[85vh]">
+            <div className="bg-slate-900 text-white px-4 py-3 flex justify-between items-center shrink-0">
+              <h3 className="font-extrabold uppercase text-[11px] tracking-wider flex items-center gap-1.5">
+                <HelpCircle size={14} className="text-blue-400" /> help
               </h3>
               <button onClick={() => setShowHelpModal(false)} className="hover:bg-slate-800 p-1 rounded transition cursor-pointer text-slate-300 hover:text-white">
-                <X size={16} />
+                <X size={15} />
               </button>
             </div>
             
-            <form onSubmit={handleSendHelpTicket} className="p-5 space-y-3.5 text-xs">
-              <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                Experiencing a white screen, login timeout, or unresponsive authentication? Submit your fault description directly to High Command IT Support.
+            {/* Lowered and compressed padding content container */}
+            <div className="p-4 overflow-y-auto space-y-3 text-[11px] mt-1">
+              <p className="text-slate-600 leading-tight font-medium">
+                Need support? Consult the help guide below or submit a manual ticket.
               </p>
 
-              {helpSuccess && (
-                <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg font-bold text-[11px]">
-                  {helpSuccess}
+              {/* Reduced height and lowered container for SystemAssistant */}
+              <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50 p-1.5 mt-2">
+                <div className="text-[9px] font-extrabold text-slate-400 uppercase px-1.5 py-0.5">Interactive help Assistant</div>
+                <div className="relative h-48 w-full">
+                  <SystemAssistant limitedMode={true} />
                 </div>
-              )}
-
-              <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">Issue Category</label>
-                <select 
-                  value={helpCategory} 
-                  onChange={(e) => setHelpCategory(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-900 outline-none focus:border-blue-600"
-                >
-                  <option value="LOGIN_AUTH_FAILURE">Login / Authentication Failure</option>
-                  <option value="RENDER_SERVER_SLEEP">Server Unresponsive / Cold Start Timeout</option>
-                  <option value="WHITE_SCREEN_ERROR">White Screen / Frontend Crash (WSOD)</option>
-                  <option value="ACCOUNT_UNAPPROVED">Account Pending Approval / Unrecognized</option>
-                </select>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">Describe the Error / Symptoms *</label>
-                <textarea 
-                  rows={3}
-                  required
-                  value={helpDescription}
-                  onChange={(e) => setHelpDescription(e.target.value)}
-                  placeholder="e.g. Clicking Authorize Access results in infinite loading or 500 error..."
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 outline-none focus:border-blue-600"
-                />
-              </div>
+              <hr className="border-slate-200 my-1.5" />
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
-                <button 
-                  type="button" 
-                  onClick={() => setShowHelpModal(false)}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isSubmittingHelp}
-                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow disabled:opacity-50"
-                >
-                  {isSubmittingHelp ? 'Dispatches Ticket...' : <><Send size={13} /> Dispatch to Admin</>}
-                </button>
-              </div>
-            </form>
+              <form onSubmit={handleSendHelpTicket} className="space-y-2">
+                <h4 className="font-extrabold text-slate-800 uppercase tracking-tight text-[10px]">Manual Fault Ticket</h4>
+
+                {helpSuccess && (
+                  <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg font-bold text-[10px]">
+                    {helpSuccess}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase mb-0.5 text-[10px]">Category</label>
+                  <select 
+                    value={helpCategory} 
+                    onChange={(e) => setHelpCategory(e.target.value)}
+                    className="w-full p-1.5 bg-slate-50 border border-slate-300 rounded-md font-bold text-slate-900 text-[11px] outline-none focus:border-blue-600"
+                  >
+                    <option value="LOGIN_AUTH_FAILURE">Login / Authentication Failure</option>
+                    <option value="RENDER_SERVER_SLEEP">Server Unresponsive / Cold Start Timeout</option>
+                    <option value="WHITE_SCREEN_ERROR">White Screen / Frontend Crash (WSOD)</option>
+                    <option value="ACCOUNT_UNAPPROVED">Account Pending Approval / Unrecognized</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase mb-0.5 text-[10px]">Description *</label>
+                  <textarea 
+                    rows={2}
+                    required
+                    value={helpDescription}
+                    onChange={(e) => setHelpDescription(e.target.value)}
+                    placeholder="Describe issue..."
+                    className="w-full p-1.5 bg-slate-50 border border-slate-300 rounded-md text-[11px] text-slate-900 outline-none focus:border-blue-600"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-1.5 pt-1">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowHelpModal(false)}
+                    className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg font-bold text-[11px] transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isSubmittingHelp}
+                    className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-extrabold text-[11px] flex items-center gap-1 transition cursor-pointer shadow disabled:opacity-50"
+                  >
+                    {isSubmittingHelp ? 'Sending...' : <><Send size={11} /> Send</>}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

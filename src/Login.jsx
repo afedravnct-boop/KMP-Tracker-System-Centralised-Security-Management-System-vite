@@ -783,45 +783,67 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
         </div>
       )}
 
-      {/* SYSTEM HELP & USER GUIDE MODAL WITH LOWERED/COMPRESSED ASSISTANT */}
       {/* SYSTEM HELP & USER GUIDE MODAL */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-300 flex flex-col max-h-[85vh]">
-            <div className="bg-slate-900 text-white px-4 py-3 flex justify-between items-center shrink-0">
-              <h3 className="font-extrabold uppercase text-[11px] tracking-wider flex items-center gap-1.5">
-                <HelpCircle size={14} className="text-blue-400" /> HELP & SYSTEM GUIDE
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-300 flex flex-col max-h-[90vh]">
+            <div className="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center shrink-0">
+              <h3 className="font-extrabold uppercase text-xs tracking-wider flex items-center gap-1.5">
+                <HelpCircle size={16} className="text-blue-400" /> HELP, LOGIN NAVIGATION & SYSTEM GUIDE
               </h3>
-              <button onClick={() => setShowHelpModal(false)} className="hover:bg-slate-800 p-1 rounded transition cursor-pointer text-slate-300 hover:text-white">
-                <X size={15} />
+              <button type="button" onClick={() => setShowHelpModal(false)} className="hover:bg-slate-800 p-1.5 rounded-lg transition cursor-pointer text-slate-300 hover:text-white">
+                <X size={16} />
               </button>
             </div>
             
-            <div className="p-5 overflow-y-auto space-y-4 text-xs text-slate-700 leading-relaxed custom-scrollbar bg-slate-50 flex-1">
-              {/* 🟢 ORIGINAL GUIDE / INSTRUCTIONS DISPLAYED FIRST */}
-              <div className="space-y-2 border-b border-slate-200 pb-3">
-                <h4 className="font-bold text-slate-900 uppercase">Portal Access & Authorization Instructions</h4>
-                <p><strong>1. Force Number Format:</strong> Enter your official Force or File Number in uppercase (e.g., <code>A/2408</code> or numeric IDs).</p>
-                <p><strong>2. Security Key:</strong> Use your assigned password. If you experience lockouts after 3 consecutive failed attempts, a 30-second security cooldown will engage.</p>
-                <p><strong>3. New Account Requests:</strong> Select "Sign Up", fill out your deployment details completely, upload your mandatory identification photo, and accept the Terms & Policy before submitting for Command approval.</p>
+            <div className="p-5 overflow-y-auto space-y-5 text-xs text-slate-700 leading-relaxed custom-scrollbar bg-slate-50 flex-1">
+              
+              {/* COMPREHENSIVE LOGIN SCREEN & NAVIGATION GUIDE */}
+              <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-slate-100 pb-2">Login Screen Navigation & Input Guide</h4>
+                <p><strong>1. Main Sign-In Mode (Existing Users):</strong></p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                  <li><strong>Force Number Input:</strong> Enter your official Force or File Number in uppercase format (e.g., <code>A/2408</code> or numeric IDs like <code>63034</code>).</li>
+                  <li><strong>Security Key (Password):</strong> Enter your assigned secure password. Note that entering incorrect credentials 3 times triggers a mandatory 30-second security lockout.</li>
+                  <li><strong>Authorization Action:</strong> Click the "Authorize Access" button to verify credentials against the central NeonDB database and launch your session.</li>
+                </ul>
+
+                <p className="pt-2"><strong>2. Request Access Authorization (New User Signup Mode):</strong></p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                  <li>Switch modes by clicking <strong>"Sign Up (Request Access)"</strong> at the bottom of the login card.</li>
+                  <li><strong>File/Force Number & IPPS Number:</strong> Enter your unique service identifiers accurately.</li>
+                  <li><strong>National ID (NIN):</strong> Provide your 14-character National Identification Number starting with CM or CF in uppercase font.</li>
+                  <li><strong>Gender / Sex, Full Name, & Rank:</strong> Select your gender, type your full name in uppercase, and specify your current active rank (e.g., <code>AIP</code>, <code>IP</code>, <code>ASP</code>, <code>PC</code>).</li>
+                  <li><strong>Region & Station Selection:</strong> Choose your assigned KMP command region from the dropdown list. The station options will automatically filter to match that region's hierarchical jurisdiction.</li>
+                  <li><strong>Position / Title:</strong> Select your exact official appointment or command role from the filtered position dropdown.</li>
+                  <li><strong>Contact Details:</strong> Provide a valid email and a 10-digit telephone number (e.g., <code>0772123456</code>).</li>
+                  <li><strong>Officer Identification Photo (Mandatory):</strong> Upload a clear passport-style service photograph which securely syncs to cloud storage.</li>
+                  <li><strong>Create Password:</strong> Define a strong password (minimum 8 characters combining letters and numbers).</li>
+                  <li><strong>Terms & Policy Checkbox:</strong> You must click and read the Terms, Information Security Policy & User Guide via the modal link, then check the agreement box before the submission button becomes active.</li>
+                </ul>
+
+                <p className="pt-2"><strong>3. Password Reset / Recovery Mode:</strong></p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                  <li>Click <strong>"Forgot Security Key?"</strong> on the login screen.</li>
+                  <li>Enter your registered Force Number and submit a reset request directly to Command review logs.</li>
+                </ul>
               </div>
 
-              {/* 🟢 INTERACTIVE AI ASSISTANT PLACED AFTER THE GUIDE */}
-              <div className="space-y-1.5">
+              {/* EMBEDDED INTERACTIVE AI ASSISTANT */}
+              <div className="space-y-2">
                 <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Interactive Help Assistant</div>
-                <div className="border border-slate-200 rounded-lg overflow-hidden bg-white p-1.5 shadow-xs">
-                  <div className="relative h-48 w-full">
-                    <SystemAssistant limitedMode={true} />
-                  </div>
+                <div className="relative h-64 w-full bg-white rounded-xl overflow-hidden border border-slate-200 shadow-inner">
+                  <SystemAssistant embedded={true} limitedMode={true} />
                 </div>
               </div>
+
             </div>
 
-            <div className="bg-white p-3 border-t border-slate-200 flex justify-end shrink-0">
+            <div className="bg-white p-4 border-t border-slate-200 flex justify-end shrink-0">
               <button 
                 type="button" 
                 onClick={() => setShowHelpModal(false)}
-                className="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer shadow"
+                className="px-5 py-2 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer shadow"
               >
                 Close Guide
               </button>

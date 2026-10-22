@@ -1,7 +1,7 @@
 // src/Login.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Lock, ShieldAlert, X, HelpCircle, Send, AlertTriangle, Globe, Camera } from 'lucide-react';
-import { setAuthSession, authFetch } from "./api";
+import { User, Lock, X, HelpCircle, AlertTriangle, Globe, Camera } from 'lucide-react';
+import { setAuthSession, authFetch } from './api';
 import SystemAssistant from './SystemAssistant';
 
 // ====================================================================
@@ -62,23 +62,23 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
   // 🟢 NEW: State for the Help / Support Guide
   const [showHelpModal, setShowHelpModal] = useState(false);
   
-// Place this inside your Login or Workspace Standby component
-useEffect(() => {
-  let animationFrameId;
-  const syncGlobesToEpoch = () => {
-    // 20-second complete rotation cycle mapped to Epoch milliseconds
-    const currentTime = Date.now() / 20; 
-    const rotationPosition = currentTime % 500; // Loops every 500px of background texture
-    
-    // Push the synchronized coordinate directly to the HTML root
-    document.documentElement.style.setProperty('--universal-globe-pos', `${rotationPosition}px`);
+  // Place this inside your Login or Workspace Standby component
+  useEffect(() => {
+    let animationFrameId;
+    const syncGlobesToEpoch = () => {
+      // 20-second complete rotation cycle mapped to Epoch milliseconds
+      const currentTime = Date.now() / 20; 
+      const rotationPosition = currentTime % 500; // Loops every 500px of background texture
+      
+      // Push the synchronized coordinate directly to the HTML root
+      document.documentElement.style.setProperty('--universal-globe-pos', `${rotationPosition}px`);
+      
+      animationFrameId = requestAnimationFrame(syncGlobesToEpoch);
+    };
     
     animationFrameId = requestAnimationFrame(syncGlobesToEpoch);
-  };
-  
-  animationFrameId = requestAnimationFrame(syncGlobesToEpoch);
-  return () => cancelAnimationFrame(animationFrameId);
-}, []);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
   
   const [signupData, setSignupData] = useState({
     fnum: '', 
@@ -202,7 +202,7 @@ useEffect(() => {
     if (!signupData.profile_photo_path) return setAuthMessage("⚠️ Error: Profile photo upload is mandatory.");
     if (!/^\d{10}$/.test(signupData.phone)) return setAuthMessage("⚠️ Error: Contact number must be exactly 10 digits.");
 
-    // 🟢 Client-side Password Policy Verification
+    // Client-side Password Policy Verification
     if (!signupData.password || signupData.password.length < 8) {
       return setAuthMessage("⚠️ Error: Password must be at least 8 characters long.");
     }
@@ -257,7 +257,6 @@ useEffect(() => {
 
     if (mode === 'login') {
       try {
-        // 🟢 Use native fetch directly so authFetch doesn't swallow 403 error payloads
         const response = await fetch(`${API_URL}/api/auth/login`, { 
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' }, 
@@ -287,7 +286,6 @@ useEffect(() => {
           });
         } else {
           setPassword(''); 
-          // 🟢 This will now successfully catch and render: "ACCESS DENIED: Your system access credentials have been revoked by Command..."
           setAuthMessage(data.detail || "Incorrect Force Number or password");
           const newAttempts = attempts + 1; 
           setAttempts(newAttempts);
@@ -319,7 +317,7 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 relative overflow-hidden">
       
-      {/* 🟢 FULL-SCREEN STANDBY CURTAIN */}
+      {/* FULL-SCREEN STANDBY CURTAIN */}
       <div 
         className={`security-curtain-overlay fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center transition-opacity duration-700 ease-in-out ${
           isLoginIdle ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -377,26 +375,15 @@ useEffect(() => {
         <div className="absolute bottom-0 w-full h-2 bg-[#000000]"></div> 
       </div>
 
-      {/* 🟢 MAIN CARD CONTAINER */}
+      {/* MAIN CARD CONTAINER */}
       <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden relative z-10">
         <div className="bg-slate-900 p-6 text-center relative">
           
-          {/* 🟢 HELP BUTTON */}
-          <button 
-            type="button" 
-            onClick={() => setShowHelpModal(true)}
-            className="absolute top-5 right-5 text-slate-400 hover:text-white transition-colors cursor-pointer bg-slate-800/50 hover:bg-slate-800 p-2 rounded-full border border-slate-700 shadow-sm flex items-center gap-1.5"
-            title="System Access Help Guide"
-          >
-            <HelpCircle size={18} className="text-blue-400" />
-            <span className="text-xs font-bold text-slate-200">help</span>
-          </button>
-
           <img 
             src="/upf_badge.png" 
             alt="UPF Logo" 
             className="w-24 h-24 mx-auto mb-4 object-contain contrast-200 brightness-75 drop-shadow-sm" 
-            onError={(e) => { e.target.style.display = 'none'; }} 
+            onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} 
           />
           <h1 className="text-2xl font-extrabold text-white tracking-wide">Uganda Police Force</h1>
           <h2 className="text-lg font-bold text-blue-400 mt-1">Kampala Metropolitan Police Headquarters</h2>
@@ -449,6 +436,7 @@ useEffect(() => {
                         placeholder="123456"
                       />
                     </div>
+                                        
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">National ID (NIN) *</label>
                       <input 
@@ -713,6 +701,19 @@ useEffect(() => {
                     )}
                   </div>
 
+                  {/* HELP BUTTON PLACED DOWN IN THE LOGIN SCREEN FLOW */}
+                  <div className="pt-2 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowHelpModal(true)}
+                      className="text-slate-600 hover:text-slate-900 transition-colors cursor-pointer bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm flex items-center gap-1.5 text-xs font-bold"
+                      title="System Access Help Guide"
+                    >
+                      <HelpCircle size={16} className="text-blue-600" />
+                      <span>help</span>
+                    </button>
+                  </div>
+
                   <div className="text-center mt-6 space-y-1 relative z-10">
                     <p className="text-xs text-gray-400 flex items-center justify-center">
                       <Lock className="w-3 h-3 mr-1"/> Protected by System Security Protocols
@@ -728,7 +729,7 @@ useEffect(() => {
         </div>
       </div>
     
-      {/* 🟢 POLICY & TERMS MODAL FOR SIGNUP */}
+      {/* POLICY & TERMS MODAL FOR SIGNUP */}
       {showPolicyModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden border border-slate-300 flex flex-col max-h-[85vh]">
@@ -745,8 +746,23 @@ useEffect(() => {
               <div>
                 <h4 className="font-black text-sm text-slate-900 uppercase border-b pb-2 mb-3">Part 1: Terms and Conditions of Use</h4>
                 <div className="space-y-2">
-                  <p><strong>1. Acceptance of Terms:</strong> By accessing, logging into, or utilizing KMP-CSDMS, you formally acknowledge, accept, and agree to be bound by these Terms and Conditions, the User Policy, and all operational directives issued by the Uganda Police Force (UPF) command.</p>
-                  <p><strong>2. Authorized Use & Eligibility:</strong> The system is a secure, restricted government asset intended solely for authorized personnel of the Uganda Police Force.</p>
+                  <p><strong>1. Acceptance of Terms:</strong> By accessing, logging into, or utilizing KMP-CSDMS, you formally acknowledge, accept, and agree to be bound by these Terms and Conditions, the User Policy, and all operational directives issued by the Uganda Police Force (UPF) command. If you do not agree to these terms, you must immediately terminate any attempt to access the platform.</p>
+                  <p><strong>2. Authorized Use & Eligibility:</strong> The system is a secure, restricted government asset intended solely for authorized personnel of the Uganda Police Force and designated national security stakeholders under active deployment status. Any transfer, suspension, or termination of active police service instantly revokes system access privileges.</p>
+                  <p><strong>3. Intellectual Property & System Ownership:</strong> All software architecture, databases, UI designs, AI models, forensic watermarking protocols, and compiled templates within KMP-CSDMS are the exclusive property of the Uganda Police Force. Unauthorized replication, reverse engineering, extraction of source code, or redistribution is strictly prohibited and subject to legal prosecution.</p>
+                  <p><strong>4. Limitation of Liability:</strong> The UPF Command and system administrators maintain high-grade security standards, but assume no liability for operational delays, local hardware malfunctions, network interruptions, or unauthorized data access resulting from individual user negligence or credential compromise.</p>
+                  <p><strong>5. Modification of Terms:</strong> Command authorities reserve the right to alter, update, or revise these Terms and Conditions at any time to align with evolving national security frameworks or technical enhancements. Continued use following updates constitutes formal acceptance of the revised terms.</p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-black text-sm text-slate-900 uppercase border-b pb-2 mb-3">Part 2: User Policy (Information Security, Data Privacy & Acceptable Use)</h4>
+                <div className="space-y-2">
+                  <p><strong>1. Purpose & Scope:</strong> Establishes mandatory security standards, operational guardrails, and behavioral protocols for personnel accessing sensitive police records, nominal rolls, crime registers, and intelligence databases to maintain operational security (OPSEC) and public trust.</p>
+                  <p><strong>2. Account Security & Credential Integrity:</strong> System access credentials (Force/File Number and Secret Key/Password) are strictly personal and non-transferable. Officers are fully accountable for all activities executed under their assigned credentials. Personnel must never leave active terminals unattended without utilizing the idle curtain or logging out. Credential sharing or secondary operation is a severe disciplinary breach.</p>
+                  <p><strong>3. Acceptable Use of System Modules:</strong> All modules (Crime Registry, Disruptive OPS Statistics, Success Stories, Establishments, Analytics Dashboard, Nominal Roll, Documents & Reports, and AI Command Console) must be accessed strictly for official UPF operations and investigations. Unauthorized personal lookups or exposing unverified live tactical positions via AI prompts is prohibited.</p>
+                  <p><strong>4. Data Classification & Forensic Watermarking:</strong> All documents and exports (.xlsx, .docx) downloaded or generated via the Universal File Intake Hub or Master Database Export are classified as RESTRICTED / LAW ENFORCEMENT RECORDS. Files are dynamically stamped with cryptographic audit tokens identifying the downloading officer and encrypted via AES-256 password protection keyed to the officer's Force Number. Tampering with or disseminating restricted data to unauthorized external parties results in immediate revocation of access and disciplinary proceedings.</p>
+                  <p><strong>5. Audit Logging & Command Oversight:</strong> Every action performed within KMP-CSDMS (page access, record modifications, queries, and AES-encrypted exports) is automatically tracked by audit and activity logging engines. System Administrators, Regional Police Commanders (RPCs), and Super Admins retain the right to review audit logs and investigate suspicious or anomalous activity at any time.</p>
+                  <p><strong>6. Compliance & Enforcement:</strong> Failure to comply results in immediate suspension of system privileges, formal investigation by command authorities, and appropriate disciplinary or legal action under the laws of Uganda and UPF standing orders.</p>
                 </div>
               </div>
             </div>
@@ -767,7 +783,7 @@ useEffect(() => {
         </div>
       )}
 
-      {/* 🟢 COMPRESSED & LOWERED "HELP" MODAL WITH INTERACTIVE ASSISTANT */}
+      {/* SYSTEM HELP & USER GUIDE MODAL WITH LOWERED/COMPRESSED ASSISTANT */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-300 flex flex-col max-h-[85vh]">
@@ -782,7 +798,7 @@ useEffect(() => {
             
             <div className="p-4 overflow-y-auto space-y-3 text-[11px] mt-1">
               <p className="text-slate-600 leading-tight font-medium">
-                Need support? Consult the help guide below for portal guidance.
+                Need support? Consult the interactive assistant below for portal guidance.
               </p>
 
               <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50 p-1.5 mt-2">

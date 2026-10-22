@@ -786,30 +786,32 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
       {/* SYSTEM HELP & USER GUIDE MODAL */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-300 flex flex-col max-h-[90vh]">
-            <div className="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center shrink-0">
-              <h3 className="font-extrabold uppercase text-xs tracking-wider flex items-center gap-1.5">
-                <HelpCircle size={16} className="text-blue-400" /> HELP, LOGIN NAVIGATION & SYSTEM GUIDE
+          {/* Flexes wider with max-w-4xl and increases base font size */}
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-300 flex flex-col max-h-[90vh]">
+            <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
+              <h3 className="font-extrabold uppercase text-sm tracking-wider flex items-center gap-2">
+                <HelpCircle size={18} className="text-blue-400" /> HELP, LOGIN NAVIGATION & SYSTEM GUIDE
               </h3>
               <button type="button" onClick={() => setShowHelpModal(false)} className="hover:bg-slate-800 p-1.5 rounded-lg transition cursor-pointer text-slate-300 hover:text-white">
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
             
-            <div className="p-5 overflow-y-auto space-y-5 text-xs text-slate-700 leading-relaxed custom-scrollbar bg-slate-50 flex-1">
+            {/* Upgraded text size to text-sm and fixed font color contrast */}
+            <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-800 leading-relaxed custom-scrollbar bg-slate-50 flex-1">
               
               {/* COMPREHENSIVE LOGIN SCREEN & NAVIGATION GUIDE */}
-              <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-                <h4 className="font-black text-slate-900 uppercase text-sm border-b border-slate-100 pb-2">Login Screen Navigation & Input Guide</h4>
+              <div className="space-y-4 bg-white p-6 rounded-xl border border-slate-200 shadow-2xs">
+                <h4 className="font-black text-slate-950 uppercase text-base border-b border-slate-200 pb-2">Login Screen Navigation & Input Guide</h4>
                 <p><strong>1. Main Sign-In Mode (Existing Users):</strong></p>
-                <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                <ul className="list-disc pl-6 space-y-2 text-slate-700">
                   <li><strong>Force Number Input:</strong> Enter your official Force or File Number in uppercase format (e.g., <code>A/2408</code> or numeric IDs like <code>63034</code>).</li>
                   <li><strong>Security Key (Password):</strong> Enter your assigned secure password. Note that entering incorrect credentials 3 times triggers a mandatory 30-second security lockout.</li>
                   <li><strong>Authorization Action:</strong> Click the "Authorize Access" button to verify credentials against the central NeonDB database and launch your session.</li>
                 </ul>
 
                 <p className="pt-2"><strong>2. Request Access Authorization (New User Signup Mode):</strong></p>
-                <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                <ul className="list-disc pl-6 space-y-2 text-slate-700">
                   <li>Switch modes by clicking <strong>"Sign Up (Request Access)"</strong> at the bottom of the login card.</li>
                   <li><strong>File/Force Number & IPPS Number:</strong> Enter your unique service identifiers accurately.</li>
                   <li><strong>National ID (NIN):</strong> Provide your 14-character National Identification Number starting with CM or CF in uppercase font.</li>
@@ -823,16 +825,16 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
                 </ul>
 
                 <p className="pt-2"><strong>3. Password Reset / Recovery Mode:</strong></p>
-                <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                <ul className="list-disc pl-6 space-y-2 text-slate-700">
                   <li>Click <strong>"Forgot Security Key?"</strong> on the login screen.</li>
                   <li>Enter your registered Force Number and submit a reset request directly to Command review logs.</li>
                 </ul>
               </div>
 
               {/* EMBEDDED INTERACTIVE AI ASSISTANT */}
-              <div className="space-y-2">
-                <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Interactive Help Assistant</div>
-                <div className="relative h-64 w-full bg-white rounded-xl overflow-hidden border border-slate-200 shadow-inner">
+              <div className="space-y-3">
+                <div className="text-xs font-black text-slate-600 uppercase tracking-wider">Interactive Help Assistant</div>
+                <div className="relative h-72 w-full bg-white rounded-xl overflow-hidden border border-slate-300 shadow-inner">
                   <SystemAssistant embedded={true} limitedMode={true} />
                 </div>
               </div>
@@ -843,7 +845,7 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
               <button 
                 type="button" 
                 onClick={() => setShowHelpModal(false)}
-                className="px-5 py-2 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer shadow"
+                className="px-6 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-sm uppercase tracking-wider transition cursor-pointer shadow"
               >
                 Close Guide
               </button>

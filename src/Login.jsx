@@ -784,39 +784,47 @@ const LoginScreen = ({ onLogin, onForgot, onSignup, pendingUsers = [], activeUse
       )}
 
       {/* SYSTEM HELP & USER GUIDE MODAL WITH LOWERED/COMPRESSED ASSISTANT */}
+      {/* SYSTEM HELP & USER GUIDE MODAL */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[300] flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-300 flex flex-col max-h-[85vh]">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-300 flex flex-col max-h-[85vh]">
             <div className="bg-slate-900 text-white px-4 py-3 flex justify-between items-center shrink-0">
               <h3 className="font-extrabold uppercase text-[11px] tracking-wider flex items-center gap-1.5">
-                <HelpCircle size={14} className="text-blue-400" /> help
+                <HelpCircle size={14} className="text-blue-400" /> HELP & SYSTEM GUIDE
               </h3>
               <button onClick={() => setShowHelpModal(false)} className="hover:bg-slate-800 p-1 rounded transition cursor-pointer text-slate-300 hover:text-white">
                 <X size={15} />
               </button>
             </div>
             
-            <div className="p-4 overflow-y-auto space-y-3 text-[11px] mt-1">
-              <p className="text-slate-600 leading-tight font-medium">
-                Need support? Consult the interactive assistant below for portal guidance.
-              </p>
+            <div className="p-5 overflow-y-auto space-y-4 text-xs text-slate-700 leading-relaxed custom-scrollbar bg-slate-50 flex-1">
+              {/* 🟢 ORIGINAL GUIDE / INSTRUCTIONS DISPLAYED FIRST */}
+              <div className="space-y-2 border-b border-slate-200 pb-3">
+                <h4 className="font-bold text-slate-900 uppercase">Portal Access & Authorization Instructions</h4>
+                <p><strong>1. Force Number Format:</strong> Enter your official Force or File Number in uppercase (e.g., <code>A/2408</code> or numeric IDs).</p>
+                <p><strong>2. Security Key:</strong> Use your assigned password. If you experience lockouts after 3 consecutive failed attempts, a 30-second security cooldown will engage.</p>
+                <p><strong>3. New Account Requests:</strong> Select "Sign Up", fill out your deployment details completely, upload your mandatory identification photo, and accept the Terms & Policy before submitting for Command approval.</p>
+              </div>
 
-              <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50 p-1.5 mt-2">
-                <div className="text-[9px] font-extrabold text-slate-400 uppercase px-1.5 py-0.5">Interactive help Assistant</div>
-                <div className="relative h-48 w-full">
-                  <SystemAssistant limitedMode={true} />
+              {/* 🟢 INTERACTIVE AI ASSISTANT PLACED AFTER THE GUIDE */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Interactive Help Assistant</div>
+                <div className="border border-slate-200 rounded-lg overflow-hidden bg-white p-1.5 shadow-xs">
+                  <div className="relative h-48 w-full">
+                    <SystemAssistant limitedMode={true} />
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="flex justify-end pt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setShowHelpModal(false)}
-                  className="px-4 py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-[11px] transition cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
+            <div className="bg-white p-3 border-t border-slate-200 flex justify-end shrink-0">
+              <button 
+                type="button" 
+                onClick={() => setShowHelpModal(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-xs uppercase tracking-wider transition cursor-pointer shadow"
+              >
+                Close Guide
+              </button>
             </div>
           </div>
         </div>

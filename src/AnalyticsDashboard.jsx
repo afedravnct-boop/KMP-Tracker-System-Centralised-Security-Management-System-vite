@@ -482,7 +482,6 @@ const AnalyticsDashboard = ({
       return aggregateTimeSeries(timeFilteredDataset, 'date', ['minor', 'serious', 'fatal', 'victims', 'total']);
   }, [timeFilteredDataset]);
 
-  // 🔒 Advanced Calendar & Detentions Intelligence
   const detentionCalendarData = useMemo(() => {
     const records = fetchedLockup;
     if (!Array.isArray(records) || records.length === 0) return { dates: [], dateMap: {}, regionDemographics: [], regionDuration: [], dailyMargins: [] };
@@ -505,22 +504,18 @@ const AnalyticsDashboard = ({
       const fJuv = Number(r.female_juvenile_count || r.female_juvenile || 0);
       const d3Over = Number(r.detention_3days_over || 0);
 
-      // Date map for calendar click
       if (!dateMap[dStr]) dateMap[dStr] = { total: 0, stations: [] };
       dateMap[dStr].total += suspects;
       dateMap[dStr].stations.push({ station: stn, region: reg, suspects, mAd, mJuv, fAd, fJuv, d3Over });
 
-      // Daily totals for margin delta
       dailyTotals[dStr] = (dailyTotals[dStr] || 0) + suspects;
 
-      // Region Demographics for Chart 1
       if (!regionDemoMap[reg]) regionDemoMap[reg] = { region: reg, maleAdults: 0, femaleAdults: 0, maleJuveniles: 0, femaleJuveniles: 0 };
       regionDemoMap[reg].maleAdults += mAd;
       regionDemoMap[reg].femaleAdults += fAd;
       regionDemoMap[reg].maleJuveniles += mJuv;
       regionDemoMap[reg].femaleJuveniles += fJuv;
 
-      // Region Duration for Chart 2
       if (!regionDurMap[reg]) regionDurMap[reg] = { region: reg, day1: 0, day2: 0, over3Days: 0 };
       regionDurMap[reg].day1 += Number(r.detention_1day || 0);
       regionDurMap[reg].day2 += Number(r.detention_2days || 0);
@@ -529,7 +524,6 @@ const AnalyticsDashboard = ({
 
     const sortedDates = Object.keys(dateMap).sort();
     
-    // Calculate Day-over-Day Margins (Increments / Decrements)
     const dailyMargins = [];
     for (let i = 0; i < sortedDates.length; i++) {
       const currDate = sortedDates[i];
@@ -756,7 +750,7 @@ const AnalyticsDashboard = ({
   };
 
   return (
-    <div className="p-2 max-w-[1600px] mx-auto space-y-2 font-sans min-h-screen pb-16" style={{ backgroundColor: '#f4eee2' }}>
+    <div className="p-2 max-w-[1600px] mx-auto space-y-2 font-sans min-h-screen pb-16 overflow-x-hidden" style={{ backgroundColor: '#f4eee2' }}>
         
       {/* Top Header Card */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-[#fbf8f3] px-3 py-2 rounded-xl shadow-xs border border-[#e2d6c3] gap-2">
@@ -854,15 +848,15 @@ const AnalyticsDashboard = ({
           </div>
 
           <div className="bg-[#fbf8f3] rounded-xl shadow-xs border border-[#e2d6c3] overflow-hidden">
-            <div className="overflow-x-auto max-h-[520px] overflow-y-auto custom-scrollbar w-full">
-              <table className="min-w-full divide-y divide-[#e2d6c3]">
+            <div className="max-h-[520px] overflow-y-auto custom-scrollbar w-full">
+              <table className="w-full table-fixed divide-y divide-[#e2d6c3]">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-36">Station / Region</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-28">Suspects Arrested</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-72">Classified Breakthrough Summary</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Recovered Properties & Quantities</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-36">Suspect Legal Status</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '18%' }}>Station / Region</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '12%' }}>Suspects Arrested</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '28%' }}>Classified Breakthrough Summary</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '26%' }}>Recovered Properties & Quantities</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '16%' }}>Suspect Legal Status</th>
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
@@ -872,11 +866,11 @@ const AnalyticsDashboard = ({
                         <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">
                           {st.station}<br/><span className="text-[9px] text-[#736450] font-medium">{st.region}</span>
                         </td>
-                        <td className="px-3 py-2 text-center font-bold text-[#596E47] text-[10px] border-r border-[#e2d6c3]">{st.parsedSuspects}</td>
+                        <td className="px-3 py-2 text-center font-bold text-[#596E47] text-[10px] border-r border-[#e2d6c3] whitespace-normal break-words">{st.parsedSuspects}</td>
                         <td className="px-3 py-2 text-[10px] font-extrabold text-[#3a3225] uppercase border-r border-[#e2d6c3] whitespace-normal break-words">
                           {st.parsedClassification}
                         </td>
-                        <td className="px-3 py-2 text-[10px] text-[#594d3c] font-bold border-r border-[#e2d6c3] whitespace-normal break-words max-w-xs">
+                        <td className="px-3 py-2 text-[10px] text-[#594d3c] font-bold border-r border-[#e2d6c3] whitespace-normal break-words">
                           {st.parsedRecoveries.split('||').map((item, i) => (
                             <div key={i} className="bg-white/60 px-2 py-0.5 my-0.5 rounded border border-[#e2d6c3] shadow-2xs whitespace-normal break-words">{item.trim()}</div>
                           ))}
@@ -914,12 +908,12 @@ const AnalyticsDashboard = ({
              <div className="bg-[#efece6] px-3 py-1.5 border-b border-[#d3c2a8] flex items-center justify-between">
                 <h3 className="text-[11px] font-black text-[#3a3225] uppercase">Aggregated Regional Crime Volumes</h3>
              </div>
-             <div className="overflow-x-auto max-h-[520px] overflow-y-auto custom-scrollbar w-full">
-               <table className="min-w-full divide-y divide-[#e2d6c3]">
+             <div className="max-h-[520px] overflow-y-auto custom-scrollbar w-full">
+               <table className="w-full table-fixed divide-y divide-[#e2d6c3]">
                   <thead className="sticky top-0 z-20">
                      <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
-                       <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide sticky left-0 bg-[#f4eee2] z-10 w-64 border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Command Region</th>
-                       <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Total Crimes Recorded</th>
+                       <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '75%' }}>Command Region</th>
+                       <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '25%' }}>Total Crimes Recorded</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-[#e2d6c3]">
@@ -928,7 +922,7 @@ const AnalyticsDashboard = ({
                         return (
                           <React.Fragment key={reg.region}>
                             <tr onClick={() => toggleCrimeRegion(reg.region)} className="bg-[#efece6]/50 hover:bg-[#e9eedf]/50 cursor-pointer transition-colors border-t border-[#d3c2a8]">
-                               <td className="px-3 py-2 text-[10px] font-extrabold text-[#3a3225] uppercase flex items-center space-x-1.5 sticky left-0 bg-[#efece6]/50 border-r border-[#e2d6c3]">
+                               <td className="px-3 py-2 text-[10px] font-extrabold text-[#3a3225] uppercase flex items-center space-x-1.5 border-r border-[#e2d6c3] whitespace-normal break-words">
                                   <span className="text-[#596E47]">{isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</span>
                                   <span>{reg.region}</span>
                                </td>
@@ -936,7 +930,7 @@ const AnalyticsDashboard = ({
                             </tr>
                             {isExpanded && reg.categoryList.map((cat, cIdx) => (
                                <tr key={`cat-${cIdx}`} className="bg-white align-top">
-                                  <td className="px-3 py-1.5 pl-7 text-[10px] font-semibold text-[#594d3c] uppercase sticky left-0 bg-white border-r border-[#e2d6c3] whitespace-normal break-words max-w-md">— {cat.name}</td>
+                                  <td className="px-3 py-1.5 pl-7 text-[10px] font-semibold text-[#594d3c] uppercase border-r border-[#e2d6c3] whitespace-normal break-words">— {cat.name}</td>
                                   <td className="px-3 py-1.5 text-[10px] text-center font-bold text-amber-700">{cat.count}</td>
                                </tr>
                             ))}
@@ -953,7 +947,7 @@ const AnalyticsDashboard = ({
         </div>
       )}
 
-      {/* 🔒 DETENTIONS ANALYSIS TAB (FULL CALENDAR & MARGIN AUDIT) */}
+      {/* DETENTIONS ANALYSIS TAB */}
       {activeDomain === 'DETENTIONS' && (
         <div className="space-y-3 pb-8">
           <div className="bg-[#3a3225] rounded-xl p-3 text-[#f4eee2] shadow-sm border border-[#534735]">
@@ -965,7 +959,6 @@ const AnalyticsDashboard = ({
             </p>
           </div>
 
-          {/* Calendar Ribbon Selector */}
           <div className="bg-white p-3 rounded-xl shadow-xs border border-[#e2d6c3] space-y-2">
             <h3 className="text-[11px] font-black text-[#3a3225] uppercase flex items-center">
               <Calendar className="w-3.5 h-3.5 mr-1.5 text-[#596E47]" /> Select Date for Station Lock-Up Audit:
@@ -994,7 +987,6 @@ const AnalyticsDashboard = ({
             </div>
           </div>
 
-          {/* Selected Date Station Breakdown Table */}
           {selectedDetentionDate && (
             <div className="bg-[#fbf8f3] rounded-xl shadow-xs border border-[#e2d6c3] overflow-hidden">
               <div className="bg-[#efece6] px-3 py-2 border-b border-[#d3c2a8] flex justify-between items-center">
@@ -1005,24 +997,24 @@ const AnalyticsDashboard = ({
                   Master Total: {selectedDayLockup.total} Suspects
                 </span>
               </div>
-              <div className="overflow-x-auto max-h-[300px] overflow-y-auto custom-scrollbar w-full">
-                <table className="min-w-full divide-y divide-[#e2d6c3]">
+              <div className="max-h-[300px] overflow-y-auto custom-scrollbar w-full">
+                <table className="w-full table-fixed divide-y divide-[#e2d6c3]">
                   <thead className="sticky top-0 z-20">
                     <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
-                      <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Region / Station</th>
-                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Total Suspects</th>
-                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Male Adults</th>
-                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Male Juveniles</th>
-                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Female Adults</th>
-                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Female Juveniles</th>
-                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide text-red-800">3+ Days Over (48hr Breach)</th>
+                      <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]" style={{ width: '28%' }}>Region / Station</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]" style={{ width: '12%' }}>Total</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]" style={{ width: '12%' }}>M. Adults</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]" style={{ width: '12%' }}>M. Juv</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]" style={{ width: '12%' }}>F. Adults</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]" style={{ width: '12%' }}>F. Juv</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide text-red-800" style={{ width: '12%' }}>3+ Days</th>
                     </tr>
                   </thead>
                   <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
                     {selectedDayLockup.stations.length > 0 ? (
                       selectedDayLockup.stations.map((stnRow, i) => (
-                        <tr key={i} className="hover:bg-[#e9eedf]/30">
-                          <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">
+                        <tr key={i} className="hover:bg-[#e9eedf]/30 align-top">
+                          <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">
                             {stnRow.station}<br/><span className="text-[9px] text-[#736450]">{stnRow.region}</span>
                           </td>
                           <td className="px-3 py-2 text-center text-[10px] font-black text-[#596E47] border-r border-[#e2d6c3]">{stnRow.suspects}</td>
@@ -1042,28 +1034,27 @@ const AnalyticsDashboard = ({
             </div>
           )}
 
-          {/* Day-to-Day Margin / Delta Table */}
           <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3">
             <h3 className="text-[11px] font-black text-[#3a3225] uppercase mb-2">Day-to-Day Population Margin & Increments/Decrements Audit</h3>
             <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
-              <table className="min-w-full divide-y divide-[#e2d6c3] text-[10px]">
-                <thead className="bg-[#efece6] sticky top-0">
+              <table className="w-full table-fixed divide-y divide-[#e2d6c3] text-[10px]">
+                <thead className="bg-[#efece6] sticky top-0 z-20">
                   <tr>
-                    <th className="px-3 py-1.5 text-left font-bold text-[#594d3c]">Date</th>
-                    <th className="px-3 py-1.5 text-center font-bold text-[#3a3225]">Total Lock-Up</th>
-                    <th className="px-3 py-1.5 text-center font-bold text-[#594d3c]">Margin Delta</th>
-                    <th className="px-3 py-1.5 text-left font-bold text-[#594d3c]">Operational Status / Audit Note</th>
+                    <th className="px-3 py-1.5 text-left font-bold text-[#594d3c]" style={{ width: '20%' }}>Date</th>
+                    <th className="px-3 py-1.5 text-center font-bold text-[#3a3225]" style={{ width: '20%' }}>Total Lock-Up</th>
+                    <th className="px-3 py-1.5 text-center font-bold text-[#594d3c]" style={{ width: '20%' }}>Margin Delta</th>
+                    <th className="px-3 py-1.5 text-left font-bold text-[#594d3c]" style={{ width: '40%' }}>Operational Status / Audit Note</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e2d6c3]">
                   {detentionCalendarData.dailyMargins.map((m, idx) => (
-                    <tr key={idx} className="hover:bg-[#e9eedf]/30">
-                      <td className="px-3 py-1.5 font-bold text-[#3a3225]">{m.date}</td>
+                    <tr key={idx} className="hover:bg-[#e9eedf]/30 align-top">
+                      <td className="px-3 py-1.5 font-bold text-[#3a3225] whitespace-normal break-words">{m.date}</td>
                       <td className="px-3 py-1.5 text-center font-black text-blue-900">{m.total}</td>
                       <td className={`px-3 py-1.5 text-center font-black ${m.margin < 0 ? 'text-red-700' : m.margin > 0 ? 'text-emerald-700' : 'text-slate-600'}`}>
                         {m.margin > 0 ? `+${m.margin}` : m.margin}
                       </td>
-                      <td className="px-3 py-1.5 font-semibold text-[#736450]">{m.status}</td>
+                      <td className="px-3 py-1.5 font-semibold text-[#736450] whitespace-normal break-words">{m.status}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1071,9 +1062,7 @@ const AnalyticsDashboard = ({
             </div>
           </div>
 
-          {/* Graphs Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Graph 1: Region vs Suspect Demographics */}
             <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 h-[340px]">
               <h3 className="text-[11px] font-black text-[#3a3225] uppercase mb-2">Suspect Demographics by Region (Y: Region, X: Suspects)</h3>
               {detentionCalendarData.regionDemographics.length > 0 ? (
@@ -1095,7 +1084,6 @@ const AnalyticsDashboard = ({
               )}
             </div>
 
-            {/* Graph 2: Region vs Detention Duration */}
             <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 h-[340px]">
               <h3 className="text-[11px] font-black text-[#3a3225] uppercase mb-2">Detention Duration by Region (1 Day, 2 Days, 3+ Days)</h3>
               {detentionCalendarData.regionDuration.length > 0 ? (
@@ -1182,15 +1170,15 @@ const AnalyticsDashboard = ({
           </div>
 
           <div className="bg-[#fbf8f3] rounded-xl shadow-xs border border-[#e2d6c3] overflow-hidden">
-            <div className="overflow-x-auto max-h-[520px] overflow-y-auto custom-scrollbar w-full">
-              <table className="min-w-full divide-y divide-[#e2d6c3]">
+            <div className="max-h-[520px] overflow-y-auto custom-scrollbar w-full">
+              <table className="w-full table-fixed divide-y divide-[#e2d6c3]">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-36">Station / Region</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-52">Property / Structure Type</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-20">Deaths</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-20">Injuries</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Incident Narrative Summary</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '18%' }}>Station / Region</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '22%' }}>Property / Structure Type</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '10%' }}>Deaths</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '10%' }}>Injuries</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '40%' }}>Incident Narrative Summary</th>
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
@@ -1201,8 +1189,8 @@ const AnalyticsDashboard = ({
                           {f.station}<br/><span className="text-[9px] text-[#736450]">{f.region}</span>
                         </td>
                         <td className="px-3 py-2 text-[10px] font-extrabold text-amber-800 uppercase border-r border-[#e2d6c3] whitespace-normal break-words">{f.classification}</td>
-                        <td className="px-3 py-2 text-center font-black text-red-700 text-[10px] border-r border-[#e2d6c3]">{f.deaths}</td>
-                        <td className="px-3 py-2 text-center font-black text-amber-600 text-[10px] border-r border-[#e2d6c3]">{f.injuries}</td>
+                        <td className="px-3 py-2 text-center font-black text-red-700 text-[10px] border-r border-[#e2d6c3] whitespace-normal break-words">{f.deaths}</td>
+                        <td className="px-3 py-2 text-center font-black text-amber-600 text-[10px] border-r border-[#e2d6c3] whitespace-normal break-words">{f.injuries}</td>
                         <td className="px-3 py-2 text-[10px] text-[#3a3225] whitespace-normal break-words">{f.summary}</td>
                       </tr>
                     ))
@@ -1261,15 +1249,15 @@ const AnalyticsDashboard = ({
           </div>
 
           <div className="bg-[#fbf8f3] rounded-xl shadow-xs border border-[#e2d6c3] overflow-hidden">
-            <div className="overflow-x-auto max-h-[520px] overflow-y-auto custom-scrollbar w-full">
-              <table className="min-w-full divide-y divide-[#e2d6c3]">
+            <div className="max-h-[520px] overflow-y-auto custom-scrollbar w-full">
+              <table className="w-full table-fixed divide-y divide-[#e2d6c3]">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-40">Exhibit Category</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Description (Colour/Features)</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-48">Region / Station</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-28">Status</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-24">Total Count</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '22%' }}>Exhibit Category</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '30%' }}>Description (Colour/Features)</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '22%' }}>Region / Station</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '14%' }}>Status</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '12%' }}>Total</th>
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
@@ -1307,11 +1295,11 @@ const AnalyticsDashboard = ({
 
           <div className="bg-[#fbf8f3] rounded-xl shadow-xs border border-[#e2d6c3] overflow-hidden w-full max-w-full">
             <div className="max-h-[520px] overflow-y-auto custom-scrollbar w-full">
-              <table className="min-w-full divide-y divide-[#e2d6c3]">
+              <table className="w-full table-fixed divide-y divide-[#e2d6c3]">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
-                    <th className="px-4 py-2.5 text-left text-[11px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Operational Metric Attribute</th>
-                    <th className="px-4 py-2.5 text-right text-[11px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Aggregate Total</th>
+                    <th className="px-4 py-2.5 text-left text-[11px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '75%' }}>Operational Metric Attribute</th>
+                    <th className="px-4 py-2.5 text-right text-[11px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]" style={{ width: '25%' }}>Aggregate Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e2d6c3]">
@@ -1347,7 +1335,7 @@ const AnalyticsDashboard = ({
              <div className="bg-[#efece6] px-3 py-1.5 border-b border-[#d3c2a8] flex items-center justify-between">
                 <h3 className="text-[11px] font-black text-[#3a3225] uppercase">General Summary (Deployable Personnel vs Rank Distribution)</h3>
              </div>
-             <div className="overflow-x-auto max-h-[520px] overflow-y-auto custom-scrollbar w-full">
+             <div className="max-h-[520px] overflow-y-auto custom-scrollbar w-full">
                <table className="min-w-full divide-y divide-[#e2d6c3]">
                   <thead className="sticky top-0 z-20">
                      <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b border-[#d3c2a8]">

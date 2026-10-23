@@ -22,155 +22,6 @@ const isLockupLog = (item) => {
          (item.daily_lock_up !== undefined && item.daily_lock_up !== null && Number(item.daily_lock_up) > 0);
 };
 
-const cleanDisplayNarrative = (text) => {
-  if (!text) return '';
-  let clean = String(text)
-    .replace(/<[^>]*>?/gm, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/g, "'");
-  return clean.replace(/\s+/g, ' ').trim();
-};
-
-const parseFireIncidentAdvanced = (rawNarrative, offenceStr) => {
-    const textBlob = `${offenceStr || ''} ${rawNarrative || ''}`.toLowerCase();
-    
-    let classification = "RESIDENTIAL HOUSE";
-    if (textBlob.includes("school") || textBlob.includes("college") || textBlob.includes("dormitory")) {
-        classification = "SCHOOL";
-    } else if (textBlob.includes("church") || textBlob.includes("mosque") || textBlob.includes("chapel")) {
-        classification = "CHURCH / RELIGIOUS CENTRE";
-    } else if (textBlob.includes("vehicle") || textBlob.includes("car") || textBlob.includes("lorry") || textBlob.includes("boda")) {
-        classification = "MOTOR VEHICLE";
-    } else if (textBlob.includes("boat") || textBlob.includes("vessel") || textBlob.includes("ship")) {
-        classification = "VESSEL";
-    } else if (textBlob.includes("furniture") || textBlob.includes("shop") || textBlob.includes("market") || textBlob.includes("store") || textBlob.includes("warehouse") || textBlob.includes("hardware") || textBlob.includes("commercial")) {
-        classification = "FURNITURE SHOP / COMMERCIAL PROPERTY";
-    }
-    
-    let deaths = 0;
-    let injuries = 0;
-    
-    const deathMatch = textBlob.match(/(\d+)\s*(?:dead|deaths|fatality|fatalities|killed|burnt to death)/);
-    if (deathMatch) deaths = parseInt(deathMatch[1], 10);
-        
-    const injuryMatch = textBlob.match(/(\d+)\s*(?:injured|injury|injuries|hurt|burn wounds|hospitalized|admitted)/);
-    if (injuryMatch) injuries = parseInt(injuryMatch[1], 10);
-
-    return {
-        classification,
-        deaths,
-        injuries,
-        totalCasualties: deaths + injuries
-    };
-};
-
-const normalizeOffenceCategory = (rawOffence) => {
-  if (!rawOffence) return "UNSPECIFIED OFFENCE";
-  let clean = String(rawOffence).trim().toUpperCase();
-
-  const mapping = {
-    'DEATH SUDDEN': 'Sudden Death',
-    'DEATH_SUDDEN': 'Sudden Death',
-    'SUDDEN DEATH': 'Sudden Death',
-    'FIREOUTBREAK': 'Fire Outbreak',
-    'FIRE OUTBREAK': 'Fire Outbreak',
-    'BY DEATH DROWNING': 'Death by Drowning',
-    'DEATH DROWNING': 'Death by Drowning',
-    'AGGRAVATED ROBBERY': 'Aggravated Robbery',
-    'MURDER SUSPECTED': 'Suspected Murder',
-    'ATTEMPTED MURDER': 'Attempted Murder',
-    'DEFILEMENT / RAPE': 'Defilement / Rape'
-  };
-
-  if (mapping[clean]) {
-    return mapping[clean];
-  }
-
-  if (clean.includes("FATAL") && (clean.includes("TRAFFIC") || clean.includes("ACCIDENT"))) return "Traffic Accident (Fatal)";
-  if (clean.includes("MINOR") && (clean.includes("TRAFFIC") || clean.includes("ACCIDENT"))) return "Traffic Accident (Minor)";
-  if (clean.includes("DEFILEMENT") || clean.includes("RAPE")) return "Defilement / Rape";
-
-  return clean
-    .replace(/_/g, ' ')
-    .toLowerCase()
-    .replace(/\b\w/g, (l) => l.toUpperCase());
-};
-
-const parseSuccessStoryNarrative = (rawHtmlNarrative) => {
-  if (!rawHtmlNarrative) {
-    return {
-      suspects: 0,
-      recoveries: "NONE RECORDED",
-      legalStatus: "UNDER INVESTIGATION",
-      classification: "OPERATIONAL BREAKTHROUGH"
-    };
-  }
-
-  const cleanText = cleanDisplayNarrative(rawHtmlNarrative);
-  const headlineMatch = rawHtmlNarrative.match(/<strong>(.*?)<\/strong>/i);
-  let classification = "ARREST & RECOVERY OPERATION";
-
-  if (headlineMatch && headlineMatch[1]) {
-     const cleanedHeadline = cleanDisplayNarrative(headlineMatch[1]);
-     if (cleanedHeadline.length > 3 && cleanedHeadline.length < 60) {
-         classification = cleanedHeadline.toUpperCase();
-     }
-  }
-
-  const lowerText = cleanText.toLowerCase();
-  
-  let suspectsCount = 0;
-  const suspectMatches = [
-    lowerText.match(/(\d+)\s*(?:suspects|suspect|person|persons|culprits|thieves|gang|individuals)/i),
-    lowerText.match(/(?:arrest(?:ed|ing)?|apprehend(?:ed)?|detain(?:ed)?)\s*(?:of)?\s*(\d+)/i)
-  ];
-  
-  for (const m of suspectMatches) {
-    if (m && m[1]) {
-      suspectsCount = parseInt(m[1], 10);
-      break;
-    }
-  }
-
-  if (suspectsCount === 0 && (lowerText.includes('suspect') || lowerText.includes('arrest') || lowerText.includes('apprehend'))) {
-    suspectsCount = 1; 
-  }
-
-  let legalStatus = 'UNDER INVESTIGATION';
-  if (lowerText.includes('remand') || lowerText.includes('remanded')) legalStatus = 'REMANDED';
-  else if (lowerText.includes('convict') || lowerText.includes('sentenced')) legalStatus = 'CONVICTED';
-  else if (lowerText.includes('acquit')) legalStatus = 'ACQUITTED';
-  else if (lowerText.includes('court') || lowerText.includes('trial') || lowerText.includes('magistrate') || lowerText.includes('arraign')) legalStatus = 'UNDERGOING COURT TRIAL';
-
-  const recoveriesList = [];
-  const recoveryRegex = /(\d+)\s*([a-z\s]+(?:cows|cow|cattle|phones|phone|pistol|pistols|gun|guns|firearm|firearms|cash|money|shillings|computers|computer|chairs|chair|tables|table|shoes|shoe|motorcycles|motorcycle|vehicles|vehicle|pangas|panga|weapons|weapon|items))/gi;
-  let match;
-  while ((match = recoveryRegex.exec(lowerText)) !== null) {
-    const formattedCount = String(match[1]).padStart(2, '0');
-    recoveriesList.push(`${formattedCount} | ${match[2].trim().toUpperCase()}`);
-  }
-
-  if (recoveriesList.length === 0) {
-    if (lowerText.includes('motorcycle') || lowerText.includes('boda')) recoveriesList.push('01 | MOTORCYCLE RECOVERED');
-    else if (lowerText.includes('vehicle') || lowerText.includes('car')) recoveriesList.push('01 | MOTOR VEHICLE RECOVERED');
-    else if (lowerText.includes('phone') || lowerText.includes('mobile')) recoveriesList.push('01 | MOBILE PHONE RECOVERED');
-    else if (lowerText.includes('cattle') || lowerText.includes('cow')) recoveriesList.push('01 | STOLEN CATTLE RECOVERED');
-    else if (lowerText.includes('money') || lowerText.includes('cash') || lowerText.includes('shillings')) recoveriesList.push('01 | CASH / FUNDS RECOVERED');
-    else if (lowerText.includes('gun') || lowerText.includes('pistol') || lowerText.includes('firearm')) recoveriesList.push('01 | FIREARM RECOVERED');
-    else if (lowerText.includes('uniform') || lowerText.includes('stores')) recoveriesList.push('01 | GOVERNMENT STORES');
-    else recoveriesList.push('NONE RECORDED');
-  }
-
-  return {
-    suspects: suspectsCount,
-    recoveries: recoveriesList.join(' || '),
-    legalStatus: legalStatus,
-    classification: classification.length > 55 ? classification.substring(0, 52) + '...' : classification
-  };
-};
-
 const isStationEquivalent = (statA, statB) => {
   const a = stripHtmlTags(statA || '').trim().toUpperCase();
   const b = stripHtmlTags(statB || '').trim().toUpperCase();
@@ -257,11 +108,16 @@ const AnalyticsDashboard = ({
 }) => {
   const [fetchedRolls, setFetchedRolls] = useState([]);
   const [fetchedCrime, setFetchedCrime] = useState([]);
-  const [fetchedSuccess, setFetchedSuccess] = useState([]);
   const [fetchedOps, setFetchedOps] = useState([]);
   const [fetchedExhibits, setFetchedExhibits] = useState([]); 
-  const [fetchedLockup, setFetchedLockup] = useState([]);
   const [fetchedAccidents, setFetchedAccidents] = useState([]);
+
+  // 🟢 Offloaded backend intelligence states
+  const [backendDetentionCalendar, setBackendDetentionCalendar] = useState({ dates: [], dateMap: {}, regionDemographics: [], regionDuration: [], dailyMargins: [] });
+  const [backendSuccessStories, setBackendSuccessStories] = useState([]);
+  const [backendFireIntelligence, setBackendFireIntelligence] = useState({ totalFires: 0, totalDeaths: 0, totalInjuries: 0, fireList: [] });
+  const [backendCrimeCategories, setBackendCrimeCategories] = useState([]);
+
   const [loading, setLoading] = useState(false);
 
   const [expandedManpowerRegion, setExpandedManpowerRegion] = useState(null);
@@ -282,38 +138,39 @@ const AnalyticsDashboard = ({
 
       setLoading(true);
       try {
-        const [rollRes, crimeRes, storyRes, statsRes, exhibitsRes, lockupRes, accidentsRes] = await Promise.all([
+        const [rollRes, crimeRes, statsRes, exhibitsRes, accidentsRes, intelRes] = await Promise.all([
           authFetch('/api/v1/nominal-roll').catch(() => null),
           authFetch('/api/v1/reports').catch(() => null),
-          authFetch('/api/v1/stories').catch(() => null),
           authFetch('/api/v1/stats').catch(() => null),
           authFetch('/api/v1/exhibits').catch(() => null),
-          authFetch('/api/v1/lockup-matrix').catch(() => null),
-          authFetch('/api/v1/accidents').catch(() => null)
+          authFetch('/api/v1/accidents').catch(() => null),
+          authFetch('/api/v1/analytics/dashboard-intelligence').catch(() => null)
         ]);
 
         const rollData = rollRes && rollRes.ok ? await rollRes.json() : [];
         const crimeData = crimeRes && crimeRes.ok ? await crimeRes.json() : [];
-        const storyData = storyRes && storyRes.ok ? await storyRes.json() : [];
         const statsData = statsRes && statsRes.ok ? await statsRes.json() : [];
         const exhibitsData = exhibitsRes && exhibitsRes.ok ? await exhibitsRes.json() : [];
-        const lockupData = lockupRes && lockupRes.ok ? await lockupRes.json() : [];
         const accidentsData = accidentsRes && accidentsRes.ok ? await accidentsRes.json() : [];
+        const intelData = intelRes && intelRes.ok ? await intelRes.json() : null;
 
         if (isMounted) {
           setFetchedRolls(Array.isArray(rollData) ? rollData : []);
           setFetchedCrime(Array.isArray(crimeData) ? crimeData : []);
-          setFetchedSuccess(Array.isArray(storyData) ? storyData : []);
           setFetchedOps(Array.isArray(statsData) ? statsData : []);
           setFetchedExhibits(Array.isArray(exhibitsData) ? exhibitsData : []);
-          setFetchedLockup(Array.isArray(lockupData) ? lockupData : []);
           setFetchedAccidents(Array.isArray(accidentsData) ? accidentsData : []);
 
-          if (Array.isArray(lockupData) && lockupData.length > 0) {
-            const dates = lockupData.map(l => l.date || l.created_at).filter(Boolean);
-            if (dates.length > 0) {
-              setSelectedDetentionDate(dates[0].split('T')[0]);
+          if (intelData) {
+            if (intelData.detentionCalendar) {
+              setBackendDetentionCalendar(intelData.detentionCalendar);
+              if (intelData.detentionCalendar.dates?.length > 0) {
+                setSelectedDetentionDate(intelData.detentionCalendar.dates[0]);
+              }
             }
+            if (intelData.successStoriesProcessed) setBackendSuccessStories(intelData.successStoriesProcessed);
+            if (intelData.fireIntelligence) setBackendFireIntelligence(intelData.fireIntelligence);
+            if (intelData.crimeCategoryData) setBackendCrimeCategories(intelData.crimeCategoryData);
           }
         }
       } catch (err) {
@@ -331,7 +188,6 @@ const AnalyticsDashboard = ({
 
   const resolvedNominalRolls = nominalRolls.length ? nominalRolls : (nominal_rolls.length ? nominal_rolls : fetchedRolls);
   const resolvedCrimeRegistry = crimeRegistry.length ? crimeRegistry : (reports.length ? reports : fetchedCrime);
-  const resolvedSuccessStories = successStories.length ? successStories : fetchedSuccess;
   const resolvedOperationalStats = operationalStats.length ? operationalStats : (stats.length ? stats : fetchedOps);
   const resolvedExhibits = impoundedExhibits.length ? impoundedExhibits : fetchedExhibits;
 
@@ -399,14 +255,14 @@ const AnalyticsDashboard = ({
     let baseData = [];
     if (activeDomain === 'CRIME' || activeDomain === 'CRIME_SUMMARY') baseData = resolvedCrimeRegistry.filter(r => !isLockupLog(r)); 
     else if (activeDomain === 'MANPOWER_DEEP') baseData = resolvedNominalRolls;
-    else if (activeDomain === 'SUCCESS') baseData = resolvedSuccessStories;
+    else if (activeDomain === 'SUCCESS') baseData = successStories;
     else if (activeDomain === 'OPERATIONS') baseData = resolvedOperationalStats;
     else if (activeDomain === 'EXHIBITS') baseData = resolvedExhibits;
-    else if (activeDomain === 'DETENTIONS') baseData = fetchedLockup;
     else if (activeDomain === 'ACCIDENTS') baseData = fetchedAccidents;
     else if (activeDomain === 'FIRES') baseData = resolvedCrimeRegistry;
+    else baseData = resolvedCrimeRegistry;
 
-    baseData = baseData.filter(item => {
+    return baseData.filter(item => {
       let stn = stripHtmlTags(item.station || '').toUpperCase();
       if (stn === "KIRA DIVISION" || stn === "KIRA DIV" || stn === "KIRA") stn = "KIRA DIV";
       const reg = getOfficialRegionForStation(stn, item.region);
@@ -416,143 +272,27 @@ const AnalyticsDashboard = ({
       }
 
       const activeTargetRegion = canViewGlobalLevel ? selectedRegion : userRegClean;
-        
       const belongsToRegion = activeTargetRegion === 'ALL REGIONS' || 
                             reg.toUpperCase() === activeTargetRegion.toUpperCase() || 
                             (item.region && item.region.toUpperCase() === activeTargetRegion.toUpperCase()) ||
                             (REGIONAL_HIERARCHY[activeTargetRegion] && REGIONAL_HIERARCHY[activeTargetRegion].some(s => isStationEquivalent(s, stn)));
 
       if (!belongsToRegion) return false;
-
-      if (selectedStation !== 'ALL STATIONS') {
-        if (!isStationEquivalent(stn, selectedStation)) return false;
-      }
+      if (selectedStation !== 'ALL STATIONS' && !isStationEquivalent(stn, selectedStation)) return false;
       return true;
     });
-
-    if (activeDomain !== 'MANPOWER_DEEP' && activeDomain !== 'RELATIONAL') {
-      baseData = timeFilteredData(baseData);
-    }
-    return baseData;
-  }, [activeDomain, resolvedCrimeRegistry, resolvedNominalRolls, resolvedSuccessStories, resolvedOperationalStats, resolvedExhibits, fetchedLockup, fetchedAccidents, dateFilter, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
-
-  const parsedSuccessStories = useMemo(() => {
-    return timeFilteredDataset.map(st => {
-      const parsed = parseSuccessStoryNarrative(st.narrative || st.title);
-      return {
-        ...st,
-        parsedSuspects: st.suspects_arrested || st.suspects_arrested_count || parsed.suspects,
-        parsedRecoveries: st.suspected_stolen_properties_recovered || st.property_recovered || parsed.recoveries,
-        parsedLegalStatus: st.legal_status || parsed.legalStatus,
-        parsedClassification: parsed.classification
-      };
-    });
-  }, [timeFilteredDataset]);
-
-  const fireIntelligence = useMemo(() => {
-    const records = timeFilteredData(resolvedCrimeRegistry);
-    const fireKeywords = ["fire", "arson", "burnt", "flames", "inferno", "scorch"];
-    const fireList = [];
-    let totalDeaths = 0;
-    let totalInjuries = 0;
-
-    records.forEach(cr => {
-        const narrative = String(cr.narrative || "");
-        const offence = String(cr.offence || "");
-        if (fireKeywords.some(kw => narrative.toLowerCase().includes(kw) || offence.toLowerCase().includes(kw))) {
-            const parsed = parseFireIncidentAdvanced(narrative, offence);
-            totalDeaths += parsed.deaths;
-            totalInjuries += parsed.injuries;
-            fireList.push({
-                station: cr.station || 'UNKNOWN',
-                region: cr.region || 'KMP GENERAL',
-                date: cr.date || 'N/A',
-                classification: parsed.classification,
-                deaths: parsed.deaths,
-                injuries: parsed.injuries,
-                summary: cleanDisplayNarrative(narrative || offence || 'Fire incident logged.')
-            });
-        }
-    });
-
-    return { totalFires: fireList.length, totalDeaths, totalInjuries, fireList };
-  }, [resolvedCrimeRegistry, selectedMonth, dateFilter, selectedRegion, selectedStation]);
+  }, [activeDomain, resolvedCrimeRegistry, resolvedNominalRolls, successStories, resolvedOperationalStats, resolvedExhibits, fetchedAccidents, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
   const accidentsTimeSeriesData = useMemo(() => {
       return aggregateTimeSeries(timeFilteredDataset, 'date', ['minor', 'serious', 'fatal', 'victims', 'total']);
   }, [timeFilteredDataset]);
 
-  const detentionCalendarData = useMemo(() => {
-    const records = fetchedLockup;
-    if (!Array.isArray(records) || records.length === 0) return { dates: [], dateMap: {}, regionDemographics: [], regionDuration: [], dailyMargins: [] };
-
-    const dateMap = {};
-    const regionDemoMap = {};
-    const regionDurMap = {};
-    const dailyTotals = {};
-
-    records.forEach(r => {
-      const dStr = (r.date || r.created_at || '').split('T')[0];
-      if (!dStr) return;
-
-      const stn = (r.station || 'UNKNOWN').toUpperCase();
-      const reg = getOfficialRegionForStation(stn, r.region);
-      const suspects = Number(r.suspects || r.daily_lock_up || 0);
-      const mAd = Number(r.male_count || r.male || 0);
-      const mJuv = Number(r.male_juvenile_count || r.male_juvenile || 0);
-      const fAd = Number(r.female_count || r.female || 0);
-      const fJuv = Number(r.female_juvenile_count || r.female_juvenile || 0);
-      const d3Over = Number(r.detention_3days_over || 0);
-
-      if (!dateMap[dStr]) dateMap[dStr] = { total: 0, stations: [] };
-      dateMap[dStr].total += suspects;
-      dateMap[dStr].stations.push({ station: stn, region: reg, suspects, mAd, mJuv, fAd, fJuv, d3Over });
-
-      dailyTotals[dStr] = (dailyTotals[dStr] || 0) + suspects;
-
-      if (!regionDemoMap[reg]) regionDemoMap[reg] = { region: reg, maleAdults: 0, femaleAdults: 0, maleJuveniles: 0, femaleJuveniles: 0 };
-      regionDemoMap[reg].maleAdults += mAd;
-      regionDemoMap[reg].femaleAdults += fAd;
-      regionDemoMap[reg].maleJuveniles += mJuv;
-      regionDemoMap[reg].femaleJuveniles += fJuv;
-
-      if (!regionDurMap[reg]) regionDurMap[reg] = { region: reg, day1: 0, day2: 0, over3Days: 0 };
-      regionDurMap[reg].day1 += Number(r.detention_1day || 0);
-      regionDurMap[reg].day2 += Number(r.detention_2days || 0);
-      regionDurMap[reg].over3Days += d3Over;
-    });
-
-    const sortedDates = Object.keys(dateMap).sort();
-    
-    const dailyMargins = [];
-    for (let i = 0; i < sortedDates.length; i++) {
-      const currDate = sortedDates[i];
-      const currTotal = dailyTotals[currDate];
-      const prevTotal = i > 0 ? dailyTotals[sortedDates[i - 1]] : currTotal;
-      const margin = currTotal - prevTotal;
-      dailyMargins.push({
-        date: currDate,
-        total: currTotal,
-        margin,
-        status: margin < 0 ? 'DECREASE (Check Bails/Remands/Releases)' : margin > 0 ? 'INCREASE (New Admissions)' : 'STABLE'
-      });
-    }
-
-    return {
-      dates: sortedDates,
-      dateMap,
-      regionDemographics: Object.values(regionDemoMap),
-      regionDuration: Object.values(regionDurMap),
-      dailyMargins
-    };
-  }, [fetchedLockup]);
-
   const selectedDayLockup = useMemo(() => {
-    if (!selectedDetentionDate || !detentionCalendarData.dateMap[selectedDetentionDate]) {
+    if (!selectedDetentionDate || !backendDetentionCalendar.dateMap[selectedDetentionDate]) {
       return { total: 0, stations: [] };
     }
-    return detentionCalendarData.dateMap[selectedDetentionDate];
-  }, [selectedDetentionDate, detentionCalendarData]);
+    return backendDetentionCalendar.dateMap[selectedDetentionDate];
+  }, [selectedDetentionDate, backendDetentionCalendar]);
 
   const manpowerAnalysis = useMemo(() => {
     const rolls = Array.isArray(resolvedNominalRolls) ? resolvedNominalRolls : [];
@@ -623,32 +363,6 @@ const AnalyticsDashboard = ({
     };
   }, [resolvedNominalRolls, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
-  const crimeCategoryData = useMemo(() => {
-    const tf = timeFilteredData(resolvedCrimeRegistry).filter(r => !isLockupLog(r));
-    const regionalMap = {};
-
-    tf.forEach(r => {
-      const cat = normalizeOffenceCategory(r.crime_category || r.offence || 'GENERAL CRIME');
-      const reg = getOfficialRegionForStation(r.station, r.region);
-      const stn = (r.station || 'N/A').toUpperCase();
-
-      if (selectedCrimeCategory !== 'ALL' && cat !== selectedCrimeCategory) return;
-      if (canViewGlobalLevel && selectedRegion !== 'ALL REGIONS' && reg !== selectedRegion.toUpperCase()) return;
-      if (selectedStation !== 'ALL STATIONS' && !isStationEquivalent(stn, selectedStation)) return;
-
-      if (!regionalMap[reg]) regionalMap[reg] = { region: reg, totalCrimes: 0, categories: {} };
-      
-      regionalMap[reg].totalCrimes += 1;
-      if (!regionalMap[reg].categories[cat]) regionalMap[reg].categories[cat] = 0;
-      regionalMap[reg].categories[cat] += 1;
-    });
-
-    return Object.values(regionalMap).map(regObj => ({
-      ...regObj,
-      categoryList: Object.entries(regObj.categories).sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count }))
-    })).sort((a, b) => b.totalCrimes - a.totalCrimes);
-  }, [resolvedCrimeRegistry, selectedCrimeCategory, selectedRegion, selectedStation, selectedMonth, dateFilter, canViewGlobalLevel]);
-
   const exhibitGroupedData = useMemo(() => {
     const tf = timeFilteredData(resolvedExhibits);
     const map = {};
@@ -679,11 +393,10 @@ const AnalyticsDashboard = ({
 
   const summaryAggregates = useMemo(() => {
     const ops = timeFilteredData(resolvedOperationalStats);
-    const ss = timeFilteredData(resolvedSuccessStories);
+    const ss = backendSuccessStories;
     const cr = timeFilteredData(resolvedCrimeRegistry).filter(r => !isLockupLog(r));
     const ex = timeFilteredData(resolvedExhibits);
     const nom = resolvedNominalRolls;
-    const lck = timeFilteredData(fetchedLockup);
     const acc = timeFilteredData(fetchedAccidents);
 
     return {
@@ -691,13 +404,13 @@ const AnalyticsDashboard = ({
       manpowerTotal: nom.length,
       successOccasions: ss.length,
       totalExhibits: ex.length,
-      totalDetentions: lck.length,
+      totalDetentions: Object.values(backendDetentionCalendar.dateMap || {}).reduce((acc, curr) => acc + curr.total, 0),
       totalAccidents: acc.length,
-      totalFires: fireIntelligence.totalFires,
+      totalFires: backendFireIntelligence.totalFires,
       totalArrests: ops.reduce((acc, curr) => acc + (Number(curr.arrests || curr.suspects || curr.arrested) || 0), 0),
       totalCrimes: cr.length
     };
-  }, [resolvedOperationalStats, resolvedSuccessStories, resolvedCrimeRegistry, resolvedExhibits, resolvedNominalRolls, fetchedLockup, fetchedAccidents, fireIntelligence, selectedMonth, dateFilter]);
+  }, [resolvedOperationalStats, backendSuccessStories, resolvedCrimeRegistry, resolvedExhibits, resolvedNominalRolls, backendDetentionCalendar, fetchedAccidents, backendFireIntelligence, selectedMonth, dateFilter]);
 
   const opsChartData = useMemo(() => {
     const regMap = {};
@@ -831,7 +544,7 @@ const AnalyticsDashboard = ({
         </div>
 
         <span className="text-[10px] font-extrabold text-[#596E47] bg-[#e9eedf] px-2 py-0.5 rounded border border-[#cfe1b9]">
-          Total Entries: {activeDomain === 'SUCCESS' ? parsedSuccessStories.length : activeDomain === 'CRIME' ? crimeCategoryData.length : activeDomain === 'EXHIBITS' ? exhibitGroupedData.length : activeDomain === 'FIRES' ? fireIntelligence.fireList.length : timeFilteredDataset.length}
+          Total Entries: {activeDomain === 'SUCCESS' ? backendSuccessStories.length : activeDomain === 'CRIME' ? backendCrimeCategories.length : activeDomain === 'EXHIBITS' ? exhibitGroupedData.length : activeDomain === 'FIRES' ? backendFireIntelligence.fireList.length : timeFilteredDataset.length}
         </span>
       </div>
 
@@ -860,8 +573,8 @@ const AnalyticsDashboard = ({
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
-                  {parsedSuccessStories.length > 0 ? (
-                    parsedSuccessStories.map((st, idx) => (
+                  {backendSuccessStories.length > 0 ? (
+                    backendSuccessStories.map((st, idx) => (
                       <tr key={idx} className="hover:bg-[#e9eedf]/30 align-top">
                         <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">
                           {st.station}<br/><span className="text-[9px] text-[#736450] font-medium">{st.region}</span>
@@ -917,7 +630,7 @@ const AnalyticsDashboard = ({
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-[#e2d6c3]">
-                     {crimeCategoryData.map((reg) => {
+                     {backendCrimeCategories.map((reg) => {
                         const isExpanded = (expandedCrimeRegion === reg.region);
                         return (
                           <React.Fragment key={reg.region}>
@@ -937,7 +650,7 @@ const AnalyticsDashboard = ({
                           </React.Fragment>
                         );
                      })}
-                     {crimeCategoryData.length === 0 && (
+                     {backendCrimeCategories.length === 0 && (
                         <tr><td colSpan="2" className="text-center py-6 text-[10px] text-[#736450]">No crimes logged for the selected period.</td></tr>
                      )}
                   </tbody>
@@ -964,10 +677,10 @@ const AnalyticsDashboard = ({
               <Calendar className="w-3.5 h-3.5 mr-1.5 text-[#596E47]" /> Select Date for Station Lock-Up Audit:
             </h3>
             <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar p-1">
-              {detentionCalendarData.dates.length > 0 ? (
-                detentionCalendarData.dates.map(dateStr => {
+              {backendDetentionCalendar.dates.length > 0 ? (
+                backendDetentionCalendar.dates.map(dateStr => {
                   const isSelected = selectedDetentionDate === dateStr;
-                  const dayTotal = detentionCalendarData.dateMap[dateStr]?.total || 0;
+                  const dayTotal = backendDetentionCalendar.dateMap[dateStr]?.total || 0;
                   return (
                     <button
                       key={dateStr}
@@ -1047,7 +760,7 @@ const AnalyticsDashboard = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e2d6c3]">
-                  {detentionCalendarData.dailyMargins.map((m, idx) => (
+                  {backendDetentionCalendar.dailyMargins.map((m, idx) => (
                     <tr key={idx} className="hover:bg-[#e9eedf]/30 align-top">
                       <td className="px-3 py-1.5 font-bold text-[#3a3225] whitespace-normal break-words">{m.date}</td>
                       <td className="px-3 py-1.5 text-center font-black text-blue-900">{m.total}</td>
@@ -1065,9 +778,9 @@ const AnalyticsDashboard = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 h-[340px]">
               <h3 className="text-[11px] font-black text-[#3a3225] uppercase mb-2">Suspect Demographics by Region (Y: Region, X: Suspects)</h3>
-              {detentionCalendarData.regionDemographics.length > 0 ? (
+              {backendDetentionCalendar.regionDemographics.length > 0 ? (
                 <ResponsiveContainer width="100%" height="90%">
-                  <BarChart layout="vertical" data={detentionCalendarData.regionDemographics} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <BarChart layout="vertical" data={backendDetentionCalendar.regionDemographics} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2d6c3" />
                     <XAxis type="number" tick={{fontSize: 9}} />
                     <YAxis dataKey="region" type="category" tick={{fontSize: 9, fontWeight: 'bold'}} width={110} />
@@ -1086,9 +799,9 @@ const AnalyticsDashboard = ({
 
             <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 h-[340px]">
               <h3 className="text-[11px] font-black text-[#3a3225] uppercase mb-2">Detention Duration by Region (1 Day, 2 Days, 3+ Days)</h3>
-              {detentionCalendarData.regionDuration.length > 0 ? (
+              {backendDetentionCalendar.regionDuration.length > 0 ? (
                 <ResponsiveContainer width="100%" height="90%">
-                  <BarChart layout="vertical" data={detentionCalendarData.regionDuration} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <BarChart layout="vertical" data={backendDetentionCalendar.regionDuration} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2d6c3" />
                     <XAxis type="number" tick={{fontSize: 9}} />
                     <YAxis dataKey="region" type="category" tick={{fontSize: 9, fontWeight: 'bold'}} width={110} />
@@ -1157,15 +870,15 @@ const AnalyticsDashboard = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
              <div className="bg-amber-900 text-white p-3 rounded-xl shadow-sm border border-amber-950 flex flex-col justify-between">
                 <span className="text-[9px] font-extrabold uppercase tracking-widest text-amber-200">Total Fire Incidents</span>
-                <div className="text-2xl font-black mt-1">{fireIntelligence.totalFires}</div>
+                <div className="text-2xl font-black mt-1">{backendFireIntelligence.totalFires}</div>
              </div>
              <div className="bg-red-900 text-white p-3 rounded-xl shadow-sm border border-red-950 flex flex-col justify-between">
                 <span className="text-[9px] font-extrabold uppercase tracking-widest text-red-200">Total Fire Deaths</span>
-                <div className="text-2xl font-black mt-1">{fireIntelligence.totalDeaths}</div>
+                <div className="text-2xl font-black mt-1">{backendFireIntelligence.totalDeaths}</div>
              </div>
              <div className="bg-orange-800 text-white p-3 rounded-xl shadow-sm border border-orange-950 flex flex-col justify-between">
                 <span className="text-[9px] font-extrabold uppercase tracking-widest text-orange-200">Total Fire Injuries</span>
-                <div className="text-2xl font-black mt-1">{fireIntelligence.totalInjuries}</div>
+                <div className="text-2xl font-black mt-1">{backendFireIntelligence.totalInjuries}</div>
              </div>
           </div>
 
@@ -1182,8 +895,8 @@ const AnalyticsDashboard = ({
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
-                  {fireIntelligence.fireList.length > 0 ? (
-                    fireIntelligence.fireList.map((f, idx) => (
+                  {backendFireIntelligence.fireList.length > 0 ? (
+                    backendFireIntelligence.fireList.map((f, idx) => (
                       <tr key={idx} className="hover:bg-[#e9eedf]/30 align-top">
                         <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">
                           {f.station}<br/><span className="text-[9px] text-[#736450]">{f.region}</span>

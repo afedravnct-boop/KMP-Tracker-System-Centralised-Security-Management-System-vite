@@ -243,40 +243,6 @@ const aggregateTimeSeries = (records, dateField, valueFields) => {
     };
 };
 
-const processDailyDetentionProgression = (records) => {
-    const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const dailyMap = {
-        'Monday': { day: 'Monday', closing: 0, maleAdult: 0, maleJuv: 0, femaleAdult: 0, femaleJuv: 0 },
-        'Tuesday': { day: 'Tuesday', closing: 0, maleAdult: 0, maleJuv: 0, femaleAdult: 0, femaleJuv: 0 },
-        'Wednesday': { day: 'Wednesday', closing: 0, maleAdult: 0, maleJuv: 0, femaleAdult: 0, femaleJuv: 0 },
-        'Thursday': { day: 'Thursday', closing: 0, maleAdult: 0, maleJuv: 0, femaleAdult: 0, femaleJuv: 0 },
-        'Friday': { day: 'Friday', closing: 0, maleAdult: 0, maleJuv: 0, femaleAdult: 0, femaleJuv: 0 },
-        'Saturday': { day: 'Saturday', closing: 0, maleAdult: 0, maleJuv: 0, femaleAdult: 0, femaleJuv: 0 },
-        'Sunday': { day: 'Sunday', closing: 0, maleAdult: 0, maleJuv: 0, femaleAdult: 0, femaleJuv: 0 }
-    };
-
-    records.forEach(r => {
-        const dt = new Date(r.date || r.created_at);
-        if (isNaN(dt)) return;
-        const dayName = dt.toLocaleDateString('en-US', { weekday: 'long' });
-        if (dailyMap[dayName]) {
-            const suspects = Number(r.suspects || r.daily_lock_up || 0);
-            const mAd = Number(r.male_count || r.male || 0);
-            const mJuv = Number(r.male_juvenile_count || r.male_juvenile || 0);
-            const fAd = Number(r.female_count || r.female || 0);
-            const fJuv = Number(r.female_juvenile_count || r.female_juvenile || 0);
-
-            dailyMap[dayName].closing += suspects;
-            dailyMap[dayName].maleAdult += mAd;
-            dailyMap[dayName].maleJuv += mJuv;
-            dailyMap[dayName].femaleAdult += fAd;
-            dailyMap[dayName].femaleJuv += fJuv;
-        }
-    });
-
-    return daysOrder.map(d => dailyMap[d]);
-};
-
 const AnalyticsDashboard = ({ 
   nominalRolls = [], 
   nominal_rolls = [], 
@@ -298,19 +264,15 @@ const AnalyticsDashboard = ({
   const [fetchedAccidents, setFetchedAccidents] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 🟢 Exclusive Accordion State (Only one region expanded at a time)
   const [expandedManpowerRegion, setExpandedManpowerRegion] = useState(null);
   const [expandedCrimeRegion, setExpandedCrimeRegion] = useState(null);
-  const [expandedDays, setExpandedDays] = useState({});
+  const [selectedDetentionDate, setSelectedDetentionDate] = useState(null);
 
   const toggleManpowerRegion = (regionName) => {
     setExpandedManpowerRegion(prev => (prev === regionName ? null : regionName));
   };
   const toggleCrimeRegion = (regionName) => {
     setExpandedCrimeRegion(prev => (prev === regionName ? null : regionName));
-  };
-  const toggleDayDropdown = (dayName) => {
-    setExpandedDays(prev => ({ ...prev, [dayName]: !prev[dayName] }));
   };
 
   useEffect(() => {
@@ -346,6 +308,13 @@ const AnalyticsDashboard = ({
           setFetchedExhibits(Array.isArray(exhibitsData) ? exhibitsData : []);
           setFetchedLockup(Array.isArray(lockupData) ? lockupData : []);
           setFetchedAccidents(Array.isArray(accidentsData) ? accidentsData : []);
+
+          if (Array.isArray(lockupData) && lockupData.length > 0) {
+            const dates = lockupData.map(l => l.date || l.created_at).filter(Boolean);
+            if (dates.length > 0) {
+              setSelectedDetentionDate(dates[0].split('T')[0]);
+            }
+          }
         }
       } catch (err) {
         if (err.message !== 'UNAUTHORIZED') {
@@ -509,51 +478,87 @@ const AnalyticsDashboard = ({
     return { totalFires: fireList.length, totalDeaths, totalInjuries, fireList };
   }, [resolvedCrimeRegistry, selectedMonth, dateFilter, selectedRegion, selectedStation]);
 
-  const detentionTimeSeriesData = useMemo(() => {
-      return aggregateTimeSeries(timeFilteredDataset, 'date', ['suspects', 'male_count', 'detention_3days_over']);
-  }, [timeFilteredDataset]);
-
   const accidentsTimeSeriesData = useMemo(() => {
       return aggregateTimeSeries(timeFilteredDataset, 'date', ['minor', 'serious', 'fatal', 'victims', 'total']);
   }, [timeFilteredDataset]);
 
-  const lockupIntelligence = useMemo(() => {
-    const records = fetchedLockup; 
-    if (!Array.isArray(records) || records.length === 0) {
-        return { overstayed: 0, femaleTotal: 0, femaleAdults: 0, femaleJuveniles: 0, totalJuveniles: 0, stationMap: {} };
-    }
+  // 🔒 Advanced Calendar & Detentions Intelligence
+  const detentionCalendarData = useMemo(() => {
+    const records = fetchedLockup;
+    if (!Array.isArray(records) || records.length === 0) return { dates: [], dateMap: {}, regionDemographics: [], regionDuration: [], dailyMargins: [] };
 
-    let overstayed = 0;
-    let femaleAdults = 0;
-    let femaleJuveniles = 0;
-    let maleJuveniles = 0;
-    const stationMap = {};
+    const dateMap = {};
+    const regionDemoMap = {};
+    const regionDurMap = {};
+    const dailyTotals = {};
 
     records.forEach(r => {
-        const d3Plus = Number(r.detention_3days_over || 0);
-        const fAd = Number(r.female_count || r.female || 0);
-        const fJuv = Number(r.female_juvenile_count || r.female_juvenile || 0);
-        const mJuv = Number(r.male_juvenile_count || r.male_juvenile || 0);
+      const dStr = (r.date || r.created_at || '').split('T')[0];
+      if (!dStr) return;
 
-        if (d3Plus > 0) {
-            overstayed += d3Plus;
-            const stn = r.station || 'UNKNOWN STATION';
-            stationMap[stn] = (stationMap[stn] || 0) + d3Plus;
-        }
-        femaleAdults += fAd;
-        femaleJuveniles += fJuv;
-        maleJuveniles += mJuv;
+      const stn = (r.station || 'UNKNOWN').toUpperCase();
+      const reg = getOfficialRegionForStation(stn, r.region);
+      const suspects = Number(r.suspects || r.daily_lock_up || 0);
+      const mAd = Number(r.male_count || r.male || 0);
+      const mJuv = Number(r.male_juvenile_count || r.male_juvenile || 0);
+      const fAd = Number(r.female_count || r.female || 0);
+      const fJuv = Number(r.female_juvenile_count || r.female_juvenile || 0);
+      const d3Over = Number(r.detention_3days_over || 0);
+
+      // Date map for calendar click
+      if (!dateMap[dStr]) dateMap[dStr] = { total: 0, stations: [] };
+      dateMap[dStr].total += suspects;
+      dateMap[dStr].stations.push({ station: stn, region: reg, suspects, mAd, mJuv, fAd, fJuv, d3Over });
+
+      // Daily totals for margin delta
+      dailyTotals[dStr] = (dailyTotals[dStr] || 0) + suspects;
+
+      // Region Demographics for Chart 1
+      if (!regionDemoMap[reg]) regionDemoMap[reg] = { region: reg, maleAdults: 0, femaleAdults: 0, maleJuveniles: 0, femaleJuveniles: 0 };
+      regionDemoMap[reg].maleAdults += mAd;
+      regionDemoMap[reg].femaleAdults += fAd;
+      regionDemoMap[reg].maleJuveniles += mJuv;
+      regionDemoMap[reg].femaleJuveniles += fJuv;
+
+      // Region Duration for Chart 2
+      if (!regionDurMap[reg]) regionDurMap[reg] = { region: reg, day1: 0, day2: 0, over3Days: 0 };
+      regionDurMap[reg].day1 += Number(r.detention_1day || 0);
+      regionDurMap[reg].day2 += Number(r.detention_2days || 0);
+      regionDurMap[reg].over3Days += d3Over;
     });
 
+    const sortedDates = Object.keys(dateMap).sort();
+    
+    // Calculate Day-over-Day Margins (Increments / Decrements)
+    const dailyMargins = [];
+    for (let i = 0; i < sortedDates.length; i++) {
+      const currDate = sortedDates[i];
+      const currTotal = dailyTotals[currDate];
+      const prevTotal = i > 0 ? dailyTotals[sortedDates[i - 1]] : currTotal;
+      const margin = currTotal - prevTotal;
+      dailyMargins.push({
+        date: currDate,
+        total: currTotal,
+        margin,
+        status: margin < 0 ? 'DECREASE (Check Bails/Remands/Releases)' : margin > 0 ? 'INCREASE (New Admissions)' : 'STABLE'
+      });
+    }
+
     return {
-        overstayed,
-        femaleAdults,
-        femaleJuveniles,
-        femaleTotal: femaleAdults + femaleJuveniles,
-        totalJuveniles: maleJuveniles + femaleJuveniles,
-        stationMap
+      dates: sortedDates,
+      dateMap,
+      regionDemographics: Object.values(regionDemoMap),
+      regionDuration: Object.values(regionDurMap),
+      dailyMargins
     };
   }, [fetchedLockup]);
+
+  const selectedDayLockup = useMemo(() => {
+    if (!selectedDetentionDate || !detentionCalendarData.dateMap[selectedDetentionDate]) {
+      return { total: 0, stations: [] };
+    }
+    return detentionCalendarData.dateMap[selectedDetentionDate];
+  }, [selectedDetentionDate, detentionCalendarData]);
 
   const manpowerAnalysis = useMemo(() => {
     const rolls = Array.isArray(resolvedNominalRolls) ? resolvedNominalRolls : [];
@@ -853,31 +858,31 @@ const AnalyticsDashboard = ({
               <table className="min-w-full divide-y divide-[#e2d6c3]">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Station / Region</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Suspects Arrested</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Classified Breakthrough Summary</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-36">Station / Region</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-28">Suspects Arrested</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-72">Classified Breakthrough Summary</th>
                     <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Recovered Properties & Quantities</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Suspect Legal Status</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-36">Suspect Legal Status</th>
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
                   {parsedSuccessStories.length > 0 ? (
                     parsedSuccessStories.map((st, idx) => (
-                      <tr key={idx} className="hover:bg-[#e9eedf]/30">
-                        <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">
+                      <tr key={idx} className="hover:bg-[#e9eedf]/30 align-top">
+                        <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">
                           {st.station}<br/><span className="text-[9px] text-[#736450] font-medium">{st.region}</span>
                         </td>
                         <td className="px-3 py-2 text-center font-bold text-[#596E47] text-[10px] border-r border-[#e2d6c3]">{st.parsedSuspects}</td>
-                        <td className="px-3 py-2 text-[10px] font-extrabold text-[#3a3225] uppercase border-r border-[#e2d6c3]">
+                        <td className="px-3 py-2 text-[10px] font-extrabold text-[#3a3225] uppercase border-r border-[#e2d6c3] whitespace-normal break-words">
                           {st.parsedClassification}
                         </td>
-                        <td className="px-3 py-2 text-[10px] text-[#594d3c] font-bold border-r border-[#e2d6c3]">
+                        <td className="px-3 py-2 text-[10px] text-[#594d3c] font-bold border-r border-[#e2d6c3] whitespace-normal break-words max-w-xs">
                           {st.parsedRecoveries.split('||').map((item, i) => (
-                            <div key={i} className="bg-white/60 px-2 py-0.5 my-0.5 rounded border border-[#e2d6c3] shadow-2xs">{item.trim()}</div>
+                            <div key={i} className="bg-white/60 px-2 py-0.5 my-0.5 rounded border border-[#e2d6c3] shadow-2xs whitespace-normal break-words">{item.trim()}</div>
                           ))}
                         </td>
-                        <td className="px-3 py-2 text-center">
-                          <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-[#3a3225] text-[#f4eee2] uppercase tracking-wide shadow-xs">
+                        <td className="px-3 py-2 text-center whitespace-normal break-words">
+                          <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-[#3a3225] text-[#f4eee2] uppercase tracking-wide shadow-xs inline-block">
                             {st.parsedLegalStatus}
                           </span>
                         </td>
@@ -923,15 +928,15 @@ const AnalyticsDashboard = ({
                         return (
                           <React.Fragment key={reg.region}>
                             <tr onClick={() => toggleCrimeRegion(reg.region)} className="bg-[#efece6]/50 hover:bg-[#e9eedf]/50 cursor-pointer transition-colors border-t border-[#d3c2a8]">
-                               <td className="px-3 py-2 text-[10px] font-extrabold text-[#3a3225] uppercase flex items-center space-x-1.5 sticky left-0 bg-[#efece6]/50 border-r border-[#d3c2a8]">
+                               <td className="px-3 py-2 text-[10px] font-extrabold text-[#3a3225] uppercase flex items-center space-x-1.5 sticky left-0 bg-[#efece6]/50 border-r border-[#e2d6c3]">
                                   <span className="text-[#596E47]">{isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</span>
                                   <span>{reg.region}</span>
                                </td>
                                <td className="px-3 py-2 text-[10px] text-center font-black text-amber-800">{reg.totalCrimes}</td>
                             </tr>
                             {isExpanded && reg.categoryList.map((cat, cIdx) => (
-                               <tr key={`cat-${cIdx}`} className="bg-white">
-                                  <td className="px-3 py-1.5 pl-7 text-[10px] font-semibold text-[#594d3c] uppercase sticky left-0 bg-white border-r border-[#d3c2a8]">— {cat.name}</td>
+                               <tr key={`cat-${cIdx}`} className="bg-white align-top">
+                                  <td className="px-3 py-1.5 pl-7 text-[10px] font-semibold text-[#594d3c] uppercase sticky left-0 bg-white border-r border-[#e2d6c3] whitespace-normal break-words max-w-md">— {cat.name}</td>
                                   <td className="px-3 py-1.5 text-[10px] text-center font-bold text-amber-700">{cat.count}</td>
                                </tr>
                             ))}
@@ -948,55 +953,168 @@ const AnalyticsDashboard = ({
         </div>
       )}
 
-      {/* DETENTIONS ANALYSIS TAB */}
+      {/* 🔒 DETENTIONS ANALYSIS TAB (FULL CALENDAR & MARGIN AUDIT) */}
       {activeDomain === 'DETENTIONS' && (
         <div className="space-y-3 pb-8">
           <div className="bg-[#3a3225] rounded-xl p-3 text-[#f4eee2] shadow-sm border border-[#534735]">
             <h2 className="text-xs font-extrabold flex items-center tracking-wide text-[#f4eee2]">
-              <Lock className="mr-2 text-[#C5A880] w-3.5 h-3.5" /> Daily Detention Progression (Monday to Sunday Closure)
+              <Lock className="mr-2 text-[#C5A880] w-3.5 h-3.5" /> Calendar Master Lock-Up & Margin Audit (Day-to-Day Delta)
             </h2>
             <p className="text-[10px] text-[#b8ab97] mt-0.5 leading-tight">
-              Tracking daily cell populations from Monday through Sunday closure with granular demographic breakdowns.
+              Select any date from the calendar ribbon below to inspect master lock-ups, station breakdowns, demographic bar distributions, and population margin drops (bails/remands/releases).
             </p>
           </div>
 
-          <div className="space-y-2">
-            {processDailyDetentionProgression(timeFilteredDataset).map((dayObj) => {
-              const isDayOpen = !!expandedDays[dayObj.day];
-              return (
-                <div key={dayObj.day} className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] overflow-hidden">
-                  <div onClick={() => toggleDayDropdown(dayObj.day)} className="px-3 py-2 bg-[#efece6] hover:bg-[#e9eedf] flex justify-between items-center cursor-pointer font-bold text-[11px] transition-colors">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-[#596E47]">{isDayOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}</span>
-                      <span className="text-[#3a3225] uppercase">{dayObj.day}</span>
-                    </div>
-                    <div className="flex items-center space-x-4 font-black text-[#596E47]">
-                      <span>Total Suspects: {dayObj.closing}</span>
-                    </div>
-                  </div>
-                  {isDayOpen && (
-                    <div className="p-3 bg-white grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] border-t border-[#e2d6c3] animate-in slide-in-from-top-2">
-                      <div className="bg-blue-50 p-2.5 rounded-lg border border-blue-200">
-                        <span className="font-bold text-blue-900 block mb-0.5">Male Adults</span>
-                        <strong className="text-sm text-blue-950">{dayObj.maleAdult}</strong>
-                      </div>
-                      <div className="bg-blue-100 p-2.5 rounded-lg border border-blue-300">
-                        <span className="font-bold text-blue-900 block mb-0.5">Male Juveniles</span>
-                        <strong className="text-sm text-blue-950">{dayObj.maleJuv}</strong>
-                      </div>
-                      <div className="bg-pink-50 p-2.5 rounded-lg border border-pink-200">
-                        <span className="font-bold text-pink-900 block mb-0.5">Female Adults</span>
-                        <strong className="text-sm text-pink-950">{dayObj.femaleAdult}</strong>
-                      </div>
-                      <div className="bg-pink-100 p-2.5 rounded-lg border border-pink-300">
-                        <span className="font-bold text-pink-900 block mb-0.5">Female Juveniles</span>
-                        <strong className="text-sm text-pink-950">{dayObj.femaleJuv}</strong>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          {/* Calendar Ribbon Selector */}
+          <div className="bg-white p-3 rounded-xl shadow-xs border border-[#e2d6c3] space-y-2">
+            <h3 className="text-[11px] font-black text-[#3a3225] uppercase flex items-center">
+              <Calendar className="w-3.5 h-3.5 mr-1.5 text-[#596E47]" /> Select Date for Station Lock-Up Audit:
+            </h3>
+            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar p-1">
+              {detentionCalendarData.dates.length > 0 ? (
+                detentionCalendarData.dates.map(dateStr => {
+                  const isSelected = selectedDetentionDate === dateStr;
+                  const dayTotal = detentionCalendarData.dateMap[dateStr]?.total || 0;
+                  return (
+                    <button
+                      key={dateStr}
+                      onClick={() => setSelectedDetentionDate(dateStr)}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold transition border cursor-pointer flex flex-col items-center ${
+                        isSelected ? 'bg-[#596E47] text-white border-[#4A5D4E] shadow-sm' : 'bg-[#fbf8f3] text-[#3a3225] border-[#e2d6c3] hover:bg-[#efece6]'
+                      }`}
+                    >
+                      <span>{dateStr}</span>
+                      <span className={`text-[9px] ${isSelected ? 'text-emerald-100' : 'text-[#736450]'}`}>Total: {dayTotal}</span>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="text-[10px] text-[#736450] py-2">No detention calendar records found in NeonDB.</div>
+              )}
+            </div>
+          </div>
+
+          {/* Selected Date Station Breakdown Table */}
+          {selectedDetentionDate && (
+            <div className="bg-[#fbf8f3] rounded-xl shadow-xs border border-[#e2d6c3] overflow-hidden">
+              <div className="bg-[#efece6] px-3 py-2 border-b border-[#d3c2a8] flex justify-between items-center">
+                <h3 className="text-[11px] font-black text-[#3a3225] uppercase">
+                  Station Lock-Up Breakdown for <span className="text-[#596E47]">{selectedDetentionDate}</span>
+                </h3>
+                <span className="text-[11px] font-black bg-[#3a3225] text-[#f4eee2] px-2.5 py-0.5 rounded">
+                  Master Total: {selectedDayLockup.total} Suspects
+                </span>
+              </div>
+              <div className="overflow-x-auto max-h-[300px] overflow-y-auto custom-scrollbar w-full">
+                <table className="min-w-full divide-y divide-[#e2d6c3]">
+                  <thead className="sticky top-0 z-20">
+                    <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
+                      <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Region / Station</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Total Suspects</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Male Adults</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Male Juveniles</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Female Adults</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8]">Female Juveniles</th>
+                      <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide text-red-800">3+ Days Over (48hr Breach)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
+                    {selectedDayLockup.stations.length > 0 ? (
+                      selectedDayLockup.stations.map((stnRow, i) => (
+                        <tr key={i} className="hover:bg-[#e9eedf]/30">
+                          <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">
+                            {stnRow.station}<br/><span className="text-[9px] text-[#736450]">{stnRow.region}</span>
+                          </td>
+                          <td className="px-3 py-2 text-center text-[10px] font-black text-[#596E47] border-r border-[#e2d6c3]">{stnRow.suspects}</td>
+                          <td className="px-3 py-2 text-center text-[10px] font-semibold border-r border-[#e2d6c3]">{stnRow.mAd}</td>
+                          <td className="px-3 py-2 text-center text-[10px] font-semibold border-r border-[#e2d6c3]">{stnRow.mJuv}</td>
+                          <td className="px-3 py-2 text-center text-[10px] font-semibold border-r border-[#e2d6c3]">{stnRow.fAd}</td>
+                          <td className="px-3 py-2 text-center text-[10px] font-semibold border-r border-[#e2d6c3]">{stnRow.fJuv}</td>
+                          <td className="px-3 py-2 text-center text-[10px] font-black text-red-700 bg-red-50/50">{stnRow.d3Over}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan="7" className="text-center py-4 text-[10px] text-[#736450]">No station records for this date.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Day-to-Day Margin / Delta Table */}
+          <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3">
+            <h3 className="text-[11px] font-black text-[#3a3225] uppercase mb-2">Day-to-Day Population Margin & Increments/Decrements Audit</h3>
+            <div className="max-h-[220px] overflow-y-auto custom-scrollbar">
+              <table className="min-w-full divide-y divide-[#e2d6c3] text-[10px]">
+                <thead className="bg-[#efece6] sticky top-0">
+                  <tr>
+                    <th className="px-3 py-1.5 text-left font-bold text-[#594d3c]">Date</th>
+                    <th className="px-3 py-1.5 text-center font-bold text-[#3a3225]">Total Lock-Up</th>
+                    <th className="px-3 py-1.5 text-center font-bold text-[#594d3c]">Margin Delta</th>
+                    <th className="px-3 py-1.5 text-left font-bold text-[#594d3c]">Operational Status / Audit Note</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e2d6c3]">
+                  {detentionCalendarData.dailyMargins.map((m, idx) => (
+                    <tr key={idx} className="hover:bg-[#e9eedf]/30">
+                      <td className="px-3 py-1.5 font-bold text-[#3a3225]">{m.date}</td>
+                      <td className="px-3 py-1.5 text-center font-black text-blue-900">{m.total}</td>
+                      <td className={`px-3 py-1.5 text-center font-black ${m.margin < 0 ? 'text-red-700' : m.margin > 0 ? 'text-emerald-700' : 'text-slate-600'}`}>
+                        {m.margin > 0 ? `+${m.margin}` : m.margin}
+                      </td>
+                      <td className="px-3 py-1.5 font-semibold text-[#736450]">{m.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Graphs Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Graph 1: Region vs Suspect Demographics */}
+            <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 h-[340px]">
+              <h3 className="text-[11px] font-black text-[#3a3225] uppercase mb-2">Suspect Demographics by Region (Y: Region, X: Suspects)</h3>
+              {detentionCalendarData.regionDemographics.length > 0 ? (
+                <ResponsiveContainer width="100%" height="90%">
+                  <BarChart layout="vertical" data={detentionCalendarData.regionDemographics} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2d6c3" />
+                    <XAxis type="number" tick={{fontSize: 9}} />
+                    <YAxis dataKey="region" type="category" tick={{fontSize: 9, fontWeight: 'bold'}} width={110} />
+                    <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
+                    <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
+                    <Bar dataKey="maleAdults" name="Male Adults" fill="#2563EB" stackId="a" />
+                    <Bar dataKey="femaleAdults" name="Female Adults" fill="#DB2777" stackId="a" />
+                    <Bar dataKey="maleJuveniles" name="Male Juveniles" fill="#3B82F6" stackId="a" />
+                    <Bar dataKey="femaleJuveniles" name="Female Juveniles" fill="#EC4899" stackId="a" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[10px] text-[#736450]">No regional demographic data.</div>
+              )}
+            </div>
+
+            {/* Graph 2: Region vs Detention Duration */}
+            <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 h-[340px]">
+              <h3 className="text-[11px] font-black text-[#3a3225] uppercase mb-2">Detention Duration by Region (1 Day, 2 Days, 3+ Days)</h3>
+              {detentionCalendarData.regionDuration.length > 0 ? (
+                <ResponsiveContainer width="100%" height="90%">
+                  <BarChart layout="vertical" data={detentionCalendarData.regionDuration} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2d6c3" />
+                    <XAxis type="number" tick={{fontSize: 9}} />
+                    <YAxis dataKey="region" type="category" tick={{fontSize: 9, fontWeight: 'bold'}} width={110} />
+                    <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
+                    <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
+                    <Bar dataKey="day1" name="1 Day" fill="#10B981" stackId="a" />
+                    <Bar dataKey="day2" name="2 Days" fill="#F59E0B" stackId="a" />
+                    <Bar dataKey="over3Days" name="3 Days & Over (48hr Breach)" fill="#DC2626" stackId="a" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[10px] text-[#736450]">No duration metrics available.</div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1068,24 +1186,24 @@ const AnalyticsDashboard = ({
               <table className="min-w-full divide-y divide-[#e2d6c3]">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Station / Region</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Property / Structure Type</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Deaths</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Injuries</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-36">Station / Region</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-52">Property / Structure Type</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-20">Deaths</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-20">Injuries</th>
                     <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Incident Narrative Summary</th>
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
                   {fireIntelligence.fireList.length > 0 ? (
                     fireIntelligence.fireList.map((f, idx) => (
-                      <tr key={idx} className="hover:bg-[#e9eedf]/30">
-                        <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">
+                      <tr key={idx} className="hover:bg-[#e9eedf]/30 align-top">
+                        <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">
                           {f.station}<br/><span className="text-[9px] text-[#736450]">{f.region}</span>
                         </td>
-                        <td className="px-3 py-2 text-[10px] font-extrabold text-amber-800 uppercase border-r border-[#e2d6c3]">{f.classification}</td>
+                        <td className="px-3 py-2 text-[10px] font-extrabold text-amber-800 uppercase border-r border-[#e2d6c3] whitespace-normal break-words">{f.classification}</td>
                         <td className="px-3 py-2 text-center font-black text-red-700 text-[10px] border-r border-[#e2d6c3]">{f.deaths}</td>
                         <td className="px-3 py-2 text-center font-black text-amber-600 text-[10px] border-r border-[#e2d6c3]">{f.injuries}</td>
-                        <td className="px-3 py-2 text-[10px] text-[#3a3225]">{f.summary}</td>
+                        <td className="px-3 py-2 text-[10px] text-[#3a3225] whitespace-normal break-words">{f.summary}</td>
                       </tr>
                     ))
                   ) : (
@@ -1147,21 +1265,21 @@ const AnalyticsDashboard = ({
               <table className="min-w-full divide-y divide-[#e2d6c3]">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Exhibit Category</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-40">Exhibit Category</th>
                     <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Description (Colour/Features)</th>
-                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Region / Station</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Status</th>
-                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">Total Count</th>
+                    <th className="px-3 py-2 text-left text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-48">Region / Station</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide border-r border-[#d3c2a8] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-28">Status</th>
+                    <th className="px-3 py-2 text-center text-[10px] uppercase tracking-wide shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] w-24">Total Count</th>
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
                   {exhibitGroupedData.length > 0 ? (
                     exhibitGroupedData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-[#e9eedf]/30">
-                        <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] uppercase border-r border-[#e2d6c3]">{row.category}</td>
-                        <td className="px-3 py-2 text-[10px] font-bold text-[#596E47] uppercase border-r border-[#e2d6c3]">{row.desc}</td>
-                        <td className="px-3 py-2 text-[10px] font-semibold text-[#736450] uppercase border-r border-[#e2d6c3]">{row.region}<br/>{row.station}</td>
-                        <td className="px-3 py-2 text-center text-[10px] font-bold uppercase border-r border-[#e2d6c3]"><span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900">{row.status}</span></td>
+                      <tr key={idx} className="hover:bg-[#e9eedf]/30 align-top">
+                        <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] uppercase border-r border-[#e2d6c3] whitespace-normal break-words">{row.category}</td>
+                        <td className="px-3 py-2 text-[10px] font-bold text-[#596E47] uppercase border-r border-[#e2d6c3] whitespace-normal break-words">{row.desc}</td>
+                        <td className="px-3 py-2 text-[10px] font-semibold text-[#736450] uppercase border-r border-[#e2d6c3] whitespace-normal break-words">{row.region}<br/>{row.station}</td>
+                        <td className="px-3 py-2 text-center text-[10px] font-bold uppercase border-r border-[#e2d6c3] whitespace-normal break-words"><span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 inline-block">{row.status}</span></td>
                         <td className="px-3 py-2 text-center text-[10px] font-black text-teal-800">{row.total}</td>
                       </tr>
                     ))
@@ -1197,15 +1315,15 @@ const AnalyticsDashboard = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e2d6c3]">
-                  <tr className="hover:bg-[#e9eedf]/30"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">Total Disruptive Operations Registered</td><td className="px-4 py-2 text-right font-black text-[#596E47] text-[11px]">{summaryAggregates.disruptiveOps}</td></tr>
-                  <tr className="hover:bg-[#e9eedf]/30"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">Force-Wide Manpower (Nominal Roll)</td><td className="px-4 py-2 text-right font-black text-[#3a3225] text-[11px]">{summaryAggregates.manpowerTotal}</td></tr>
-                  <tr className="hover:bg-[#e9eedf]/30"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">Total Success Occasions / Breakthroughs</td><td className="px-4 py-2 text-right font-black text-amber-800 text-[11px]">{summaryAggregates.successOccasions}</td></tr>
-                  <tr className="hover:bg-[#e9eedf]/30"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">Total Impounded Exhibits Tracked</td><td className="px-4 py-2 text-right font-black text-teal-800 text-[11px]">{summaryAggregates.totalExhibits}</td></tr>
-                  <tr className="hover:bg-[#e9eedf]/30"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">Total Detention Logs Tracked</td><td className="px-4 py-2 text-right font-black text-blue-800 text-[11px]">{summaryAggregates.totalDetentions}</td></tr>
-                  <tr className="hover:bg-[#e9eedf]/30"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">Total Traffic Accidents Recorded</td><td className="px-4 py-2 text-right font-black text-red-800 text-[11px]">{summaryAggregates.totalAccidents}</td></tr>
-                  <tr className="hover:bg-[#e9eedf]/30"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">Total Fire & Arson Outbreaks Tracked</td><td className="px-4 py-2 text-right font-black text-amber-700 text-[11px]">{summaryAggregates.totalFires}</td></tr>
-                  <tr className="hover:bg-[#e9eedf]/30"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">Total Suspects Arrested (Ops)</td><td className="px-4 py-2 text-right font-black text-[#596E47] text-[11px]">{summaryAggregates.totalArrests}</td></tr>
-                  <tr className="hover:bg-[#e9eedf]/30"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3]">Total Crime Incidents Recorded</td><td className="px-4 py-2 text-right font-black text-[#3a3225] text-[11px]">{summaryAggregates.totalCrimes}</td></tr>
+                  <tr className="hover:bg-[#e9eedf]/30 align-top"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">Total Disruptive Operations Registered</td><td className="px-4 py-2 text-right font-black text-[#596E47] text-[11px]">{summaryAggregates.disruptiveOps}</td></tr>
+                  <tr className="hover:bg-[#e9eedf]/30 align-top"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">Force-Wide Manpower (Nominal Roll)</td><td className="px-4 py-2 text-right font-black text-[#3a3225] text-[11px]">{summaryAggregates.manpowerTotal}</td></tr>
+                  <tr className="hover:bg-[#e9eedf]/30 align-top"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">Total Success Occasions / Breakthroughs</td><td className="px-4 py-2 text-right font-black text-amber-800 text-[11px]">{summaryAggregates.successOccasions}</td></tr>
+                  <tr className="hover:bg-[#e9eedf]/30 align-top"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">Total Impounded Exhibits Tracked</td><td className="px-4 py-2 text-right font-black text-teal-800 text-[11px]">{summaryAggregates.totalExhibits}</td></tr>
+                  <tr className="hover:bg-[#e9eedf]/30 align-top"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">Total Detention Logs Tracked</td><td className="px-4 py-2 text-right font-black text-blue-800 text-[11px]">{summaryAggregates.totalDetentions}</td></tr>
+                  <tr className="hover:bg-[#e9eedf]/30 align-top"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">Total Traffic Accidents Recorded</td><td className="px-4 py-2 text-right font-black text-red-800 text-[11px]">{summaryAggregates.totalAccidents}</td></tr>
+                  <tr className="hover:bg-[#e9eedf]/30 align-top"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">Total Fire & Arson Outbreaks Tracked</td><td className="px-4 py-2 text-right font-black text-amber-700 text-[11px]">{summaryAggregates.totalFires}</td></tr>
+                  <tr className="hover:bg-[#e9eedf]/30 align-top"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">Total Suspects Arrested (Ops)</td><td className="px-4 py-2 text-right font-black text-[#596E47] text-[11px]">{summaryAggregates.totalArrests}</td></tr>
+                  <tr className="hover:bg-[#e9eedf]/30 align-top"><td className="px-4 py-2 text-[11px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">Total Crime Incidents Recorded</td><td className="px-4 py-2 text-right font-black text-[#3a3225] text-[11px]">{summaryAggregates.totalCrimes}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1264,8 +1382,8 @@ const AnalyticsDashboard = ({
                                <td colSpan={2 + (manpowerAnalysis.allRanks.length * 2)} className="px-3 py-2 text-[10px] text-[#736450] italic">Expand to view station distribution...</td>
                             </tr>
                             {isExpanded && reg.stationList.map((stn, sIdx) => (
-                               <tr key={`dep-${sIdx}`} className="bg-white">
-                                  <td className="px-3 py-1.5 pl-7 text-[10px] font-semibold text-[#594d3c] uppercase sticky left-0 bg-white border-r border-[#d3c2a8]">— {stn.station}</td>
+                               <tr key={`dep-${sIdx}`} className="bg-white align-top">
+                                  <td className="px-3 py-1.5 pl-7 text-[10px] font-semibold text-[#594d3c] uppercase sticky left-0 bg-white border-r border-[#d3c2a8] whitespace-normal break-words">— {stn.station}</td>
                                   <td className="px-3 py-1.5 text-[10px] text-center font-bold text-[#3a3225] border-r border-[#d3c2a8]">{stn.totalDeployable}</td>
                                   <td className="px-3 py-1.5 text-[10px] text-center font-black text-[#596E47] border-r border-[#d3c2a8]">{stn.active}</td>
                                   <td className="px-3 py-1.5 text-[10px] text-center font-bold text-red-700 border-r border-[#d3c2a8]">{stn.inactive}</td>

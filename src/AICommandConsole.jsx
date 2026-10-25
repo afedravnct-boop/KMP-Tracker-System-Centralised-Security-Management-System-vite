@@ -242,10 +242,11 @@ Region: \`${currentUser?.region || 'ALL'}\` | Station: \`${currentUser?.station 
       const globalBuffer = window.__kmp_global_telemetry || { console: [], network: [] };
       const networkLogs = (globalBuffer.network || []).join('\n');
       
-      const combinedLogs = [logText, networkLogs].filter(Boolean.join('\n')) || "No recent system errors captured.";
+      // 🟢 FIXED: Corrected Boolean filter & join syntax
+      const combinedLogs = [logText, networkLogs].filter(Boolean).join('\n') || "No recent system errors captured.";
       setVerifyLogs(combinedLogs);
 
-      // 🟢 Intelligent Auto-Categorization based on captured log patterns
+      // Intelligent Auto-Categorization based on captured log patterns
       if (combinedLogs.includes("Failed to fetch") || combinedLogs.includes("NET_DROP")) {
         setVerifyCategory("Client-Server Network Connection Drop");
         setVerifyElement("API Fetch / Heartbeat Polling");

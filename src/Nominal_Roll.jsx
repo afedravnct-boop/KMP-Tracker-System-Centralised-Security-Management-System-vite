@@ -327,18 +327,49 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   };
 
   // 🟢 NEW: Real-time filter engine for the Audit Report Modal
+  // 🟢 LOCAL FILTERS FOR AUDIT MODAL
+  const [auditFilterRegion, setAuditFilterRegion] = useState('ALL REGIONS');
+  const [auditFilterStation, setAuditFilterStation] = useState('ALL STATIONS');
+
+  const uniqueAuditRegions = useMemo(() => {
+    const regions = new Set(auditPreviewData.map(r => cleanStr(r.region)));
+    return Array.from(regions).sort();
+  }, [auditPreviewData]);
+
+  const uniqueAuditStations = useMemo(() => {
+    let filtered = auditPreviewData;
+    if (auditFilterRegion !== 'ALL REGIONS') {
+      filtered = filtered.filter(r => cleanStr(r.region) === auditFilterRegion);
+    }
+    const stations = new Set(filtered.map(r => normalizeStationName(r.station)));
+    return Array.from(stations).sort();
+  }, [auditPreviewData, auditFilterRegion]);
+
+  // 🟢 COMBINED ENGINE: Filters by Region, Station, and Search Term
   const filteredAuditPreviewData = useMemo(() => {
-    if (!auditSearchTerm.trim()) return auditPreviewData;
-    const query = auditSearchTerm.trim().toLowerCase();
-    return auditPreviewData.filter(row => {
-      const searchStr = `${row.force_number || ''} ${row.rank || ''} ${row.name || ''} ${row.station || ''} ${row.region || ''} ${row.missing_fields || ''}`.toLowerCase();
-      return searchStr.includes(query);
-    });
-  }, [auditPreviewData, auditSearchTerm]);
+    let data = auditPreviewData;
+    
+    if (auditFilterRegion !== 'ALL REGIONS') {
+      data = data.filter(row => cleanStr(row.region) === auditFilterRegion);
+    }
+    if (auditFilterStation !== 'ALL STATIONS') {
+      data = data.filter(row => normalizeStationName(row.station) === auditFilterStation);
+    }
+    if (auditSearchTerm.trim()) {
+      const query = auditSearchTerm.trim().toLowerCase();
+      data = data.filter(row => {
+        const searchStr = `${row.force_number || ''} ${row.rank || ''} ${row.name || ''} ${row.station || ''} ${row.region || ''} ${row.missing_fields || ''}`.toLowerCase();
+        return searchStr.includes(query);
+      });
+    }
+    return data;
+  }, [auditPreviewData, auditSearchTerm, auditFilterRegion, auditFilterStation]);
 
   const handleFetchAuditPreview = async () => {
     setIsLoadingAudit(true);
     setAuditSearchTerm('');
+    setAuditFilterRegion('ALL REGIONS'); 
+    setAuditFilterStation('ALL STATIONS'); 
     try {
       const response = await authFetch(`/api/v1/nominal-roll/audit-missing-preview?region=${encodeURIComponent(targetRegion)}&station=${encodeURIComponent(targetStation)}`, { method: 'GET' });
       if (!response.ok) throw new Error("Failed to fetch audit preview.");
@@ -730,11 +761,11 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         <div className="fixed inset-0 z-[999999] bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl p-5 space-y-4 flex flex-col max-h-[85vh]">
             
-            {/* 🟢 MODIFIED HEADER: Now includes the Search Bar */}
+            {/* 🟢 MODIFIED HEADER: Now includes Local Dropdowns and Search Bar */}
             <div className="flex flex-col space-y-3 border-b pb-3 shrink-0">
               <div className="flex justify-between items-center">
                 <h3 className="text-sm font-extrabold text-slate-800 uppercase flex items-center">
-                  <AlertTriangle className="w-4 h-4 mr-1.5 text-amber-600" /> Manpower Audit: Missing Information ({filteredAuditPreviewData.length} of {auditPreviewData.length} Flagged)
+                  <AlertTriangle className="w-4 h-4 mr-1.5 text-amber-600" /> Manpower Audit: Missing Information ({filteredAuditPreviewData.length} Flagged)
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
@@ -750,27 +781,49 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                 </div>
               </div>
               
-              <div className="relative w-full sm:max-w-md">
-                <input 
-                  type="text"
-                  placeholder="Search missing fields (e.g. SEX, DOB), station, or name..."
-                  value={auditSearchTerm}
-                  onChange={(e) => setAuditSearchTerm(e.target.value)}
-                  className="w-full text-xs border border-slate-300 rounded-lg pl-8 pr-7 py-2 bg-slate-50 text-slate-800 outline-none focus:ring-1 focus:ring-amber-500 shadow-inner font-medium"
-                />
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                {auditSearchTerm && (
-                  <button
-                    type="button"
-                    onClick={() => setAuditSearchTerm('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
+              {/* 🟢 LOCAL FILTERS: Region, Station, and Text Search */}
+              <div className="flex flex-col sm:flex-row gap-2 items-center">
+                <select 
+                  value={auditFilterRegion} 
+                  onChange={(e) => { setAuditFilterRegion(e.target.value); setAuditFilterStation('ALL STATIONS'); }}
+                  className="w-full sm:w-auto text-[11px] border border-slate-300 rounded-lg p-2 bg-slate-50 font-bold text-slate-800 outline-none cursor-pointer"
+                >
+                  <option value="ALL REGIONS">ALL REGIONS</option>
+                  {uniqueAuditRegions.map(reg => <option key={reg} value={reg}>{reg}</option>)}
+                </select>
+
+                <select 
+                  value={auditFilterStation} 
+                  onChange={(e) => setAuditFilterStation(e.target.value)}
+                  className="w-full sm:w-auto text-[11px] border border-slate-300 rounded-lg p-2 bg-slate-50 font-bold text-slate-800 outline-none cursor-pointer"
+                >
+                  <option value="ALL STATIONS">ALL STATIONS / POSTS</option>
+                  {uniqueAuditStations.map(stat => <option key={stat} value={stat}>{stat}</option>)}
+                </select>
+
+                <div className="relative w-full flex-1">
+                  <input 
+                    type="text"
+                    placeholder="Search missing fields (e.g. SEX, DOB), station, or name..."
+                    value={auditSearchTerm}
+                    onChange={(e) => setAuditSearchTerm(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-lg pl-8 pr-7 py-1.5 bg-white text-slate-800 outline-none focus:ring-1 focus:ring-amber-500 shadow-inner font-medium"
+                  />
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  {auditSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setAuditSearchTerm('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
+            
             <div className="overflow-y-auto flex-1 custom-scrollbar border border-slate-200 rounded-lg">
               <table className="min-w-full divide-y divide-slate-200 text-xs">
                 <thead className="bg-slate-50 sticky top-0 z-10">

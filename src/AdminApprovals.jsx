@@ -689,13 +689,42 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     if (!isTopCommand) return alert("SECURITY RESTRICTION: Only System Managers, RPCs, and Super Admins can delegate command powers.");
     if (!canControlTargetUser(targetUser)) return alert("SECURITY OVERRIDE DENIED: Insufficient clearance over this command tier.");
 
-    const newPermissions = { 
+    let newPermissions = { 
       ...(targetUser.permissions || {}), 
       can_approve: givePower,
       delegation_start: startDate,
       delegation_end: endDate,
       acting_for_fnum: givePower ? currentUser?.fnum : null
     };
+
+    // 🟢 SMART INHERITANCE LOGIC
+    if (givePower) {
+      // 1. Take a secure snapshot of their native permissions before elevating them
+      newPermissions._pre_delegation_snapshot = { ...(targetUser.permissions || {}) };
+
+      // 2. Elevate them automatically to match YOUR (the delegator's) exact tier capabilities
+      const myPerms = currentUser?.permissions || {};
+      CLEARANCE_MATRIX_COLS.forEach(col => {
+        if (myPerms[col.key] === true) {
+          newPermissions[col.key] = true;
+        }
+      });
+    } else {
+      // 3. When revoking, restore their original baseline permissions perfectly
+      const snapshot = newPermissions._pre_delegation_snapshot;
+      if (snapshot) {
+        CLEARANCE_MATRIX_COLS.forEach(col => {
+          // Restores native checks (e.g. Crime Registry) but removes Global View
+          newPermissions[col.key] = snapshot[col.key] === true; 
+        });
+        delete newPermissions._pre_delegation_snapshot; // Clean up backup
+      }
+    }
+
+    // 🟢 OPTIMISTIC UPDATE: Instantly flip the switch and update checkboxes visually
+    setAllSystemUsers(allSystemUsers.map(u => 
+      u.fnum === targetUser.fnum ? { ...u, permissions: newPermissions } : u
+    ));
 
     try {
       const res = await authFetch(`/api/v1/admin/users/${encodeURIComponent(targetUser.fnum)}/access`, {
@@ -704,13 +733,14 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
         body: JSON.stringify({ role: targetUser.role, permissions: newPermissions })
       });
       if (!res.ok) throw new Error("Failed to update delegation.");
-      alert(`✅ Delegation successfully ${givePower ? 'GRANTED' : 'REVOKED'} for ${targetUser.name} (${targetUser.fnum}).`);
       
-      fetchAllSystemUsers();
       setActiveDelegationId(null);
       setDelStartDate("");
       setDelEndDate("");
-    } catch (err) { alert(`Delegation Error: ${err.message}`); }
+    } catch (err) { 
+      alert(`Delegation Error: ${err.message}`); 
+      fetchAllSystemUsers(); 
+    }
   };
 
   const saveBroadcast = async (isAway, reasonSelect, delegatee, start, end) => {
@@ -1753,19 +1783,27 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                                   type="checkbox"
                                   checked={isChecked}
                                   onChange={async (e) => {
-                                    const nextPerms = { ...uPerms, [col.key]: e.target.checked, can_approve: true };
-                                    try {
-                                      const res = await authFetch(`/api/v1/admin/users/${encodeURIComponent(u.fnum)}/access`, {
-                                        method: "PUT",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ role: u.role, permissions: nextPerms })
-                                      });
-                                      if (!res.ok) throw new Error("Failed to update delegation privileges.");
-                                      fetchAllSystemUsers();
-                                    } catch (err) {
-                                      alert(`❌ Error: ${err.message}`);
-                                    }
-                                  }}
+  const nextPerms = { ...uPerms, [col.key]: e.target.checked, can_approve: true };
+  
+  // 🟢 OPTIMISTIC UPDATE: Visually update the UI instantly (0 second delay)
+  setAllSystemUsers(allSystemUsers.map(user => 
+    user.fnum === u.fnum ? { ...user, permissions: nextPerms } : user
+  ));
+
+  try {
+    const res = await authFetch(`/api/v1/admin/users/${encodeURIComponent(u.fnum)}/access`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: u.role, permissions: nextPerms })
+    });
+    if (!res.ok) throw new Error("Failed to update delegation privileges.");
+    // 🟢 Notice we removed fetchAllSystemUsers(); 
+  } catch (err) {
+    alert(`❌ Error updating database: ${err.message}`);
+    // Only fetch the roster again if the background save actually fails
+    fetchAllSystemUsers();
+  }
+}}
                                   className="w-3.5 h-3.5 accent-blue-600 rounded cursor-pointer shrink-0"
                                 />
                                 <span className="truncate" title={col.label}>{col.label}</span>

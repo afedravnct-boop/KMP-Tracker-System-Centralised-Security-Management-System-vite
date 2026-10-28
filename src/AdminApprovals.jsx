@@ -1583,7 +1583,13 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                         </div>
                         <div className="flex-1">
                           <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Delegatee FNum</label>
-                          <input type="text" value={bcDelegatee.fnum || ""} onChange={e => setBcDelegatee({ ...bcDelegatee, fnum: e.target.value })} placeholder="e.g. A/1234" className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none" />
+                          <input 
+                            type="text" 
+                            value={bcDelegatee.fnum || ""} 
+                            onChange={e => setBcDelegatee({ ...bcDelegatee, fnum: e.target.value })} 
+                            placeholder="Type or click 'Select' below..." 
+                            className="w-full bg-slate-950 text-white text-xs p-2 rounded-lg border border-slate-700 outline-none focus:border-amber-500 transition-colors" 
+                          />
                         </div>
                       </div>
 
@@ -1661,6 +1667,21 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                         </div>
                         
                         <div className="flex flex-col items-end shrink-0 space-y-1.5">
+                          
+                          {/* 🟢 NEW: Auto-populate button for Broadcast Leave */}
+                          {isConfiguringBroadcast && (
+                            <button 
+                              onClick={() => setBcDelegatee({ ...bcDelegatee, fnum: u.fnum })}
+                              className={`px-3 py-1 mb-1 rounded text-[9px] font-black uppercase transition-all cursor-pointer border ${
+                                bcDelegatee.fnum === u.fnum 
+                                  ? 'bg-amber-500 text-slate-900 border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                                  : 'bg-slate-900 text-amber-500 border-amber-500/50 hover:bg-amber-500/20'
+                              }`}
+                            >
+                              {bcDelegatee.fnum === u.fnum ? '✓ Selected Delegatee' : 'Select as Delegatee'}
+                            </button>
+                          )}
+
                           <div className="flex items-center space-x-2">
                             <span className={`text-[10px] font-black uppercase tracking-wider ${isDelegated ? 'text-emerald-400' : 'text-slate-500'}`}>
                               {isDelegated ? 'Acting Power: ON' : 'Acting Power: OFF'}

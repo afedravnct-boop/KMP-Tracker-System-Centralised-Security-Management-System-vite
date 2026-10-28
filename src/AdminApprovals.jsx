@@ -684,7 +684,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     finally { setIsProcessingAction(false); }
   };
 
-  // 🟢 UPDATED: Uses passed dates instead of window.prompt
   const handleToggleDelegationPower = async (targetUser, givePower, startDate = null, endDate = null) => {
     if (isReadOnlyObserver) return alert("Read-only clearance restricts delegation.");
     if (!isTopCommand) return alert("SECURITY RESTRICTION: Only System Managers, RPCs, and Super Admins can delegate command powers.");
@@ -695,7 +694,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
       can_approve: givePower,
       delegation_start: startDate,
       delegation_end: endDate,
-      acting_for_fnum: givePower ? currentUser?.fnum : null // Link to delegator
+      acting_for_fnum: givePower ? currentUser?.fnum : null
     };
 
     try {
@@ -714,7 +713,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     } catch (err) { alert(`Delegation Error: ${err.message}`); }
   };
 
-  // 🟢 UPDATED: Saves broadcast status directly
   const saveBroadcast = async (isAway, reasonSelect, delegatee, start, end) => {
     try {
       const payload = { 
@@ -1533,7 +1531,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
         <div className="fixed inset-0 bg-black/80 z-[999999] flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl p-6 flex flex-col h-[90vh] shadow-2xl text-white">
             
-            {/* STATIC HEADER AREA */}
             <div className="shrink-0 space-y-4">
               <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                 <h3 className="text-sm font-extrabold uppercase flex items-center">
@@ -1544,7 +1541,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                 
               <p className="text-xs text-slate-400">Search and select an officer in your command jurisdiction to delegate acting approval privileges, or broadcast your official command absence status.</p>
                 
-              {/* BROADCAST STATUS (Own Leave) */}
               <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1556,7 +1552,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                     onChange={() => {
                       const nextAway = !(currentUser?.permissions?.manual_delegation);
                       if (nextAway) {
-                        setIsConfiguringBroadcast(true); // Open inline configuration
+                        setIsConfiguringBroadcast(true); 
                       } else {
                         saveBroadcast(false, null, null, null, null);
                       }
@@ -1592,13 +1588,25 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                       </div>
 
                       <div className="flex space-x-3">
-                        <div className="flex-1">
+                        <div className="flex-1 relative">
                           <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Leave Start Date</label>
-                          <input type="date" value={bcStart} onChange={e => setBcStart(e.target.value)} className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none" />
+                          <input 
+                            type="date" 
+                            value={bcStart} 
+                            onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                            onChange={e => setBcStart(e.target.value)} 
+                            className="w-full bg-slate-950 text-white text-xs p-2 rounded-lg border border-slate-700 outline-none focus:border-amber-500 cursor-pointer [color-scheme:dark]" 
+                          />
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 relative">
                           <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Leave End Date</label>
-                          <input type="date" value={bcEnd} onChange={e => setBcEnd(e.target.value)} className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none" />
+                          <input 
+                            type="date" 
+                            value={bcEnd} 
+                            onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                            onChange={e => setBcEnd(e.target.value)} 
+                            className="w-full bg-slate-950 text-white text-xs p-2 rounded-lg border border-slate-700 outline-none focus:border-amber-500 cursor-pointer [color-scheme:dark]" 
+                          />
                         </div>
                       </div>
                     </div>
@@ -1615,7 +1623,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                 )}
               </div>
 
-              {/* SEARCH BAR */}
               <div className="relative flex items-center pt-2">
                 <Search size={14} className="absolute left-3 text-slate-400" />
                 <input 
@@ -1629,7 +1636,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
               </div>
             </div>
 
-            {/* 🟢 EXPANDED LIST CONTAINER */}
             <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 mt-4 bg-slate-900 rounded-xl">
               {allSystemUsers
                 .filter(u => {
@@ -1665,7 +1671,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                                 if (isDelegated) {
                                   handleToggleDelegationPower(u, false);
                                 } else {
-                                  setActiveDelegationId(u.fnum); // Open inline calendar configuration
+                                  setActiveDelegationId(u.fnum);
                                   setDelStartDate("");
                                   setDelEndDate("");
                                 }
@@ -1680,18 +1686,29 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                         </div>
                       </div>
 
-                      {/* 🟢 INLINE CALENDAR FORM (Appears when toggling ON) */}
                       {activeDelegationId === u.fnum && !isDelegated && (
                         <div className="bg-slate-900 p-3 rounded-lg border border-indigo-500/50 mt-3 animate-in slide-in-from-top-2">
                           <div className="text-[10px] text-indigo-300 font-bold uppercase mb-2">Set Active Delegation Period</div>
                           <div className="flex space-x-3 mb-3">
-                            <div className="flex-1">
+                            <div className="flex-1 relative">
                               <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Start Date</label>
-                              <input type="date" value={delStartDate} onChange={e => setDelStartDate(e.target.value)} className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none focus:border-indigo-500 cursor-pointer" />
+                              <input 
+                                type="date" 
+                                value={delStartDate} 
+                                onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                                onChange={e => setDelStartDate(e.target.value)} 
+                                className="w-full bg-slate-950 text-white text-xs p-2 rounded-lg border border-slate-700 outline-none focus:border-emerald-500 cursor-pointer [color-scheme:dark]" 
+                              />
                             </div>
-                            <div className="flex-1">
+                            <div className="flex-1 relative">
                               <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">End Date</label>
-                              <input type="date" value={delEndDate} onChange={e => setDelEndDate(e.target.value)} className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none focus:border-indigo-500 cursor-pointer" />
+                              <input 
+                                type="date" 
+                                value={delEndDate} 
+                                onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                                onChange={e => setDelEndDate(e.target.value)} 
+                                className="w-full bg-slate-950 text-white text-xs p-2 rounded-lg border border-slate-700 outline-none focus:border-emerald-500 cursor-pointer [color-scheme:dark]" 
+                              />
                             </div>
                           </div>
                           <div className="flex justify-end space-x-2">
@@ -1748,7 +1765,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
         </div>
       )}
 
-      {/* MODALS */}
       <SignupDossierModal user={selectedPendingUser} onClose={() => setSelectedPendingUser(null)} setViewingPhotoModal={setViewingPhotoModal} currentUser={currentUser} isProcessingAction={isProcessingAction} handleRejectUser={handleRejectUser} handleApproveUser={handleApproveUser} handleRegrantAccess={handleRegrantAccess} handlePermanentDelete={handlePermanentDelete} isSuperAdmin={isSuperAdmin} canModifyUser={canControlTargetUser} isReadOnlyObserver={isReadOnlyObserver} />
       <UserClearanceDossierModal 
         user={allSystemUsers.find(u => u.fnum === selectedClearanceUser?.fnum) || selectedClearanceUser} 

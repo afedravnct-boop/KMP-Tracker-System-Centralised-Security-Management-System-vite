@@ -400,6 +400,16 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
   const [delegationSearchTerm, setDelegationSearchTerm] = useState('');
   const [revokePrompt, setRevokePrompt] = useState({ isOpen: false, fnum: null, actionType: null, targetValue: null, permissionKey: null, reason: '' });
 
+  // 🟢 NEW: States for inline calendar date picking
+  const [activeDelegationId, setActiveDelegationId] = useState(null);
+  const [delStartDate, setDelStartDate] = useState("");
+  const [delEndDate, setDelEndDate] = useState("");
+  
+  const [isConfiguringBroadcast, setIsConfiguringBroadcast] = useState(false);
+  const [bcDelegatee, setBcDelegatee] = useState("");
+  const [bcStart, setBcStart] = useState("");
+  const [bcEnd, setBcEnd] = useState("");
+
   useEffect(() => {
     if (initialTab) {
       setActiveTab(initialTab.toLowerCase());
@@ -491,14 +501,12 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
       const response = await authFetch('/api/v1/admin/trigger-briefs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brief_type: briefType })
+        body: JSON.stringify({ briefType })
       });
-
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.detail || 'Failed to dispatch briefs.');
       }
-
       setShowBriefingModal(false);
       alert(`✅ Tactical Briefings (${briefType}) are compiling and dispatching in the background!`);
     } catch (error) {
@@ -676,28 +684,18 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     finally { setIsProcessingAction(false); }
   };
 
-  const handleToggleDelegationPower = async (targetUser, givePower) => {
+  // 🟢 UPDATED: Uses passed dates instead of window.prompt
+  const handleToggleDelegationPower = async (targetUser, givePower, startDate = null, endDate = null) => {
     if (isReadOnlyObserver) return alert("Read-only clearance restricts delegation.");
     if (!isTopCommand) return alert("SECURITY RESTRICTION: Only System Managers, RPCs, and Super Admins can delegate command powers.");
     if (!canControlTargetUser(targetUser)) return alert("SECURITY OVERRIDE DENIED: Insufficient clearance over this command tier.");
 
-    let start_date = null;
-    let end_date = null;
-
-    if (givePower) {
-      start_date = window.prompt(`Enter Delegation Start Date for ${targetUser.name} (YYYY-MM-DD):`);
-      if (!start_date) return;
-      
-      end_date = window.prompt(`Enter Delegation End Date for ${targetUser.name} (YYYY-MM-DD):`);
-      if (!end_date) return;
-    }
-
     const newPermissions = { 
       ...(targetUser.permissions || {}), 
       can_approve: givePower,
-      delegation_start: start_date,
-      delegation_end: end_date,
-      acting_for_fnum: givePower ? currentUser?.fnum : null
+      delegation_start: startDate,
+      delegation_end: endDate,
+      acting_for_fnum: givePower ? currentUser?.fnum : null // Link to delegator
     };
 
     try {
@@ -708,8 +706,38 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
       });
       if (!res.ok) throw new Error("Failed to update delegation.");
       alert(`✅ Delegation successfully ${givePower ? 'GRANTED' : 'REVOKED'} for ${targetUser.name} (${targetUser.fnum}).`);
+      
       fetchAllSystemUsers();
+      setActiveDelegationId(null);
+      setDelStartDate("");
+      setDelEndDate("");
     } catch (err) { alert(`Delegation Error: ${err.message}`); }
+  };
+
+  // 🟢 UPDATED: Saves broadcast status directly
+  const saveBroadcast = async (isAway, reasonSelect, delegatee, start, end) => {
+    try {
+      const payload = { 
+          is_away: isAway, 
+          absence_reason: reasonSelect,
+          delegatee_fnum: delegatee,
+          delegation_start: start,
+          delegation_end: end
+      };
+
+      const res = await authFetch('/api/v1/admin/set-commander-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        alert("✅ Command status broadcast updated successfully.");
+        window.location.reload(); 
+      } else {
+        const errData = await res.json();
+        alert(`❌ Failed to update status: ${errData.detail}`);
+      }
+    } catch (err) { alert("Failed to communicate with server."); }
   };
 
   const handleBulkMatrixAction = async (fnum, setAllToTrue) => {
@@ -1503,7 +1531,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
 
       {showDelegationModal && !isReadOnlyObserver && (
         <div className="fixed inset-0 bg-black/80 z-[999999] flex items-center justify-center p-4">
-          {/* 🟢 EXPANDED MODAL CONTAINER (Taller & Wider) */}
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl p-6 flex flex-col h-[90vh] shadow-2xl text-white">
             
             {/* STATIC HEADER AREA */}
@@ -1517,7 +1544,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                 
               <p className="text-xs text-slate-400">Search and select an officer in your command jurisdiction to delegate acting approval privileges, or broadcast your official command absence status.</p>
                 
-              {/* BROADCAST STATUS */}
+              {/* BROADCAST STATUS (Own Leave) */}
               <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1526,65 +1553,66 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                   </div>
                   <ToggleSwitch 
                     checked={currentUser?.permissions?.manual_delegation || false} 
-                    onChange={async () => {
+                    onChange={() => {
                       const nextAway = !(currentUser?.permissions?.manual_delegation);
-                      const reasonSelect = document.getElementById('absenceReasonSelect')?.value || 'Annual Leave';
-                      
-                      let delegatee_fnum = "";
-                      let start_date = "";
-                      let end_date = "";
-
-                      // 🟢 Prompt for required fields if going away
                       if (nextAway) {
-                          delegatee_fnum = window.prompt("Enter Delegatee F/No (e.g., A/1234):");
-                          if (!delegatee_fnum) return alert("Delegation cancelled: Delegatee F/No is required.");
-                          
-                          start_date = window.prompt("Enter Delegation Start Date (YYYY-MM-DD):");
-                          if (!start_date) return alert("Delegation cancelled: Start date is required.");
-                          
-                          end_date = window.prompt("Enter Delegation End Date (YYYY-MM-DD):");
-                          if (!end_date) return alert("Delegation cancelled: End date is required.");
+                        setIsConfiguringBroadcast(true); // Open inline configuration
+                      } else {
+                        saveBroadcast(false, null, null, null, null);
                       }
-
-                      try {
-                        const payload = { 
-                            is_away: nextAway, 
-                            absence_reason: reasonSelect,
-                            delegatee_fnum: delegatee_fnum,
-                            delegation_start: start_date,
-                            delegation_end: end_date
-                        };
-
-                        const res = await authFetch('/api/v1/admin/set-commander-status', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(payload)
-                        });
-                        if (res.ok) {
-                          alert("✅ Command status broadcast updated successfully.");
-                          window.location.reload(); 
-                        } else {
-                          const errData = await res.json();
-                          alert(`❌ Failed to update status: ${errData.detail}`);
-                        }
-                      } catch (err) { alert("Failed to communicate with server."); }
                     }} 
                   />
                 </div>
-                <div className="flex items-center space-x-2 pt-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Absence Reason:</span>
-                  <select 
-                    id="absenceReasonSelect"
-                    defaultValue={currentUser?.permissions?.absence_reason || 'Annual Leave'}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-bold text-white outline-none focus:border-amber-500 cursor-pointer"
-                  >
-                    <option value="Annual Leave">Annual Leave</option>
-                    <option value="Official Course / Training (e.g., Cairo, Egypt)">Official Course / Training (e.g., Cairo, Egypt)</option>
-                    <option value="Field Operations / Deployment">Field Operations / Deployment</option>
-                    <option value="Medical Leave / Sick Sheet">Medical Leave / Sick Sheet</option>
-                    <option value="Off Duty / Rest Days">Off Duty / Rest Days</option>
-                  </select>
-                </div>
+
+                {isConfiguringBroadcast && (
+                  <div className="bg-slate-900 p-3 rounded-lg border border-amber-500/50 mt-3 animate-in slide-in-from-top-2">
+                    <div className="text-[10px] text-amber-300 font-bold uppercase mb-2">Configure Absence Details</div>
+                    <div className="flex flex-col space-y-3 mb-3">
+                      
+                      <div className="flex space-x-3 items-end">
+                        <div className="flex-1">
+                          <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Absence Reason</label>
+                          <select 
+                            id="absenceReasonSelect"
+                            value={bcDelegatee.reason || 'Annual Leave'}
+                            onChange={e => setBcDelegatee({ ...bcDelegatee, reason: e.target.value })}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs font-bold text-white outline-none cursor-pointer"
+                          >
+                            <option value="Annual Leave">Annual Leave</option>
+                            <option value="Official Course / Training">Official Course / Training</option>
+                            <option value="Field Operations / Deployment">Field Operations / Deployment</option>
+                            <option value="Medical Leave / Sick Sheet">Medical Leave / Sick Sheet</option>
+                            <option value="Off Duty / Rest Days">Off Duty / Rest Days</option>
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Delegatee FNum</label>
+                          <input type="text" value={bcDelegatee.fnum || ""} onChange={e => setBcDelegatee({ ...bcDelegatee, fnum: e.target.value })} placeholder="e.g. A/1234" className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none" />
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-3">
+                        <div className="flex-1">
+                          <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Leave Start Date</label>
+                          <input type="date" value={bcStart} onChange={e => setBcStart(e.target.value)} className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none" />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Leave End Date</label>
+                          <input type="date" value={bcEnd} onChange={e => setBcEnd(e.target.value)} className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-2">
+                      <button onClick={() => setIsConfiguringBroadcast(false)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold text-[10px] cursor-pointer">Cancel</button>
+                      <button onClick={() => {
+                        if (!bcDelegatee.fnum || !bcStart || !bcEnd) return alert("Please fill out the Delegatee FNum and select dates from the calendar.");
+                        saveBroadcast(true, bcDelegatee.reason || 'Annual Leave', bcDelegatee.fnum, bcStart, bcEnd);
+                        setIsConfiguringBroadcast(false);
+                      }} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold text-[10px] flex items-center cursor-pointer"><CheckCircle size={12} className="mr-1"/> Save & Broadcast Status</button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* SEARCH BAR */}
@@ -1612,7 +1640,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                 })
                 .map(u => {
                   const uPerms = u.permissions || {};
-                  const isDelegated = uPerms.can_approve === true; 
+                  const isDelegated = uPerms.can_approve === true;
 
                   return (
                     <div key={u.fnum} className={`p-4 rounded-xl space-y-3 border transition-all duration-300 ${
@@ -1626,7 +1654,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                           <div className="text-[10px] text-slate-400 mt-0.5">{u.station} / {u.region} • <span className="text-yellow-400 font-semibold">{u.role}</span></div>
                         </div>
                         
-                        {/* 🟢 CLEAR TOGGLE UI WITH STATUS TEXT */}
                         <div className="flex flex-col items-end shrink-0 space-y-1.5">
                           <div className="flex items-center space-x-2">
                             <span className={`text-[10px] font-black uppercase tracking-wider ${isDelegated ? 'text-emerald-400' : 'text-slate-500'}`}>
@@ -1634,7 +1661,15 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                             </span>
                             <ToggleSwitch 
                               checked={isDelegated} 
-                              onChange={() => handleToggleDelegationPower(u, !isDelegated)} 
+                              onChange={() => {
+                                if (isDelegated) {
+                                  handleToggleDelegationPower(u, false);
+                                } else {
+                                  setActiveDelegationId(u.fnum); // Open inline calendar configuration
+                                  setDelStartDate("");
+                                  setDelEndDate("");
+                                }
+                              }} 
                             />
                           </div>
                           {isDelegated && (
@@ -1645,7 +1680,30 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                         </div>
                       </div>
 
-                      {/* 🟢 GRANULAR ACTING POWERS CHECKLIST */}
+                      {/* 🟢 INLINE CALENDAR FORM (Appears when toggling ON) */}
+                      {activeDelegationId === u.fnum && !isDelegated && (
+                        <div className="bg-slate-900 p-3 rounded-lg border border-indigo-500/50 mt-3 animate-in slide-in-from-top-2">
+                          <div className="text-[10px] text-indigo-300 font-bold uppercase mb-2">Set Active Delegation Period</div>
+                          <div className="flex space-x-3 mb-3">
+                            <div className="flex-1">
+                              <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Start Date</label>
+                              <input type="date" value={delStartDate} onChange={e => setDelStartDate(e.target.value)} className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none focus:border-indigo-500 cursor-pointer" />
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">End Date</label>
+                              <input type="date" value={delEndDate} onChange={e => setDelEndDate(e.target.value)} className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none focus:border-indigo-500 cursor-pointer" />
+                            </div>
+                          </div>
+                          <div className="flex justify-end space-x-2">
+                            <button onClick={() => setActiveDelegationId(null)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold text-[10px] cursor-pointer">Cancel</button>
+                            <button onClick={() => {
+                              if (!delStartDate || !delEndDate) return alert("Please select both start and end dates from the calendar.");
+                              handleToggleDelegationPower(u, true, delStartDate, delEndDate);
+                            }} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-[10px] flex items-center cursor-pointer"><CheckCircle size={12} className="mr-1"/> Confirm & Grant</button>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 space-y-1.5">
                         <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block">Scoped Acting Powers Checklist:</span>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px]">
@@ -1683,7 +1741,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                 })}
             </div>
               
-            {/* FOOTER */}
             <div className="flex justify-end pt-4 border-t border-slate-800 shrink-0 mt-2">
               <button onClick={() => setShowDelegationModal(false)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-xs cursor-pointer">Done</button>
             </div>

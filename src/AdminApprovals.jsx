@@ -406,7 +406,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
   const [delEndDate, setDelEndDate] = useState("");
   
   const [isConfiguringBroadcast, setIsConfiguringBroadcast] = useState(false);
-  const [bcDelegatee, setBcDelegatee] = useState("");
+  const [bcDelegatee, setBcDelegatee] = useState({ fnum: "", reason: "Annual Leave" }); // ✅ Now it's an object!
   const [bcStart, setBcStart] = useState("");
   const [bcEnd, setBcEnd] = useState("");
 

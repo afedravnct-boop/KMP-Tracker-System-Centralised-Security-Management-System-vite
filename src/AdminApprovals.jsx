@@ -400,15 +400,9 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
   const [delegationSearchTerm, setDelegationSearchTerm] = useState('');
   const [revokePrompt, setRevokePrompt] = useState({ isOpen: false, fnum: null, actionType: null, targetValue: null, permissionKey: null, reason: '' });
 
-  // 🟢 NEW: States for inline calendar date picking
+  // 🟢 Reduced State to prevent lag. Using DOM IDs for inputs instead.
   const [activeDelegationId, setActiveDelegationId] = useState(null);
-  const [delStartDate, setDelStartDate] = useState("");
-  const [delEndDate, setDelEndDate] = useState("");
-  
   const [isConfiguringBroadcast, setIsConfiguringBroadcast] = useState(false);
-  const [bcDelegatee, setBcDelegatee] = useState({ fnum: "", reason: "Annual Leave" }); // ✅ Now it's an object!
-  const [bcStart, setBcStart] = useState("");
-  const [bcEnd, setBcEnd] = useState("");
 
   useEffect(() => {
     if (initialTab) {
@@ -684,6 +678,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     finally { setIsProcessingAction(false); }
   };
 
+  // 🟢 Optimized Delegation Method (Fast Mutation UI)
   const handleToggleDelegationPower = async (targetUser, givePower, startDate = null, endDate = null) => {
     if (isReadOnlyObserver) return alert("Read-only clearance restricts delegation.");
     if (!isTopCommand) return alert("SECURITY RESTRICTION: Only System Managers, RPCs, and Super Admins can delegate command powers.");
@@ -697,34 +692,25 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
       acting_for_fnum: givePower ? currentUser?.fnum : null
     };
 
-    // 🟢 SMART INHERITANCE LOGIC
     if (givePower) {
-      // 1. Take a secure snapshot of their native permissions before elevating them
       newPermissions._pre_delegation_snapshot = { ...(targetUser.permissions || {}) };
-
-      // 2. Elevate them automatically to match YOUR (the delegator's) exact tier capabilities
       const myPerms = currentUser?.permissions || {};
       CLEARANCE_MATRIX_COLS.forEach(col => {
-        if (myPerms[col.key] === true) {
-          newPermissions[col.key] = true;
-        }
+        if (myPerms[col.key] === true) newPermissions[col.key] = true;
       });
     } else {
-      // 3. When revoking, restore their original baseline permissions perfectly
       const snapshot = newPermissions._pre_delegation_snapshot;
       if (snapshot) {
         CLEARANCE_MATRIX_COLS.forEach(col => {
-          // Restores native checks (e.g. Crime Registry) but removes Global View
           newPermissions[col.key] = snapshot[col.key] === true; 
         });
-        delete newPermissions._pre_delegation_snapshot; // Clean up backup
+        delete newPermissions._pre_delegation_snapshot;
       }
     }
 
-    // 🟢 OPTIMISTIC UPDATE: Instantly flip the switch and update checkboxes visually
-    setAllSystemUsers(allSystemUsers.map(u => 
-      u.fnum === targetUser.fnum ? { ...u, permissions: newPermissions } : u
-    ));
+    // FAST MUTATION: Updates instantly without freezing the UI
+    targetUser.permissions = newPermissions;
+    setAllSystemUsers([...allSystemUsers]);
 
     try {
       const res = await authFetch(`/api/v1/admin/users/${encodeURIComponent(targetUser.fnum)}/access`, {
@@ -735,8 +721,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
       if (!res.ok) throw new Error("Failed to update delegation.");
       
       setActiveDelegationId(null);
-      setDelStartDate("");
-      setDelEndDate("");
     } catch (err) { 
       alert(`Delegation Error: ${err.message}`); 
       fetchAllSystemUsers(); 
@@ -816,7 +800,10 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
 
     let updatedPermissions = { ...(targetUser.permissions || {}) };
     updatedPermissions[permissionKey] = value;
-    setAllSystemUsers(allSystemUsers.map(u => u.fnum === cleanFnum ? { ...u, permissions: updatedPermissions } : u));
+    
+    // FAST MUTATION
+    targetUser.permissions = updatedPermissions;
+    setAllSystemUsers([...allSystemUsers]);
 
     try {
       await authFetch(`/api/v1/admin/users/${encodeURIComponent(cleanFnum.trim())}/access`, {
@@ -1162,13 +1149,10 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
         </button>
       </div>
 
-      {/* 🟢 NEUTRAL LANDING STATE (NO TAB SELECTED YET) */}
       {!activeTab && (
         <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 rounded-xl p-16 text-center flex flex-col items-center justify-center min-h-[400px] shadow-sm">
           <Shield className="w-16 h-16 text-slate-200 dark:text-slate-800 mb-4" />
-          <h3 className="text-lg font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-            
-          </h3>
+          <h3 className="text-lg font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest"></h3>
           <p className="text-xs font-bold text-slate-400 dark:text-slate-600 mt-2">
             Please select an administrative module from the tabs above to securely fetch and load its data.
           </p>
@@ -1599,9 +1583,8 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                         <div className="flex-1">
                           <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Absence Reason</label>
                           <select 
-                            id="absenceReasonSelect"
-                            value={bcDelegatee.reason || 'Annual Leave'}
-                            onChange={e => setBcDelegatee({ ...bcDelegatee, reason: e.target.value })}
+                            id="bc-absence-reason"
+                            defaultValue="Annual Leave"
                             className="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs font-bold text-white outline-none cursor-pointer"
                           >
                             <option value="Annual Leave">Annual Leave</option>
@@ -1614,11 +1597,10 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                         <div className="flex-1">
                           <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Delegatee FNum</label>
                           <input 
+                            id="bc-delegatee-fnum"
                             type="text" 
-                            value={bcDelegatee.fnum || ""} 
-                            onChange={e => setBcDelegatee({ ...bcDelegatee, fnum: e.target.value })} 
                             placeholder="Type or click 'Select' below..." 
-                            className="w-full bg-slate-950 text-white text-xs p-2 rounded-lg border border-slate-700 outline-none focus:border-amber-500 transition-colors" 
+                            className="w-full bg-slate-950 text-white text-xs p-1.5 rounded-lg border border-slate-700 outline-none" 
                           />
                         </div>
                       </div>
@@ -1627,20 +1609,18 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                         <div className="flex-1 relative">
                           <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Leave Start Date</label>
                           <input 
+                            id="bc-start-date"
                             type="date" 
-                            value={bcStart} 
                             onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                            onChange={e => setBcStart(e.target.value)} 
                             className="w-full bg-slate-950 text-white text-xs p-2 rounded-lg border border-slate-700 outline-none focus:border-amber-500 cursor-pointer [color-scheme:dark]" 
                           />
                         </div>
                         <div className="flex-1 relative">
                           <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Leave End Date</label>
                           <input 
+                            id="bc-end-date"
                             type="date" 
-                            value={bcEnd} 
                             onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                            onChange={e => setBcEnd(e.target.value)} 
                             className="w-full bg-slate-950 text-white text-xs p-2 rounded-lg border border-slate-700 outline-none focus:border-amber-500 cursor-pointer [color-scheme:dark]" 
                           />
                         </div>
@@ -1650,8 +1630,13 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                     <div className="flex justify-end space-x-2">
                       <button onClick={() => setIsConfiguringBroadcast(false)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold text-[10px] cursor-pointer">Cancel</button>
                       <button onClick={() => {
-                        if (!bcDelegatee.fnum || !bcStart || !bcEnd) return alert("Please fill out the Delegatee FNum and select dates from the calendar.");
-                        saveBroadcast(true, bcDelegatee.reason || 'Annual Leave', bcDelegatee.fnum, bcStart, bcEnd);
+                        const reason = document.getElementById('bc-absence-reason')?.value;
+                        const delegateeFnum = document.getElementById('bc-delegatee-fnum')?.value;
+                        const startDate = document.getElementById('bc-start-date')?.value;
+                        const endDate = document.getElementById('bc-end-date')?.value;
+
+                        if (!delegateeFnum || !startDate || !endDate) return alert("Please fill out the Delegatee FNum and select dates from the calendar.");
+                        saveBroadcast(true, reason, delegateeFnum, startDate, endDate);
                         setIsConfiguringBroadcast(false);
                       }} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold text-[10px] flex items-center cursor-pointer"><CheckCircle size={12} className="mr-1"/> Save & Broadcast Status</button>
                     </div>
@@ -1697,18 +1682,15 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                         </div>
                         
                         <div className="flex flex-col items-end shrink-0 space-y-1.5">
-                          
-                          {/* 🟢 NEW: Auto-populate button for Broadcast Leave */}
                           {isConfiguringBroadcast && (
                             <button 
-                              onClick={() => setBcDelegatee({ ...bcDelegatee, fnum: u.fnum })}
-                              className={`px-3 py-1 mb-1 rounded text-[9px] font-black uppercase transition-all cursor-pointer border ${
-                                bcDelegatee.fnum === u.fnum 
-                                  ? 'bg-amber-500 text-slate-900 border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
-                                  : 'bg-slate-900 text-amber-500 border-amber-500/50 hover:bg-amber-500/20'
-                              }`}
+                              onClick={() => {
+                                const input = document.getElementById('bc-delegatee-fnum');
+                                if (input) input.value = u.fnum;
+                              }}
+                              className="px-3 py-1 mb-1 rounded text-[9px] font-black uppercase transition-all cursor-pointer border bg-slate-900 text-amber-500 border-amber-500/50 hover:bg-amber-500/20"
                             >
-                              {bcDelegatee.fnum === u.fnum ? '✓ Selected Delegatee' : 'Select as Delegatee'}
+                              Select as Delegatee
                             </button>
                           )}
 
@@ -1723,8 +1705,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                                   handleToggleDelegationPower(u, false);
                                 } else {
                                   setActiveDelegationId(u.fnum);
-                                  setDelStartDate("");
-                                  setDelEndDate("");
                                 }
                               }} 
                             />
@@ -1744,20 +1724,18 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                             <div className="flex-1 relative">
                               <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">Start Date</label>
                               <input 
+                                id={`del-start-date-${u.fnum}`}
                                 type="date" 
-                                value={delStartDate} 
                                 onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                                onChange={e => setDelStartDate(e.target.value)} 
                                 className="w-full bg-slate-950 text-white text-xs p-2 rounded-lg border border-slate-700 outline-none focus:border-emerald-500 cursor-pointer [color-scheme:dark]" 
                               />
                             </div>
                             <div className="flex-1 relative">
                               <label className="text-[9px] uppercase font-bold text-slate-400 mb-1 block">End Date</label>
                               <input 
+                                id={`del-end-date-${u.fnum}`}
                                 type="date" 
-                                value={delEndDate} 
                                 onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                                onChange={e => setDelEndDate(e.target.value)} 
                                 className="w-full bg-slate-950 text-white text-xs p-2 rounded-lg border border-slate-700 outline-none focus:border-emerald-500 cursor-pointer [color-scheme:dark]" 
                               />
                             </div>
@@ -1765,8 +1743,10 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                           <div className="flex justify-end space-x-2">
                             <button onClick={() => setActiveDelegationId(null)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold text-[10px] cursor-pointer">Cancel</button>
                             <button onClick={() => {
-                              if (!delStartDate || !delEndDate) return alert("Please select both start and end dates from the calendar.");
-                              handleToggleDelegationPower(u, true, delStartDate, delEndDate);
+                              const sDate = document.getElementById(`del-start-date-${u.fnum}`)?.value;
+                              const eDate = document.getElementById(`del-end-date-${u.fnum}`)?.value;
+                              if (!sDate || !eDate) return alert("Please select both start and end dates from the calendar.");
+                              handleToggleDelegationPower(u, true, sDate, eDate);
                             }} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-[10px] flex items-center cursor-pointer"><CheckCircle size={12} className="mr-1"/> Confirm & Grant</button>
                           </div>
                         </div>
@@ -1783,27 +1763,24 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                                   type="checkbox"
                                   checked={isChecked}
                                   onChange={async (e) => {
-  const nextPerms = { ...uPerms, [col.key]: e.target.checked, can_approve: true };
-  
-  // 🟢 OPTIMISTIC UPDATE: Visually update the UI instantly (0 second delay)
-  setAllSystemUsers(allSystemUsers.map(user => 
-    user.fnum === u.fnum ? { ...user, permissions: nextPerms } : user
-  ));
+                                    const nextPerms = { ...uPerms, [col.key]: e.target.checked, can_approve: true };
+                                    
+                                    // FAST MUTATION
+                                    u.permissions = nextPerms;
+                                    setAllSystemUsers([...allSystemUsers]);
 
-  try {
-    const res = await authFetch(`/api/v1/admin/users/${encodeURIComponent(u.fnum)}/access`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: u.role, permissions: nextPerms })
-    });
-    if (!res.ok) throw new Error("Failed to update delegation privileges.");
-    // 🟢 Notice we removed fetchAllSystemUsers(); 
-  } catch (err) {
-    alert(`❌ Error updating database: ${err.message}`);
-    // Only fetch the roster again if the background save actually fails
-    fetchAllSystemUsers();
-  }
-}}
+                                    try {
+                                      const res = await authFetch(`/api/v1/admin/users/${encodeURIComponent(u.fnum)}/access`, {
+                                        method: "PUT",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ role: u.role, permissions: nextPerms })
+                                      });
+                                      if (!res.ok) throw new Error("Failed to update.");
+                                    } catch (err) {
+                                      alert(`❌ Error: ${err.message}`);
+                                      fetchAllSystemUsers(); 
+                                    }
+                                  }}
                                   className="w-3.5 h-3.5 accent-blue-600 rounded cursor-pointer shrink-0"
                                 />
                                 <span className="truncate" title={col.label}>{col.label}</span>

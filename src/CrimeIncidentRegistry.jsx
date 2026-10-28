@@ -707,6 +707,7 @@ export function CrimeIncidentRegistry({ currentUser, canViewGlobal = false, setR
         suspects: formData.suspectDetails.length, 
         last_updated_by: `${stripHtmlTags(currentUser?.name)} (${stripHtmlTags(currentUser?.fnum)})`, 
         suspectDetails: formData.suspectDetails,
+        exhibitDetails: formData.exhibitDetails, // 🟢 Passed right through to the backend atomically
         daily_lock_up: 0 
       };
               
@@ -715,35 +716,6 @@ export function CrimeIncidentRegistry({ currentUser, canViewGlobal = false, setR
         const resData = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(stripHtmlTags(resData.detail) || "Database rejected the entry.");
               
-        // 🟢 NEW: Submit batch-drafted exhibits automatically right after case creation
-        if (formData.exhibitDetails && formData.exhibitDetails.length > 0) {
-          setNotification("⏳ Case created successfully! Saving attached exhibits...");
-          await Promise.all(formData.exhibitDetails.map(ex => {
-              const exPayload = {
-                  category: ex.category,
-                  type_make: ex.type_make,
-                  colour: ex.colour,
-                  case_no: apiPayload.sd_ref,
-                  reason: ex.reason,
-                  status: ex.status,
-                  assorted_items: ex.assorted_items,
-                  photo_url: ex.photo_url,
-                  suspect_id: String(ex.linked_suspect_id || ''),
-                  reg_no: 'NIL',
-                  unit_responsible: 'CID',
-                  region: apiPayload.region,
-                  station: apiPayload.station,
-                  date_impounded: apiPayload.date,
-                  entered_by: apiPayload.last_updated_by
-              };
-              return authFetch('/api/v1/exhibits', {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(exPayload)
-              });
-          }));
-        }
-
         fetchFilteredDatabaseReports();
         setNotification(`✅ Case SN ${resData.sn} (Ref: ${apiPayload.sd_ref}) & Exhibits successfully registered!`);
         resetFormToBlank();
@@ -1181,13 +1153,13 @@ export function CrimeIncidentRegistry({ currentUser, canViewGlobal = false, setR
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">Select Region *</label>
-                    <select name="region" value={formData.region} onChange={handleInputChange} disabled={!canViewGlobalActive || operation === 'update'} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm bg-gray-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border p-1.5 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500">
+                    <select name="region" value={formData.region} onChange={handleInputChange} disabled={!canViewGlobalActive || operation === 'update'} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm bg-gray-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border p-1.5 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 cursor-pointer">
                       {canViewGlobalActive ? Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>) : <option value={userRegClean}>{stripHtmlTags(userRegClean)}</option>}
                     </select>
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">Station *</label>
-                    <select name="station" value={formData.station} onChange={handleInputChange} disabled={!(canViewGlobalActive || isRegionalCommand) || operation === 'update'} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm bg-gray-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border p-1.5 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500">
+                    <select name="station" value={formData.station} onChange={handleInputChange} disabled={!(canViewGlobalActive || isRegionalCommand) || operation === 'update'} required className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm bg-gray-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border p-1.5 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 cursor-pointer">
                       {operation === 'update' ? <option value={formData.station}>{stripHtmlTags(formData.station)}</option> : (canViewGlobalActive || isRegionalCommand) ? (REGIONAL_HIERARCHY[formData.region] || []).map(stat => <option key={stat} value={stat}>{stat}</option>) : <option value={currentUser?.station}>{stripHtmlTags(currentUser?.station)}</option>}
                     </select>
                   </div>
@@ -1206,7 +1178,7 @@ export function CrimeIncidentRegistry({ currentUser, canViewGlobal = false, setR
 
                 <div>
                   <label className="block text-[11px] font-bold text-gray-700 dark:text-slate-300 mb-0.5">Offence / Incident Type *</label>
-                  <select name="offence" value={formData.offence} onChange={handleInputChange} required disabled={operation === 'update'} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border p-1.5 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500">
+                  <select name="offence" value={formData.offence} onChange={handleInputChange} required disabled={operation === 'update'} className="w-full text-xs border-gray-300 dark:border-slate-700 rounded shadow-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border p-1.5 focus:ring-blue-500 disabled:bg-gray-100 dark:disabled:bg-slate-900 disabled:text-gray-500 cursor-pointer">
                     <option value="" disabled>-- Select Official Offence Category --</option>
                     {STANDARD_OFFENCES.map(off => (
                       <option key={off} value={off}>{off}</option>
@@ -1559,9 +1531,20 @@ export function CrimeIncidentRegistry({ currentUser, canViewGlobal = false, setR
                             )}
                           </div>
                           
-                        </div>
-                      );
-                    })}
+                          {/* 🟢 Redirect button to Exhibits Registry */}
+                          <div className="mt-3 w-full sm:w-auto shrink-0 self-end sm:self-center">
+                            <a 
+                              href={`/exhibits?incident_ref=${encodeURIComponent(stripHtmlTags(selectedCase.sdRef || selectedCase.sd_ref))}&suspect_id=${encodeURIComponent(s.id)}`}
+                              className="inline-flex items-center justify-center bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-lg shadow border border-amber-500 text-[10px] uppercase transition cursor-pointer w-full"
+                            >
+                              <Camera size={14} className="mr-1.5" />
+                              Log Exhibit
+                            </a>
+                            </div>
+
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               )}

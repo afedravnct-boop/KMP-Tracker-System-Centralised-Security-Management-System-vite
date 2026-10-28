@@ -365,7 +365,6 @@ const UserClearanceDossierModal = ({ user, onClose, currentUser, onUpdatePermiss
 };
 
 const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, initialTab }) => {
-  // 🟢 FIXED: Properly initialize with null to start in a neutral state, honoring initialTab if passed
   const [activeTab, setActiveTab] = useState(initialTab ? initialTab.toLowerCase() : null);
   const [matrixView, setMatrixView] = useState('ACTIVE');
    
@@ -385,7 +384,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
   const [selectedModRequest, setSelectedModRequest] = useState(null);
   const [viewingPhotoModal, setViewingPhotoModal] = useState(null);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
-  
+ 
   const [isTriggeringBriefs, setIsTriggeringBriefs] = useState(false);
   const [showBriefingModal, setShowBriefingModal] = useState(false);
 
@@ -401,7 +400,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
   const [delegationSearchTerm, setDelegationSearchTerm] = useState('');
   const [revokePrompt, setRevokePrompt] = useState({ isOpen: false, fnum: null, actionType: null, targetValue: null, permissionKey: null, reason: '' });
 
-  // 🟢 Ensure initialTab changes are captured
   useEffect(() => {
     if (initialTab) {
       setActiveTab(initialTab.toLowerCase());
@@ -446,7 +444,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
   const canAccessApprovalsPage = isTopCommand || hasDelegatedApprovalPower || currentUser?.permissions?.acc_approvals === true || isReadOnlyObserver;
   const canToggleKillSwitch = isSuperAdmin || userRoleClean === 'ASSISTANT_SUPER_ADMIN' || hasDelegatedApprovalPower || currentUser?.permissions?.ai_hr_access === true;
   const canViewGlobalActive = canViewGlobal || isGlobalTier || isReadOnlyObserver;
-  
+ 
   const canTriggerBriefs = 
     ['SUPER_ADMIN', 'ASSISTANT_SUPER_ADMIN', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER'].includes(userRoleClean) ||
     ['PRINCIPAL SUPER ADMIN', 'SUPER ADMIN', 'ASSISTANT SUPER ADMIN', 'SYSTEM MANAGER', 'ASSISTANT SYSTEM MANAGER', 'KMP COMMANDER', 'DEPUTY KMP COMMANDER', 'KMP ADMIN OFFICER', 'KMP CID COMMANDER', 'KMP CI COMMANDER', 'CI COMMANDER (KMP)', 'CID COMMANDER (KMP)'].some(pos => userPosClean.includes(pos)) ||
@@ -598,7 +596,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
         log_lockup: true, log_daily_lockup: true, view_exhibits: true, log_exhibits: true, view_global_roster: isGlobalAssign, global_open: isGlobalAssign, ...customPermissions
       };
 
-      // 🟢 FIXED: Added '/admin/' prefix
       await authFetch(`/api/v1/admin/users/${encodeURIComponent(cleanFnum.trim())}/access`, {
         method: "PUT", headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ role: assignedRole, is_approved: true, permissions: grantedPermissions, station: userToApprove.station, region: userToApprove.region })
@@ -668,7 +665,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     try {
       const defaultRole = 'STATION_USER';
       const defaultPermissions = { view_nominal_roll: true, view_crime_registry: true, log_crime: true, view_lockup: true, log_lockup: true, log_daily_lockup: true, view_exhibits: true, log_exhibits: true };
-      // 🟢 FIXED: Added '/admin/' prefix
       const res = await authFetch(`/api/v1/admin/users/${encodeURIComponent(fnum)}/access`, {
         method: 'PUT', headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: defaultRole, is_approved: true, permissions: defaultPermissions })
@@ -685,24 +681,23 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     if (!isTopCommand) return alert("SECURITY RESTRICTION: Only System Managers, RPCs, and Super Admins can delegate command powers.");
     if (!canControlTargetUser(targetUser)) return alert("SECURITY OVERRIDE DENIED: Insufficient clearance over this command tier.");
 
-    let start_date = "";
-    let end_date = "";
+    let start_date = null;
+    let end_date = null;
 
-    // 🟢 Capture dates if we are granting power
     if (givePower) {
-        start_date = window.prompt(`Enter Delegation Start Date for ${targetUser.name} (YYYY-MM-DD):`);
-        if (!start_date) return; // User cancelled
-        
-        end_date = window.prompt(`Enter Delegation End Date for ${targetUser.name} (YYYY-MM-DD):`);
-        if (!end_date) return; // User cancelled
+      start_date = window.prompt(`Enter Delegation Start Date for ${targetUser.name} (YYYY-MM-DD):`);
+      if (!start_date) return;
+      
+      end_date = window.prompt(`Enter Delegation End Date for ${targetUser.name} (YYYY-MM-DD):`);
+      if (!end_date) return;
     }
 
     const newPermissions = { 
-        ...(targetUser.permissions || {}), 
-        can_approve: givePower,
-        delegation_start: givePower ? start_date : null,
-        delegation_end: givePower ? end_date : null,
-        acting_for_fnum: givePower ? currentUser.fnum : null // Link back to the delegator
+      ...(targetUser.permissions || {}), 
+      can_approve: givePower,
+      delegation_start: start_date,
+      delegation_end: end_date,
+      acting_for_fnum: givePower ? currentUser?.fnum : null
     };
 
     try {
@@ -728,7 +723,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     setAllSystemUsers(allSystemUsers.map(u => u.fnum === cleanFnum ? { ...u, permissions: newPermissions } : u));
 
     try {
-      // 🟢 FIXED: Added '/admin/' prefix
       await authFetch(`/api/v1/admin/users/${encodeURIComponent(cleanFnum.trim())}/access`, {
         method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: targetUser.role, permissions: newPermissions })
       });
@@ -750,7 +744,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
       await Promise.all(updatedUsers.map(u => {
         const uRole = (u.role || '').toUpperCase();
         if (uRole === 'SUPER_ADMIN' || uRole === 'ASSISTANT_SUPER_ADMIN') return Promise.resolve();
-        // 🟢 FIXED: Added '/admin/' prefix
         return authFetch(`/api/v1/admin/users/${encodeURIComponent(u.fnum.trim())}/access`, {
           method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: u.role, permissions: u.permissions })
         });
@@ -770,7 +763,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     setAllSystemUsers(allSystemUsers.map(u => u.fnum === cleanFnum ? { ...u, permissions: updatedPermissions } : u));
 
     try {
-      // 🟢 FIXED: Added '/admin/' prefix
       await authFetch(`/api/v1/admin/users/${encodeURIComponent(cleanFnum.trim())}/access`, {
         method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: targetUser.role, permissions: updatedPermissions })
       });
@@ -787,7 +779,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     setAllSystemUsers(allSystemUsers.map(u => u.fnum === cleanFnum ? { ...u, role: newRole, permissions: updatedPermissions } : u));
 
     try {
-      // 🟢 FIXED: Added '/admin/' prefix
       await authFetch(`/api/v1/admin/users/${encodeURIComponent(cleanFnum.trim())}/access`, {
         method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: newRole, permissions: updatedPermissions })
       });
@@ -1456,7 +1447,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                   return (
                     <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                       <td className="px-4 py-2.5 font-mono text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{log.created_at}</td>
-                       
+                        
                       <td className="px-4 py-2.5 font-extrabold text-blue-700 dark:text-blue-400 whitespace-nowrap">
                         {log.user_fnum} {log.user_name ? `- ${log.user_name}` : ''}
                       </td>
@@ -1511,101 +1502,107 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
       )}
 
       {showDelegationModal && !isReadOnlyObserver && (
-        <div className="fixed inset-0 bg-black/70 z-[999999] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-3xl p-6 space-y-4 shadow-2xl text-white">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-extrabold uppercase flex items-center">
-                <Award className="w-4 h-4 mr-2 text-yellow-400" /> Delegate Command Approval Powers & Absence Status
-              </h3>
-              <button onClick={() => setShowDelegationModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={18}/></button>
-            </div>
-             
-            <p className="text-xs text-slate-400">Search and select an officer in your command jurisdiction to delegate acting approval privileges, or broadcast your official command absence status.</p>
-             
-            {/* 🟢 COMMANDER LEAVE / ABSENCE REASON BROADCASTER */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-black uppercase text-amber-400">Broadcast Commander Leave / Absence Status</h4>
-                  <p className="text-[10px] text-slate-400">If you are away (e.g., on leave or course), select a reason below to notify command nodes.</p>
-                </div>
-                <ToggleSwitch 
-                  checked={currentUser?.permissions?.manual_delegation || false} 
-                  onChange={async () => {
-                    const nextAway = !(currentUser?.permissions?.manual_delegation);
-                    const reasonSelect = document.getElementById('absenceReasonSelect')?.value || 'Annual Leave';
-                    
-                    let delegatee_fnum = "";
-                    let start_date = "";
-                    let end_date = "";
+        <div className="fixed inset-0 bg-black/80 z-[999999] flex items-center justify-center p-4">
+          {/* 🟢 EXPANDED MODAL CONTAINER (Taller & Wider) */}
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl p-6 flex flex-col h-[90vh] shadow-2xl text-white">
+            
+            {/* STATIC HEADER AREA */}
+            <div className="shrink-0 space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 className="text-sm font-extrabold uppercase flex items-center">
+                  <Award className="w-4 h-4 mr-2 text-yellow-400" /> Delegate Command Approval Powers & Absence Status
+                </h3>
+                <button onClick={() => setShowDelegationModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={18}/></button>
+              </div>
+                
+              <p className="text-xs text-slate-400">Search and select an officer in your command jurisdiction to delegate acting approval privileges, or broadcast your official command absence status.</p>
+                
+              {/* BROADCAST STATUS */}
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-amber-400">Broadcast Commander Leave / Absence Status</h4>
+                    <p className="text-[10px] text-slate-400">If you are away (e.g., on leave or course), select a reason below to notify command nodes.</p>
+                  </div>
+                  <ToggleSwitch 
+                    checked={currentUser?.permissions?.manual_delegation || false} 
+                    onChange={async () => {
+                      const nextAway = !(currentUser?.permissions?.manual_delegation);
+                      const reasonSelect = document.getElementById('absenceReasonSelect')?.value || 'Annual Leave';
+                      
+                      let delegatee_fnum = "";
+                      let start_date = "";
+                      let end_date = "";
 
-                    // 🟢 Prompt for required fields if going away
-                    if (nextAway) {
-                        delegatee_fnum = window.prompt("Enter Delegatee F/No (e.g., A/1234):");
-                        if (!delegatee_fnum) return alert("Delegation cancelled: Delegatee F/No is required.");
-                        
-                        start_date = window.prompt("Enter Delegation Start Date (YYYY-MM-DD):");
-                        if (!start_date) return alert("Delegation cancelled: Start date is required.");
-                        
-                        end_date = window.prompt("Enter Delegation End Date (YYYY-MM-DD):");
-                        if (!end_date) return alert("Delegation cancelled: End date is required.");
-                    }
-
-                    try {
-                      // 🟢 THE UPDATED JSON PAYLOAD
-                      const payload = { 
-                          is_away: nextAway, 
-                          absence_reason: reasonSelect,
-                          delegatee_fnum: delegatee_fnum,
-                          delegation_start: start_date,
-                          delegation_end: end_date
-                      };
-
-                      const res = await authFetch('/api/v1/admin/set-commander-status', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                      });
-                      if (res.ok) {
-                        alert("✅ Command status broadcast updated successfully.");
-                        window.location.reload(); // Refresh to sync permissions state
-                      } else {
-                        const errData = await res.json();
-                        alert(`❌ Failed to update status: ${errData.detail}`);
+                      // 🟢 Prompt for required fields if going away
+                      if (nextAway) {
+                          delegatee_fnum = window.prompt("Enter Delegatee F/No (e.g., A/1234):");
+                          if (!delegatee_fnum) return alert("Delegation cancelled: Delegatee F/No is required.");
+                          
+                          start_date = window.prompt("Enter Delegation Start Date (YYYY-MM-DD):");
+                          if (!start_date) return alert("Delegation cancelled: Start date is required.");
+                          
+                          end_date = window.prompt("Enter Delegation End Date (YYYY-MM-DD):");
+                          if (!end_date) return alert("Delegation cancelled: End date is required.");
                       }
-                    } catch (err) { alert("Failed to communicate with server."); }
-                  }} 
+
+                      try {
+                        const payload = { 
+                            is_away: nextAway, 
+                            absence_reason: reasonSelect,
+                            delegatee_fnum: delegatee_fnum,
+                            delegation_start: start_date,
+                            delegation_end: end_date
+                        };
+
+                        const res = await authFetch('/api/v1/admin/set-commander-status', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(payload)
+                        });
+                        if (res.ok) {
+                          alert("✅ Command status broadcast updated successfully.");
+                          window.location.reload(); 
+                        } else {
+                          const errData = await res.json();
+                          alert(`❌ Failed to update status: ${errData.detail}`);
+                        }
+                      } catch (err) { alert("Failed to communicate with server."); }
+                    }} 
+                  />
+                </div>
+                <div className="flex items-center space-x-2 pt-1">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Absence Reason:</span>
+                  <select 
+                    id="absenceReasonSelect"
+                    defaultValue={currentUser?.permissions?.absence_reason || 'Annual Leave'}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-bold text-white outline-none focus:border-amber-500 cursor-pointer"
+                  >
+                    <option value="Annual Leave">Annual Leave</option>
+                    <option value="Official Course / Training (e.g., Cairo, Egypt)">Official Course / Training (e.g., Cairo, Egypt)</option>
+                    <option value="Field Operations / Deployment">Field Operations / Deployment</option>
+                    <option value="Medical Leave / Sick Sheet">Medical Leave / Sick Sheet</option>
+                    <option value="Off Duty / Rest Days">Off Duty / Rest Days</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* SEARCH BAR */}
+              <div className="relative flex items-center pt-2">
+                <Search size={14} className="absolute left-3 text-slate-400" />
+                <input 
+                  type="text"
+                  value={delegationSearchTerm}
+                  onChange={(e) => setDelegationSearchTerm(e.target.value)}
+                  placeholder="Search by name, F/No, or station..."
+                  className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-white outline-none focus:border-indigo-500"
                 />
-              </div>
-              <div className="flex items-center space-x-2 pt-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400 shrink-0">Absence Reason:</span>
-                <select 
-                  id="absenceReasonSelect"
-                  defaultValue={currentUser?.permissions?.absence_reason || 'Annual Leave'}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-bold text-white outline-none focus:border-amber-500 cursor-pointer"
-                >
-                  <option value="Annual Leave">Annual Leave</option>
-                  <option value="Official Course / Training (e.g., Cairo, Egypt)">Official Course / Training (e.g., Cairo, Egypt)</option>
-                  <option value="Field Operations / Deployment">Field Operations / Deployment</option>
-                  <option value="Medical Leave / Sick Sheet">Medical Leave / Sick Sheet</option>
-                  <option value="Off Duty / Rest Days">Off Duty / Rest Days</option>
-                </select>
+                {delegationSearchTerm && <button onClick={() => setDelegationSearchTerm('')} className="absolute right-3 text-slate-400 hover:text-white text-xs font-bold">×</button>}
               </div>
             </div>
 
-            <div className="relative flex items-center pt-2">
-              <Search size={14} className="absolute left-3 text-slate-400" />
-              <input 
-                type="text"
-                value={delegationSearchTerm}
-                onChange={(e) => setDelegationSearchTerm(e.target.value)}
-                placeholder="Search by name, F/No, or station..."
-                className="w-full pl-9 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-white outline-none focus:border-indigo-500"
-              />
-              {delegationSearchTerm && <button onClick={() => setDelegationSearchTerm('')} className="absolute right-3 text-slate-400 hover:text-white text-xs font-bold">×</button>}
-            </div>
-
-            <div className="max-h-80 overflow-y-auto space-y-3 custom-scrollbar pr-1">
+            {/* 🟢 EXPANDED LIST CONTAINER */}
+            <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 mt-4 bg-slate-900 rounded-xl">
               {allSystemUsers
                 .filter(u => {
                   if (u.role === 'SUPER_ADMIN' || !canControlTargetUser(u)) return false;
@@ -1615,18 +1612,35 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                 })
                 .map(u => {
                   const uPerms = u.permissions || {};
+                  const isDelegated = uPerms.can_approve === true; 
+
                   return (
-                    <div key={u.fnum} className="bg-slate-800/90 p-4 rounded-xl space-y-3 border border-slate-700 hover:border-indigo-500 transition-colors">
+                    <div key={u.fnum} className={`p-4 rounded-xl space-y-3 border transition-all duration-300 ${
+                      isDelegated 
+                        ? 'bg-slate-800 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
+                        : 'bg-slate-800/90 border-slate-700 hover:border-indigo-500'
+                    }`}>
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="font-bold text-xs">{formatOfficerHeader(u)}</div>
                           <div className="text-[10px] text-slate-400 mt-0.5">{u.station} / {u.region} • <span className="text-yellow-400 font-semibold">{u.role}</span></div>
                         </div>
-                        <div className="space-x-2 shrink-0">
-                          {uPerms?.can_approve ? (
-                            <button onClick={() => handleToggleDelegationPower(u, false)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-extrabold cursor-pointer shadow-sm">Revoke All Powers</button>
-                          ) : (
-                            <button onClick={() => handleToggleDelegationPower(u, true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-extrabold cursor-pointer shadow-sm">Grant Acting Power</button>
+                        
+                        {/* 🟢 CLEAR TOGGLE UI WITH STATUS TEXT */}
+                        <div className="flex flex-col items-end shrink-0 space-y-1.5">
+                          <div className="flex items-center space-x-2">
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${isDelegated ? 'text-emerald-400' : 'text-slate-500'}`}>
+                              {isDelegated ? 'Acting Power: ON' : 'Acting Power: OFF'}
+                            </span>
+                            <ToggleSwitch 
+                              checked={isDelegated} 
+                              onChange={() => handleToggleDelegationPower(u, !isDelegated)} 
+                            />
+                          </div>
+                          {isDelegated && (
+                            <div className="text-[8px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30 font-bold uppercase tracking-widest text-right">
+                              Active Delegatee
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1645,7 +1659,6 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                                   onChange={async (e) => {
                                     const nextPerms = { ...uPerms, [col.key]: e.target.checked, can_approve: true };
                                     try {
-                                      // 🟢 Fixed: Included '/admin/' prefix to prevent 404 error
                                       const res = await authFetch(`/api/v1/admin/users/${encodeURIComponent(u.fnum)}/access`, {
                                         method: "PUT",
                                         headers: { "Content-Type": "application/json" },
@@ -1669,8 +1682,9 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
                   );
                 })}
             </div>
-             
-            <div className="flex justify-end pt-2 border-t border-slate-800">
+              
+            {/* FOOTER */}
+            <div className="flex justify-end pt-4 border-t border-slate-800 shrink-0 mt-2">
               <button onClick={() => setShowDelegationModal(false)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-xs cursor-pointer">Done</button>
             </div>
           </div>

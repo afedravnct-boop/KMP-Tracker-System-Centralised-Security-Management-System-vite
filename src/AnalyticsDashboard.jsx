@@ -303,14 +303,18 @@ const AnalyticsDashboard = ({
   // 🟢 AUTO-FALLBACK ENGINES: Extracts data dynamically from raw Props if Backend is empty
   const displaySuccessStories = useMemo(() => {
     if (backendSuccessStories.length > 0) return backendSuccessStories;
-    return timeFilteredData(resolvedSuccessStories).map(st => ({
-      station: st.station || 'UNKNOWN',
-      region: st.region || 'UNKNOWN',
-      parsedSuspects: st.suspects || 0,
-      parsedClassification: st.category || 'GENERAL OPERATIONS',
-      parsedRecoveries: st.narrative ? st.narrative.substring(0, 60) + '...' : 'NO ITEMS LISTED',
-      parsedLegalStatus: st.status || 'PENDING'
-    }));
+    return timeFilteredData(resolvedSuccessStories).map(st => {
+      // Clean HTML tags and decode &nbsp; before showing the preview
+      const cleanNarrative = stripHtmlTags(st.narrative || '').replace(/&nbsp;/g, ' ').trim();
+      return {
+        station: st.station || 'UNKNOWN',
+        region: st.region || 'UNKNOWN',
+        parsedSuspects: st.suspects || 0,
+        parsedClassification: st.category || 'GENERAL OPERATIONS',
+        parsedRecoveries: cleanNarrative ? cleanNarrative.substring(0, 60) + '...' : 'NO ITEMS LISTED',
+        parsedLegalStatus: st.status || 'PENDING'
+      };
+    });
   }, [backendSuccessStories, resolvedSuccessStories, selectedMonth, dateFilter]);
 
   const displayCrimeCategories = useMemo(() => {
@@ -334,14 +338,18 @@ const AnalyticsDashboard = ({
   const displayFireIncidents = useMemo(() => {
     if (backendFireIntelligence.fireList && backendFireIntelligence.fireList.length > 0) return backendFireIntelligence.fireList;
     const tfFires = timeFilteredData(resolvedCrimeRegistry).filter(r => (r.category || '').toUpperCase().includes('FIRE') || (r.offence || '').toUpperCase().includes('FIRE'));
-    return tfFires.map(f => ({
+    return tfFires.map(f => {
+      // Clean HTML tags from fire narratives
+      const cleanSummary = stripHtmlTags(f.narrative || '').replace(/&nbsp;/g, ' ').trim();
+      return {
         station: f.station || 'UNKNOWN',
         region: f.region || 'UNKNOWN',
         classification: f.category || 'FIRE OUTBREAK',
         deaths: f.fatal_fires || 0,
         injuries: f.victims || 0,
-        summary: f.narrative || 'No summary provided.'
-    }));
+        summary: cleanSummary || 'No summary provided.'
+      };
+    });
   }, [backendFireIntelligence.fireList, resolvedCrimeRegistry, selectedMonth, dateFilter]);
 
   const displayFireTotals = useMemo(() => {

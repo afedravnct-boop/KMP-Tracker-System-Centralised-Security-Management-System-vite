@@ -273,7 +273,7 @@ const AnalyticsDashboard = ({
     else if (activeDomain === 'OPERATIONS') baseData = resolvedOperationalStats;
     else if (activeDomain === 'EXHIBITS') baseData = resolvedExhibits;
     else if (activeDomain === 'ACCIDENTS') baseData = resolvedAccidents;
-    else if (activeDomain === 'FIRES') baseData = resolvedCrimeRegistry; // Map raw crimes for fires fallback
+    else if (activeDomain === 'FIRES') baseData = resolvedCrimeRegistry; 
     else baseData = resolvedCrimeRegistry;
 
     if (!Array.isArray(baseData)) return [];
@@ -304,7 +304,6 @@ const AnalyticsDashboard = ({
   const displaySuccessStories = useMemo(() => {
     if (backendSuccessStories.length > 0) return backendSuccessStories;
 
-    // 🧠 Deep Full-Text NLP Engine: Scans entire narrative for flexible quantities
     const parseIntelligence = (htmlText) => {
       const cleanStr = stripHtmlTags(htmlText || '').replace(/&nbsp;/g, ' ').trim();
       if (!cleanStr) return { suspects: 0, recoveries: 'NO ITEMS LISTED' };
@@ -315,10 +314,7 @@ const AnalyticsDashboard = ({
       const wordsToNum = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, twenty: 20 };
       const extractNum = (val) => isNaN(val) ? (wordsToNum[val.toLowerCase()] || 0) : parseInt(val, 10);
 
-      // Strategy A: Catches "4 suspects", "four armed robbers" anywhere in text
       const forwardRegex = /(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:notorious\s+|armed\s+|hardcore\s+|suspected\s+|male\s+|female\s+)?(?:suspects?|persons?|thieves|robbers|criminals?|individuals?)/i;
-      
-      // Strategy B: Catches "arrested 4", "apprehended a total of two"
       const backwardRegex = /(?:arrested|apprehended|detained|held|caught|intercepted|custody)\s+(?:of\s+|a\s+total\s+of\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)/i;
 
       const matchA = lower.match(forwardRegex);
@@ -329,12 +325,11 @@ const AnalyticsDashboard = ({
       } else if (matchB) {
         parsedSuspects = extractNum(matchB[1]);
       } else if (/(suspects|thieves|robbers)/i.test(lower)) {
-        parsedSuspects = 2; // Plural inference
+        parsedSuspects = 2;
       } else if (/(suspect|thief|robber)/i.test(lower)) {
-        parsedSuspects = 1; // Singular inference
+        parsedSuspects = 1;
       }
 
-      // Exhibit/Recoveries Extraction
       let parsedRecoveries = cleanStr.length > 70 ? cleanStr.substring(0, 70) + '...' : cleanStr;
       const recoveryRegex = /(?:recovery of|recovered|seized|impounded|rescued|exhibited)\s+([^,.;]+(?:kgs?|kilograms?|litres?|jerricans?|sacks?|pieces?|cows?|goats?|motorcycles?|vehicles?|cars?|phones?|tvs?|televisions?|cartons?|guns?|ammunition|weapons?|drugs?|suspected stolen))/i;
       const itemOnlyRegex = /(\d+|one|two|three|four|five)\s+(?:kgs?|kilograms?|litres?|jerricans?|sacks?|pieces?|cows?|goats?|motorcycles?|vehicles?|cars?|phones?|tvs?|televisions?|cartons?|guns?|ammunition|weapons?)/i;
@@ -398,6 +393,125 @@ const AnalyticsDashboard = ({
     });
   }, [backendFireIntelligence.fireList, resolvedCrimeRegistry, selectedMonth, dateFilter]);
 
+  const displayFireTotals = useMemo(() => {
+    if (backendFireIntelligence.totalFires > 0) return backendFireIntelligence;
+    return {
+        totalFires: displayFireIncidents.length,
+        totalDeaths: displayFireIncidents.reduce((sum, f) => sum + (Number(f.deaths)||0), 0),
+        totalInjuries: displayFireIncidents.reduce((sum, f) => sum + (Number(f.injuries)||0), 0)
+    };
+  }, [backendFireIntelligence, displayFireIncidents]);
+
+  const accidentsTimeSeriesData = useMemo(() => {
+      return aggregateTimeSeries(timeFilteredDataset, 'date', ['minor', 'serious', 'fatal', 'victims', 'total']);
+  }, [timeFilteredDataset]);
+
+  const selectedDayLockup = useMemo(() => {
+    if (!selectedDetentionDate || !backendDetentionCalendar.dateMap[selectedDetentionDate]) {
+      return { total: 0, stations: [] };
+    }
+    return backendDetentionCalendar.dateMap[selectedDetentionDate];
+  }, [selectedDetentionDate, backendDetentionCalendar]);
+
+  const manpowerAnalysis = useMemo(() => {
+    const rolls = Array.isArray(resolvedNominalRolls) ? resolvedNominalRolls : [];
+    const regionMap = {};
+
+    const officerRanks = ['CP', 'ACP', 'SSP', 'SP', 'SASP', 'ASP', 'IP', 'AIP'];
+    const ncoRanks = ['HCM', 'HC', 'S/SGT', 'SSGT', 'SGT', 'CPL', 'L/CPL', 'PC', 'PPC', 'SPC'];
+    const allRanks = [...officerRanks, ...ncoRanks];
+
+    let totalActive = 0, totalInactive = 0;
+    let totalMale = 0, totalFemale = 0;
+
+    Object.keys(REGIONAL_HIERARCHY).forEach(reg => {
+      regionMap[reg] = { region: reg, totalDeployable: 0, stations: {} };
+    });
+    regionMap["GENERAL / OTHER"] = { region: "GENERAL / OTHER", totalDeployable: 0, stations: {} };
+
+    rolls.forEach(o => {
+      if (!o) return;
+      let stn = stripHtmlTags(o.station || 'UNKNOWN').toUpperCase();
+      if (stn === "KIRA DIVISION" || stn === "KIRA DIV" || stn === "KIRA") stn = "KIRA DIV";
+      const reg = getOfficialRegionForStation(stn, o.region);
+      const sex = (o.sex || 'M').toUpperCase();
+      const rank = (o.rank || 'PC').toUpperCase();
+      
+      const statusStr = (o.status || o.deployment_status || o.remarks || 'ACTIVE').toUpperCase();
+      const isInactive = ['SICK', 'LEAVE', 'MATERN', 'MISSION', 'SUSPEND', 'AWOL', 'COURSE', 'UNDEPLOY'].some(x => statusStr.includes(x));
+
+      const activeTargetRegion = canViewGlobalLevel ? selectedRegion : userRegClean;
+      if (activeTargetRegion !== 'ALL REGIONS') {
+        const belongsToRegion = reg.toUpperCase() === activeTargetRegion.toUpperCase() || 
+                                (o.region && o.region.toUpperCase() === activeTargetRegion.toUpperCase()) ||
+                                (REGIONAL_HIERARCHY[activeTargetRegion] && REGIONAL_HIERARCHY[activeTargetRegion].some(s => isStationEquivalent(s, stn)));
+        if (!belongsToRegion) return;
+      }
+      if (selectedStation !== 'ALL STATIONS') {
+        if (!isStationEquivalent(stn, selectedStation)) return;
+      }
+
+      if (isInactive) totalInactive++; else totalActive++;
+      if (sex.includes('F')) totalFemale++; else totalMale++;
+
+      const targetReg = regionMap[reg] || regionMap["GENERAL / OTHER"];
+      if (!targetReg.stations[stn]) {
+        targetReg.stations[stn] = { station: stn, totalDeployable: 0, active: 0, inactive: 0, ranks: {} };
+        allRanks.forEach(r => targetReg.stations[stn].ranks[r] = { M: 0, F: 0 });
+      }
+
+      targetReg.stations[stn].totalDeployable += 1;
+      if (isInactive) targetReg.stations[stn].inactive += 1; else targetReg.stations[stn].active += 1;
+      
+      if (targetReg.stations[stn].ranks[rank]) {
+        if (sex.includes('F')) targetReg.stations[stn].ranks[rank].F += 1;
+        else targetReg.stations[stn].ranks[rank].M += 1;
+      }
+      
+      targetReg.totalDeployable += 1;
+    });
+
+    const rows = Object.values(regionMap).filter(r => r.totalDeployable > 0).map(item => ({
+      ...item,
+      stationList: Object.values(item.stations).filter(s => s.totalDeployable > 0).sort((a,b) => a.station.localeCompare(b.station))
+    }));
+
+    return { 
+      rows, allRanks, totalActive, totalInactive, totalMale, totalFemale,
+      pieDeployData: [{ name: 'Active', value: totalActive }, { name: 'Inactive', value: totalInactive }],
+      pieGenderData: [{ name: 'Male', value: totalMale }, { name: 'Female', value: totalFemale }]
+    };
+  }, [resolvedNominalRolls, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
+
+  const exhibitGroupedData = useMemo(() => {
+    const tf = timeFilteredData(resolvedExhibits);
+    const map = {};
+    tf.forEach(ex => {
+      if (!ex) return;
+      const cat = (ex.category || 'GENERAL').toUpperCase();
+      const reg = (ex.region || 'KMP GENERAL').toUpperCase();
+      const div = (ex.division || ex.station || 'N/A').toUpperCase();
+      const stn = (ex.station || 'N/A').toUpperCase();
+      const status = (ex.status || 'IMPOUNDED').toUpperCase();
+      
+      const descRaw = ex.type_make || '';
+      const colRaw = ex.colour || '';
+      let desc = `${descRaw} - ${colRaw}`.replace(/^ - | - $/g, '').trim().toUpperCase();
+      if (!desc) desc = "UNSPECIFIED";
+
+      if (canViewGlobalLevel && selectedRegion !== 'ALL REGIONS' && reg !== selectedRegion.toUpperCase()) return;
+      if (selectedStation !== 'ALL STATIONS' && !isStationEquivalent(stn, selectedStation)) return;
+
+      const key = `${cat}|${desc}|${reg}|${div}|${stn}|${status}`;
+      map[key] = (map[key] || 0) + 1;
+    });
+
+    return Object.entries(map).map(([k, total]) => {
+      const [category, desc, region, division, station, status] = k.split('|');
+      return { category, desc, region, division, station, status, total };
+    }).sort((a, b) => b.total - a.total);
+  }, [resolvedExhibits, selectedRegion, selectedStation, selectedMonth, dateFilter, canViewGlobalLevel]);
+
   const summaryAggregates = useMemo(() => {
     const ops = timeFilteredData(resolvedOperationalStats);
     const ss = Array.isArray(displaySuccessStories) ? displaySuccessStories : [];
@@ -405,11 +519,10 @@ const AnalyticsDashboard = ({
     const ex = timeFilteredData(resolvedExhibits);
     const nom = Array.isArray(resolvedNominalRolls) ? resolvedNominalRolls : [];
     const acc = timeFilteredData(resolvedAccidents);
-    const fires = Array.isArray(displayFireIncidents) ? displayFireIncidents : [];
 
     const calculatedFireTotal = backendFireIntelligence.totalFires > 0 
       ? backendFireIntelligence.totalFires 
-      : fires.length;
+      : (Array.isArray(displayFireIncidents) ? displayFireIncidents.length : 0);
 
     return {
       disruptiveOps: ops.length,
@@ -447,8 +560,6 @@ const AnalyticsDashboard = ({
 
     return Object.values(regMap).sort((a, b) => b.Crimes - a.Crimes);
   }, [resolvedOperationalStats, resolvedCrimeRegistry, selectedRegion, selectedStation, canViewGlobalLevel]);
-
-  // Handle Export Function...
 
   const handleExportExcel = async () => {
     try {

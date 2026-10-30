@@ -112,7 +112,6 @@ const AnalyticsDashboard = ({
   currentUser, 
   canViewGlobal = false 
 }) => {
-  // 🟢 Defensive Hooks: Pre-initialize all arrays to prevent undefined crashes
   const [fetchedRolls, setFetchedRolls] = useState([]);
   const [fetchedCrime, setFetchedCrime] = useState([]);
   const [fetchedOps, setFetchedOps] = useState([]);
@@ -140,7 +139,6 @@ const AnalyticsDashboard = ({
   const [selectedRegion, setSelectedRegion] = useState(canViewGlobalLevel || !currentUser ? 'ALL REGIONS' : (userRegClean || 'KMP HEADQUARTERS'));
   const [selectedStation, setSelectedStation] = useState('ALL STATIONS');
 
-  // 🟢 Safe Intelligence Defaults
   const [backendDetentionCalendar, setBackendDetentionCalendar] = useState({ dates: [], dateMap: {}, regionDemographics: [], regionDuration: [], dailyMargins: [] });
   const [backendSuccessStories, setBackendSuccessStories] = useState([]);
   const [backendFireIntelligence, setBackendFireIntelligence] = useState({ totalFires: 0, totalDeaths: 0, totalInjuries: 0, fireList: [] });
@@ -228,19 +226,17 @@ const AnalyticsDashboard = ({
     return () => { isMounted = false; };
   }, [selectedRegion, selectedStation]);
 
-  // 🟢 Guaranteed Arrays: Eliminating 'undefined' prop crashes
   const resolvedNominalRolls = (Array.isArray(nominalRolls) && nominalRolls.length) ? nominalRolls : ((Array.isArray(nominal_rolls) && nominal_rolls.length) ? nominal_rolls : fetchedRolls);
   const resolvedCrimeRegistry = (Array.isArray(crimeRegistry) && crimeRegistry.length) ? crimeRegistry : ((Array.isArray(reports) && reports.length) ? reports : fetchedCrime);
   const resolvedOperationalStats = (Array.isArray(operationalStats) && operationalStats.length) ? operationalStats : ((Array.isArray(stats) && stats.length) ? stats : fetchedOps);
   const resolvedExhibits = (Array.isArray(impoundedExhibits) && impoundedExhibits.length) ? impoundedExhibits : fetchedExhibits;
-  const resolvedSuccessStories = (Array.isArray(successStories) && successStories.length) ? successStories : backendSuccessStories;
+  const resolvedSuccessStories = (Array.isArray(successStories) && successStories.length) ? successStories : fetchedSuccessStories;
   const resolvedAccidents = (Array.isArray(accidents) && accidents.length) ? accidents : fetchedAccidents;
 
   const [activeDomain, setActiveDomain] = useState('SUCCESS');
   const [selectedMonth, setSelectedMonth] = useState('ALL');
   const [dateFilter, setDateFilter] = useState('ALL'); 
 
-  // 🟢 Defensive Array Map Fix
   const timeFilteredData = (list) => {
     if (!Array.isArray(list)) return [];
     const now = new Date();
@@ -277,7 +273,7 @@ const AnalyticsDashboard = ({
     else if (activeDomain === 'OPERATIONS') baseData = resolvedOperationalStats;
     else if (activeDomain === 'EXHIBITS') baseData = resolvedExhibits;
     else if (activeDomain === 'ACCIDENTS') baseData = resolvedAccidents;
-    else if (activeDomain === 'FIRES') baseData = backendFireIntelligence.fireList || [];
+    else if (activeDomain === 'FIRES') baseData = resolvedCrimeRegistry; // Map raw crimes for fires fallback
     else baseData = resolvedCrimeRegistry;
 
     if (!Array.isArray(baseData)) return [];
@@ -302,7 +298,60 @@ const AnalyticsDashboard = ({
       if (selectedStation !== 'ALL STATIONS' && !isStationEquivalent(stn, selectedStation)) return false;
       return true;
     });
-  }, [activeDomain, resolvedCrimeRegistry, resolvedNominalRolls, resolvedSuccessStories, resolvedOperationalStats, resolvedExhibits, resolvedAccidents, backendFireIntelligence.fireList, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
+  }, [activeDomain, resolvedCrimeRegistry, resolvedNominalRolls, resolvedSuccessStories, resolvedOperationalStats, resolvedExhibits, resolvedAccidents, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
+
+  // 🟢 AUTO-FALLBACK ENGINES: Extracts data dynamically from raw Props if Backend is empty
+  const displaySuccessStories = useMemo(() => {
+    if (backendSuccessStories.length > 0) return backendSuccessStories;
+    return timeFilteredData(resolvedSuccessStories).map(st => ({
+      station: st.station || 'UNKNOWN',
+      region: st.region || 'UNKNOWN',
+      parsedSuspects: st.suspects || 0,
+      parsedClassification: st.category || 'GENERAL OPERATIONS',
+      parsedRecoveries: st.narrative ? st.narrative.substring(0, 60) + '...' : 'NO ITEMS LISTED',
+      parsedLegalStatus: st.status || 'PENDING'
+    }));
+  }, [backendSuccessStories, resolvedSuccessStories, selectedMonth, dateFilter]);
+
+  const displayCrimeCategories = useMemo(() => {
+    if (backendCrimeCategories.length > 0) return backendCrimeCategories;
+    const tfCrimes = timeFilteredData(resolvedCrimeRegistry).filter(r => !isLockupLog(r));
+    const map = {};
+    tfCrimes.forEach(c => {
+        const reg = c.region || 'UNKNOWN';
+        const cat = c.category || 'GENERAL';
+        if (!map[reg]) map[reg] = { region: reg, totalCrimes: 0, categories: {} };
+        map[reg].totalCrimes++;
+        map[reg].categories[cat] = (map[reg].categories[cat] || 0) + 1;
+    });
+    return Object.values(map).map(r => ({
+        region: r.region,
+        totalCrimes: r.totalCrimes,
+        categoryList: Object.entries(r.categories).map(([name, count]) => ({ name, count }))
+    })).sort((a,b) => b.totalCrimes - a.totalCrimes);
+  }, [backendCrimeCategories, resolvedCrimeRegistry, selectedMonth, dateFilter]);
+
+  const displayFireIncidents = useMemo(() => {
+    if (backendFireIntelligence.fireList && backendFireIntelligence.fireList.length > 0) return backendFireIntelligence.fireList;
+    const tfFires = timeFilteredData(resolvedCrimeRegistry).filter(r => (r.category || '').toUpperCase().includes('FIRE') || (r.offence || '').toUpperCase().includes('FIRE'));
+    return tfFires.map(f => ({
+        station: f.station || 'UNKNOWN',
+        region: f.region || 'UNKNOWN',
+        classification: f.category || 'FIRE OUTBREAK',
+        deaths: f.fatal_fires || 0,
+        injuries: f.victims || 0,
+        summary: f.narrative || 'No summary provided.'
+    }));
+  }, [backendFireIntelligence.fireList, resolvedCrimeRegistry, selectedMonth, dateFilter]);
+
+  const displayFireTotals = useMemo(() => {
+    if (backendFireIntelligence.totalFires > 0) return backendFireIntelligence;
+    return {
+        totalFires: displayFireIncidents.length,
+        totalDeaths: displayFireIncidents.reduce((sum, f) => sum + (Number(f.deaths)||0), 0),
+        totalInjuries: displayFireIncidents.reduce((sum, f) => sum + (Number(f.injuries)||0), 0)
+    };
+  }, [backendFireIntelligence, displayFireIncidents]);
 
   const accidentsTimeSeriesData = useMemo(() => {
       return aggregateTimeSeries(timeFilteredDataset, 'date', ['minor', 'serious', 'fatal', 'victims', 'total']);
@@ -416,7 +465,7 @@ const AnalyticsDashboard = ({
 
   const summaryAggregates = useMemo(() => {
     const ops = timeFilteredData(resolvedOperationalStats);
-    const ss = Array.isArray(backendSuccessStories) ? backendSuccessStories : [];
+    const ss = Array.isArray(displaySuccessStories) ? displaySuccessStories : [];
     const cr = timeFilteredData(resolvedCrimeRegistry).filter(r => !isLockupLog(r));
     const ex = timeFilteredData(resolvedExhibits);
     const nom = Array.isArray(resolvedNominalRolls) ? resolvedNominalRolls : [];
@@ -429,11 +478,11 @@ const AnalyticsDashboard = ({
       totalExhibits: ex.length,
       totalDetentions: Object.values(backendDetentionCalendar.dateMap || {}).reduce((acc, curr) => acc + (curr.total || 0), 0),
       totalAccidents: acc.length,
-      totalFires: backendFireIntelligence.totalFires || 0,
+      totalFires: displayFireTotals.totalFires || 0,
       totalArrests: ops.reduce((acc, curr) => acc + (Number(curr.arrests || curr.suspects || curr.arrested) || 0), 0),
       totalCrimes: cr.length
     };
-  }, [resolvedOperationalStats, backendSuccessStories, resolvedCrimeRegistry, resolvedExhibits, resolvedNominalRolls, backendDetentionCalendar, resolvedAccidents, backendFireIntelligence, selectedMonth, dateFilter]);
+  }, [resolvedOperationalStats, displaySuccessStories, resolvedCrimeRegistry, resolvedExhibits, resolvedNominalRolls, backendDetentionCalendar, resolvedAccidents, displayFireTotals, selectedMonth, dateFilter]);
 
   const opsChartData = useMemo(() => {
     const regMap = {};
@@ -569,7 +618,7 @@ const AnalyticsDashboard = ({
         </div>
 
         <span className="text-[10px] font-extrabold text-[#596E47] bg-[#e9eedf] px-2 py-0.5 rounded border border-[#cfe1b9]">
-          Total Entries: {activeDomain === 'SUCCESS' ? backendSuccessStories.length : activeDomain === 'CRIME' ? backendCrimeCategories.length : activeDomain === 'EXHIBITS' ? exhibitGroupedData.length : activeDomain === 'FIRES' ? backendFireIntelligence.fireList.length : timeFilteredDataset.length}
+          Total Entries: {activeDomain === 'SUCCESS' ? displaySuccessStories.length : activeDomain === 'CRIME' ? displayCrimeCategories.length : activeDomain === 'EXHIBITS' ? exhibitGroupedData.length : activeDomain === 'FIRES' ? displayFireIncidents.length : timeFilteredDataset.length}
         </span>
       </div>
 
@@ -598,8 +647,8 @@ const AnalyticsDashboard = ({
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
-                  {backendSuccessStories.length > 0 ? (
-                    backendSuccessStories.map((st, idx) => (
+                  {displaySuccessStories.length > 0 ? (
+                    displaySuccessStories.map((st, idx) => (
                       <tr key={idx} className="hover:bg-[#e9eedf]/30 align-top">
                         <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">
                           {st.station}<br/><span className="text-[9px] text-[#736450] font-medium">{st.region}</span>
@@ -655,7 +704,7 @@ const AnalyticsDashboard = ({
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-[#e2d6c3]">
-                     {backendCrimeCategories.map((reg) => {
+                     {displayCrimeCategories.map((reg) => {
                         const isExpanded = (expandedCrimeRegion === reg.region);
                         return (
                           <React.Fragment key={reg.region}>
@@ -675,7 +724,7 @@ const AnalyticsDashboard = ({
                           </React.Fragment>
                         );
                      })}
-                     {backendCrimeCategories.length === 0 && (
+                     {displayCrimeCategories.length === 0 && (
                         <tr><td colSpan="2" className="text-center py-6 text-[10px] text-[#736450]">No crimes logged for the selected period.</td></tr>
                      )}
                   </tbody>
@@ -895,15 +944,15 @@ const AnalyticsDashboard = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
              <div className="bg-amber-900 text-white p-3 rounded-xl shadow-sm border border-amber-950 flex flex-col justify-between">
                 <span className="text-[9px] font-extrabold uppercase tracking-widest text-amber-200">Total Fire Incidents</span>
-                <div className="text-2xl font-black mt-1">{backendFireIntelligence.totalFires || 0}</div>
+                <div className="text-2xl font-black mt-1">{displayFireTotals.totalFires || 0}</div>
              </div>
              <div className="bg-red-900 text-white p-3 rounded-xl shadow-sm border border-red-950 flex flex-col justify-between">
                 <span className="text-[9px] font-extrabold uppercase tracking-widest text-red-200">Total Fire Deaths</span>
-                <div className="text-2xl font-black mt-1">{backendFireIntelligence.totalDeaths || 0}</div>
+                <div className="text-2xl font-black mt-1">{displayFireTotals.totalDeaths || 0}</div>
              </div>
              <div className="bg-orange-800 text-white p-3 rounded-xl shadow-sm border border-orange-950 flex flex-col justify-between">
                 <span className="text-[9px] font-extrabold uppercase tracking-widest text-orange-200">Total Fire Injuries</span>
-                <div className="text-2xl font-black mt-1">{backendFireIntelligence.totalInjuries || 0}</div>
+                <div className="text-2xl font-black mt-1">{displayFireTotals.totalInjuries || 0}</div>
              </div>
           </div>
 
@@ -920,8 +969,8 @@ const AnalyticsDashboard = ({
                   </tr>
                 </thead>
                 <tbody className="bg-[#fbf8f3] divide-y divide-[#e2d6c3]">
-                  {Array.isArray(backendFireIntelligence.fireList) && backendFireIntelligence.fireList.length > 0 ? (
-                    backendFireIntelligence.fireList.map((f, idx) => (
+                  {displayFireIncidents.length > 0 ? (
+                    displayFireIncidents.map((f, idx) => (
                       <tr key={idx} className="hover:bg-[#e9eedf]/30 align-top">
                         <td className="px-3 py-2 text-[10px] font-bold text-[#3a3225] border-r border-[#e2d6c3] whitespace-normal break-words">
                           {f.station}<br/><span className="text-[9px] text-[#736450]">{f.region}</span>

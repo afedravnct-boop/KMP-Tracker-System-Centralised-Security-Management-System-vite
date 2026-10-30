@@ -303,63 +303,72 @@ const AnalyticsDashboard = ({
   // 🟢 AUTO-FALLBACK ENGINES: Extracts data dynamically from raw Props if Backend is empty
   const displaySuccessStories = useMemo(() => {
     if (backendSuccessStories.length > 0) return backendSuccessStories;
+
+    // 🧠 Deep Full-Text NLP Engine: Scans entire narrative for flexible quantities
+    const parseIntelligence = (htmlText) => {
+      // 1. Sanitize the FULL narrative before parsing
+      const cleanStr = stripHtmlTags(htmlText || '').replace(/&nbsp;/g, ' ').trim();
+      if (!cleanStr) return { suspects: 0, recoveries: 'NO ITEMS LISTED' };
+      
+      const lower = cleanStr.toLowerCase();
+      let parsedSuspects = 0;
+
+      // Dictionary to map word numbers to integers
+      const wordsToNum = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, twenty: 20 };
+      const extractNum = (val) => isNaN(val) ? (wordsToNum[val.toLowerCase()] || 0) : parseInt(val, 10);
+
+      // Strategy A: Catches "4 suspects", "four armed robbers", "three individuals" anywhere in text
+      const forwardRegex = /(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:notorious\s+|armed\s+|hardcore\s+|suspected\s+|male\s+|female\s+)?(?:suspects?|persons?|thieves|robbers|criminals?|individuals?)/i;
+      
+      // Strategy B: Catches "arrested 4", "apprehended a total of two"
+      const backwardRegex = /(?:arrested|apprehended|detained|held|caught|intercepted|custody)\s+(?:of\s+|a\s+total\s+of\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)/i;
+
+      const matchA = lower.match(forwardRegex);
+      const matchB = lower.match(backwardRegex);
+
+      if (matchA) {
+        parsedSuspects = extractNum(matchA[1]);
+      } else if (matchB) {
+        parsedSuspects = extractNum(matchB[1]);
+      } else if (/(suspects|thieves|robbers)/i.test(lower)) {
+        parsedSuspects = 2; // Plural inference if no numbers exist
+      } else if (/(suspect|thief|robber)/i.test(lower)) {
+        parsedSuspects = 1; // Singular inference
+      }
+
+      // 2. Exhibit/Recoveries Extraction (Aggressively scans full text for items and weights)
+      let parsedRecoveries = cleanStr.length > 70 ? cleanStr.substring(0, 70) + '...' : cleanStr;
+      
+      // Look for specific phrasing: "recovery of 10 kgs...", "seized 4 motorcycles"
+      const recoveryRegex = /(?:recovery of|recovered|seized|impounded|rescued|exhibited)\s+([^,.;]+(?:kgs?|kilograms?|litres?|jerricans?|sacks?|pieces?|cows?|goats?|motorcycles?|vehicles?|cars?|phones?|tvs?|televisions?|cartons?|guns?|ammunition|weapons?|drugs?|suspected stolen))/i;
+      const itemOnlyRegex = /(\d+|one|two|three|four|five)\s+(?:kgs?|kilograms?|litres?|jerricans?|sacks?|pieces?|cows?|goats?|motorcycles?|vehicles?|cars?|phones?|tvs?|televisions?|cartons?|guns?|ammunition|weapons?)/i;
+
+      const rMatch = lower.match(recoveryRegex);
+      const iMatch = lower.match(itemOnlyRegex);
+
+      if (rMatch && rMatch[1]) {
+        parsedRecoveries = rMatch[1].trim().toUpperCase();
+      } else if (iMatch) {
+        // If it missed "recovered" but found "4 motorcycles" standalone
+        parsedRecoveries = iMatch[0].toUpperCase();
+      }
+
+      return { suspects: parsedSuspects, recoveries: parsedRecoveries };
+    };
+
     return timeFilteredData(resolvedSuccessStories).map(st => {
-      // Clean HTML tags and decode &nbsp; before showing the preview
-      const cleanNarrative = stripHtmlTags(st.narrative || '').replace(/&nbsp;/g, ' ').trim();
+      // Execute the intelligence parser on the complete, raw st.narrative string
+      const intel = parseIntelligence(st.narrative);
       return {
         station: st.station || 'UNKNOWN',
         region: st.region || 'UNKNOWN',
-        parsedSuspects: st.suspects || 0,
+        parsedSuspects: (st.suspects && st.suspects > 0) ? st.suspects : intel.suspects,
         parsedClassification: st.category || 'GENERAL OPERATIONS',
-        parsedRecoveries: cleanNarrative ? cleanNarrative.substring(0, 60) + '...' : 'NO ITEMS LISTED',
-        parsedLegalStatus: st.status || 'PENDING'
+        parsedRecoveries: intel.recoveries,
+        parsedLegalStatus: st.status || 'COMPLETED / SUCCESS'
       };
     });
   }, [backendSuccessStories, resolvedSuccessStories, selectedMonth, dateFilter]);
-
-  const displayCrimeCategories = useMemo(() => {
-    if (backendCrimeCategories.length > 0) return backendCrimeCategories;
-    const tfCrimes = timeFilteredData(resolvedCrimeRegistry).filter(r => !isLockupLog(r));
-    const map = {};
-    tfCrimes.forEach(c => {
-        const reg = c.region || 'UNKNOWN';
-        const cat = c.category || 'GENERAL';
-        if (!map[reg]) map[reg] = { region: reg, totalCrimes: 0, categories: {} };
-        map[reg].totalCrimes++;
-        map[reg].categories[cat] = (map[reg].categories[cat] || 0) + 1;
-    });
-    return Object.values(map).map(r => ({
-        region: r.region,
-        totalCrimes: r.totalCrimes,
-        categoryList: Object.entries(r.categories).map(([name, count]) => ({ name, count }))
-    })).sort((a,b) => b.totalCrimes - a.totalCrimes);
-  }, [backendCrimeCategories, resolvedCrimeRegistry, selectedMonth, dateFilter]);
-
-  const displayFireIncidents = useMemo(() => {
-    if (backendFireIntelligence.fireList && backendFireIntelligence.fireList.length > 0) return backendFireIntelligence.fireList;
-    const tfFires = timeFilteredData(resolvedCrimeRegistry).filter(r => (r.category || '').toUpperCase().includes('FIRE') || (r.offence || '').toUpperCase().includes('FIRE'));
-    return tfFires.map(f => {
-      // Clean HTML tags from fire narratives
-      const cleanSummary = stripHtmlTags(f.narrative || '').replace(/&nbsp;/g, ' ').trim();
-      return {
-        station: f.station || 'UNKNOWN',
-        region: f.region || 'UNKNOWN',
-        classification: f.category || 'FIRE OUTBREAK',
-        deaths: f.fatal_fires || 0,
-        injuries: f.victims || 0,
-        summary: cleanSummary || 'No summary provided.'
-      };
-    });
-  }, [backendFireIntelligence.fireList, resolvedCrimeRegistry, selectedMonth, dateFilter]);
-
-  const displayFireTotals = useMemo(() => {
-    if (backendFireIntelligence.totalFires > 0) return backendFireIntelligence;
-    return {
-        totalFires: displayFireIncidents.length,
-        totalDeaths: displayFireIncidents.reduce((sum, f) => sum + (Number(f.deaths)||0), 0),
-        totalInjuries: displayFireIncidents.reduce((sum, f) => sum + (Number(f.injuries)||0), 0)
-    };
-  }, [backendFireIntelligence, displayFireIncidents]);
 
   const accidentsTimeSeriesData = useMemo(() => {
       return aggregateTimeSeries(timeFilteredDataset, 'date', ['minor', 'serious', 'fatal', 'victims', 'total']);

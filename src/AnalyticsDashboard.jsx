@@ -95,14 +95,14 @@ const aggregateTimeSeries = (records, dateField, valueFields) => {
 };
 
 const AnalyticsDashboard = ({ 
-  nominalRolls = [], 
-  nominal_rolls = [], 
-  crimeRegistry = [], 
-  reports = [], 
-  successStories = [], 
-  operationalStats = [], 
-  stats = [], 
-  impoundedExhibits = [], 
+  nominalRolls = [],        // maps to NominalRoll model
+  crimeRegistry = [],       // maps to Crime_Reports model
+  successStories = [],      // maps to Success_Stories model
+  impoundedExhibits = [],   // maps to Impounded_Exhibits model
+  lockupMatrix = [],        // maps to LockupMatrix model (Detentions)
+  accidents = [],           // maps to Accidents_Statistics model
+  fireIncidents = [],       // maps to Fire_Statistics model
+  operationalStats = [],    // maps to Operational_Statistics model
   currentUser, 
   canViewGlobal = false 
 }) => {
@@ -159,6 +159,14 @@ const AnalyticsDashboard = ({
       setLoading(true);
       try {
         const intelParam = `?region=${encodeURIComponent(selectedRegion)}&station=${encodeURIComponent(selectedStation)}`;
+
+console.log("Dashboard Props Debug:", {
+  successStories,
+  impoundedExhibits,
+  crimeRegistry,
+  accidents,
+  fireIncidents
+});
 
         const [rollRes, crimeRes, statsRes, exhibitsRes, accidentsRes, intelRes] = await Promise.all([
           authFetch('/api/v1/nominal-roll').catch(() => null),

@@ -187,7 +187,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
 
   // 🟢 SYNCHRONIZE GLOBAL DROPDOWNS TO FORM 
   const handleGlobalFilterRegionChange = (newRegion) => {
-    const cleanRegion = stripHtmlTags(newRegion);
+    const cleanRegion = cleanStr(newRegion);
     setFilterRegion(cleanRegion);
     setFilterStation('ALL STATIONS');
     if (operation === 'new') {
@@ -196,7 +196,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
   };
 
   const handleGlobalFilterStationChange = (newStation) => {
-    const cleanStation = stripHtmlTags(newStation);
+    const cleanStation = cleanStr(newStation);
     setFilterStation(cleanStation);
     if (operation === 'new') {
         setFormData(prev => ({ ...prev, station: cleanStation }));
@@ -303,13 +303,13 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       else if (statsDomain === 'FIRES') raw = fireStats;
 
       const { start, end } = getDateRangeParams(dateFilter);
-      const activeReg = stripHtmlTags(filterRegion || '').trim().toUpperCase();
-      const activeStat = stripHtmlTags(filterStation || '').trim().toUpperCase();
+      const activeReg = cleanStr(filterRegion);
+      const activeStat = cleanStr(filterStation);
 
       return raw.filter(item => {
           const itemDateStr = String(item.date || item.created_at || '').split('T')[0];
-          const itemRegion = stripHtmlTags(item.region || '').trim().toUpperCase();
-          const itemStation = stripHtmlTags(item.station || '').trim().toUpperCase();
+          const itemRegion = cleanStr(item.region);
+          const itemStation = cleanStr(item.station);
 
           // 1. Check Date Range
           if (start && end && (itemDateStr < start || itemDateStr > end)) return false;
@@ -366,7 +366,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     return Object.values(stationMap).filter(s => s.arrested > 0 || s.given_bond > 0 || s.cautioned > 0 || s.taken_to_court > 0 || s.released > 0 || s.remanded > 0 || s.convicted > 0 || stationsList.includes(s.station));
   }, [currentDomainStats, filterRegion, statsDomain]);
 
-  // 🟢 FIXED: Export function restored to original pristine functionality
   const handleExportDomainStats = async () => {
     if (!currentDomainStats.length) {
       alert("No records available to export for the selected filters.");
@@ -433,9 +432,9 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       groups[reg] = { stations: {} };
     });
 
-    // 🟢 Strict filtering applied to Agric summary tables
-    const activeReg = stripHtmlTags(filterRegion || '').trim().toUpperCase();
-    const activeStat = stripHtmlTags(filterStation || '').trim().toUpperCase();
+    // 🟢 Strict filtering applied to Agric summary tables using cleanStr
+    const activeReg = cleanStr(filterRegion);
+    const activeStat = cleanStr(filterStation);
 
     agricSummaryRecords.forEach(record => {
       let reg = (record.region || 'KMP NORTH').toUpperCase();
@@ -1400,7 +1399,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
             </ExpandableTableCard>
 
             {statsDomain === 'AGRICULTURAL' && (
-              <div className="mt-8 space-y-6 animate-in fade-in duration-200">
+              <div className="mt-6 space-y-6 animate-in fade-in duration-200">
                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-300 dark:border-slate-800 overflow-hidden">
                   <div className="bg-slate-900 dark:bg-slate-950 px-4 py-3 text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-between">
                     <span>📋 Regional Agricultural & Produce Theft Command Ledger</span>

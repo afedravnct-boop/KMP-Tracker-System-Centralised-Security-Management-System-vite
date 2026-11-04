@@ -101,7 +101,7 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
           </div>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col h-full relative z-10 mt-3">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col h-full relative z-10 mt-3">
           <div className="bg-slate-900 dark:bg-slate-950 px-4 py-3.5 flex justify-between items-center shrink-0 relative z-30">
             <h3 className="font-extrabold text-white text-sm uppercase tracking-wider">{title}</h3>
             <button 
@@ -125,7 +125,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
   const [notification, setNotification] = useState(null);
 
   const [statsDomain, setStatsDomain] = useState('DISRUPTIVE');
-  const [viewMode, setViewMode] = useState('STATION'); // 'STATION' (granular daily entry) vs 'REGIONAL' (summation table)
+  const [viewMode, setViewMode] = useState('STATION');
   
   const [disruptiveStats, setDisruptiveStats] = useState([]);
   const [agricStats, setAgricStats] = useState([]);
@@ -296,7 +296,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
 
     currentDomainStats.forEach(stat => {
       const stnName = cleanStr(stat.station);
-      // Find matching station in hierarchy or group under station name
       let matchedKey = Object.keys(stationMap).find(k => isStationEquivalent(k, stnName));
       if (!matchedKey) {
         matchedKey = stnName;
@@ -388,24 +387,43 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     return groups;
   }, [agricSummaryRecords]);
 
+  // Initializing Main Forms
+  const getInitialFormData = () => {
+      if (statsDomain === 'ACCIDENTS') {
+          return {
+              sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
+              date: getTodayString(), nature_of_accident: '', custom_nature_of_accident: '', minor: 0, serious: 0, fatal: 0, victims: 0
+          };
+      }
+      if (statsDomain === 'FIRES') {
+          return {
+              sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
+              date: getTodayString(), nature_of_fire: '', custom_nature_of_fire: '', minor_outbreaks: 0, major_disasters: 0, fatal_fires: 0, victims: 0
+          };
+      }
+      return {
+          sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
+          date: getTodayString(), arrested: 0, given_bond: 0, cautioned: 0, 
+          pending_court_prev_ops: 0, pending_court_today_ops: 0, 
+          taken_to_court_prev_lockup: 0, taken_to_court_today_ops: 0, 
+          released: 0, remanded: 0, convicted: 0
+      };
+  };
+
+  const [formData, setFormData] = useState(getInitialFormData());
+
+  // 🟢 The Agric Produce Form state now relies completely on the main formData for Date, Region, and Station
   const [agricFormData, setAgricFormData] = useState({
-    region: currentUser.region || 'KMP NORTH',
-    station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
     agric_crime_report: '',
     number_count_label: '',
     recovery_report: '',
     recoveries_label: '',
     status: 'UNDER INVESTIGATION',
-    date: getTodayString()
   });
 
   const handleAgricInputChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'region') {
-      setAgricFormData({ ...agricFormData, region: value.toUpperCase(), station: REGIONAL_HIERARCHY[value.toUpperCase()]?.[0] || '' });
-    } else {
-      setAgricFormData({ ...agricFormData, [name]: value.toUpperCase() });
-    }
+    setAgricFormData({ ...agricFormData, [name]: value.toUpperCase() });
   };
 
   const handleAgricFormSubmit = async (e) => {
@@ -413,10 +431,13 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     if (!canEditRecords) return setNotification("Security Restriction: You do not have clearance to modify analytical records.");
 
     try {
+      const activeRegion = (canViewGlobalLevel && filterRegion && filterRegion !== 'ALL REGIONS') ? filterRegion : formData.region;
+      const activeStation = (canViewGlobalLevel && filterStation && filterStation !== 'ALL STATIONS') ? filterStation : formData.station;
+
       const payload = {
-        region: agricFormData.region,
-        station: agricFormData.station,
-        date: agricFormData.date,
+        region: activeRegion,
+        station: activeStation,
+        date: formData.date, // Automatically inherits from the main top form
         agric_crime_report: agricFormData.agric_crime_report,
         number_count: parseInt(agricFormData.number_count_label) || 0,
         recoveries: parseInt(agricFormData.recoveries_label) || 0,
@@ -439,7 +460,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
         throw new Error(errData.detail || "Failed to save agricultural entry.");
       }
 
-      setNotification(`✅ Agricultural summary successfully logged!`);
+      setNotification(`✅ Agricultural produce & recoveries successfully logged for ${activeStation}!`);
       fetchAgricSummaries();
       setAgricFormData({
         ...agricFormData,
@@ -449,43 +470,18 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
         recoveries_label: '',
         status: 'UNDER INVESTIGATION',
       });
-      setTimeout(() => setNotification(null), 4000);
+      setTimeout(() => setNotification(null), 5000);
     } catch (err) {
       setNotification(`❌ Error: ${err.message}`);
     }
   };
   
-  const getInitialFormData = () => {
-      if (statsDomain === 'ACCIDENTS') {
-          return {
-              sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
-              date: getTodayString(), nature_of_accident: '', custom_nature_of_accident: '', minor: 0, serious: 0, fatal: 0, victims: 0
-          };
-      }
-      if (statsDomain === 'FIRES') {
-          return {
-              sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
-              date: getTodayString(), nature_of_fire: '', custom_nature_of_fire: '', minor_outbreaks: 0, major_disasters: 0, fatal_fires: 0, victims: 0
-          };
-      }
-      return {
-          sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
-          date: getTodayString(), arrested: 0, given_bond: 0, cautioned: 0, 
-          pending_court_prev: 0, pending_court_today: 0, 
-          taken_to_court_prev: 0, taken_to_court_today: 0, 
-          released: 0, remanded: 0, convicted: 0
-      };
-  };
-
-  const [formData, setFormData] = useState(getInitialFormData());
-
   useEffect(() => {
       setFormData(getInitialFormData());
       setOperation('new');
       setUpdateSearch('');
   }, [statsDomain]);
 
-  // 🟢 Synchronized Statistics Domain Toggles
   const handleToggleDomain = (domain) => {
     setStatsDomain(domain);
   };
@@ -604,12 +600,11 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
             updatedState.custom_nature_of_fire = statData.nature_of_fire;
         }
     }
-    if (statsDomain === 'DISRUPTIVE') {
-        // 🟢 Map the single DB column back to the split UI fields for editing
-        updatedState.pending_court_prev = 0;
-        updatedState.pending_court_today = statData.pending_court || 0;
-        updatedState.taken_to_court_prev = 0;
-        updatedState.taken_to_court_today = statData.taken_to_court || 0;
+    if (statsDomain === 'DISRUPTIVE' || statsDomain === 'AGRICULTURAL') {
+        updatedState.pending_court_prev_ops = statData.pending_court_prev_ops || 0;
+        updatedState.pending_court_today_ops = statData.pending_court_today_ops || 0;
+        updatedState.taken_to_court_prev_lockup = statData.taken_to_court_prev_lockup || 0;
+        updatedState.taken_to_court_today_ops = statData.taken_to_court_today_ops || 0;
     }
     setFormData(updatedState);
   };
@@ -660,10 +655,14 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
           if (newStat.nature_of_fire === 'OTHER') {
               newStat.nature_of_fire = formData.custom_nature_of_fire;
           }
-      } else if (statsDomain === 'DISRUPTIVE') {
-          // 🟢 Combines the split frontend fields into the standard DB columns to prevent crashes
-          newStat.pending_court = (parseInt(formData.pending_court_prev) || 0) + (parseInt(formData.pending_court_today) || 0);
-          newStat.taken_to_court = (parseInt(formData.taken_to_court_prev) || 0) + (parseInt(formData.taken_to_court_today) || 0);
+      } else if (statsDomain === 'DISRUPTIVE' || statsDomain === 'AGRICULTURAL') {
+          newStat.pending_court_prev_ops = parseInt(formData.pending_court_prev_ops) || 0;
+          newStat.pending_court_today_ops = parseInt(formData.pending_court_today_ops) || 0;
+          newStat.taken_to_court_prev_lockup = parseInt(formData.taken_to_court_prev_lockup) || 0;
+          newStat.taken_to_court_today_ops = parseInt(formData.taken_to_court_today_ops) || 0;
+
+          newStat.pending_court = newStat.pending_court_prev_ops + newStat.pending_court_today_ops;
+          newStat.taken_to_court = newStat.taken_to_court_prev_lockup + newStat.taken_to_court_today_ops;
       }
       
       try {
@@ -677,7 +676,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
         }
         
         fetchDomainStats();  
-        setNotification(`✅ Statistics recorded successfully for ${activeStation}!`);
+        setNotification(`✅ Suspects statistics recorded successfully for ${activeStation}!`);
         setFormData(getInitialFormData());
       } catch (err) {  
         setNotification(`❌ Error: ${err.message}`);  
@@ -717,10 +716,14 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
           if (updatedRecord.nature_of_fire === 'OTHER') {
               updatedRecord.nature_of_fire = formData.custom_nature_of_fire;
           }
-      } else if (statsDomain === 'DISRUPTIVE') {
-          // 🟢 Combines the split frontend fields into the standard DB columns to prevent crashes
-          updatedRecord.pending_court = (parseInt(formData.pending_court_prev) || 0) + (parseInt(formData.pending_court_today) || 0);
-          updatedRecord.taken_to_court = (parseInt(formData.taken_to_court_prev) || 0) + (parseInt(formData.taken_to_court_today) || 0);
+      } else if (statsDomain === 'DISRUPTIVE' || statsDomain === 'AGRICULTURAL') {
+          updatedRecord.pending_court_prev_ops = parseInt(formData.pending_court_prev_ops) || 0;
+          updatedRecord.pending_court_today_ops = parseInt(formData.pending_court_today_ops) || 0;
+          updatedRecord.taken_to_court_prev_lockup = parseInt(formData.taken_to_court_prev_lockup) || 0;
+          updatedRecord.taken_to_court_today_ops = parseInt(formData.taken_to_court_today_ops) || 0;
+
+          updatedRecord.pending_court = updatedRecord.pending_court_prev_ops + updatedRecord.pending_court_today_ops;
+          updatedRecord.taken_to_court = updatedRecord.taken_to_court_prev_lockup + updatedRecord.taken_to_court_today_ops;
       }
 
       try {
@@ -766,7 +769,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
         </div>
       )}
 
-      {/* 🟢 Top-Tier User View Mode Toggle (Station Entry Form vs Regional Summation Table) */}
       {canViewGlobalLevel && statsDomain === 'DISRUPTIVE' && (
         <div className="flex justify-center mb-4">
           <div className="bg-slate-200 dark:bg-slate-800 p-1 rounded-xl shadow-inner inline-flex gap-2">
@@ -790,12 +792,14 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <>
-          {viewMode === 'STATION' ? (
+          {viewMode === 'STATION' && (
             <div className="lg:col-span-4 space-y-6">
+              
+              {/* MAIN FORM PANEL */}
               <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
                 <div className="bg-slate-900 dark:bg-slate-950 px-4 py-3.5 border-b border-gray-200 dark:border-slate-800 flex justify-between items-center relative z-30">
                   <h3 className="text-white font-semibold flex items-center">
-                    {statsDomain === 'ACCIDENTS' ? <Car className="w-5 h-5 mr-2 text-red-400" /> : statsDomain === 'FIRES' ? <Flame className="w-5 h-5 mr-2 text-amber-400" /> : <BarChart3 className="w-5 h-5 mr-2 text-blue-400" />} 
+                    {statsDomain === 'ACCIDENTS' ? <Car className="w-5 h-5 mr-2 text-red-400" /> : statsDomain === 'FIRES' ? <Flame className="w-5 h-5 mr-2 text-amber-400" /> : statsDomain === 'AGRICULTURAL' ? <Sprout className="w-5 h-5 mr-2 text-emerald-400" /> : <BarChart3 className="w-5 h-5 mr-2 text-blue-400" />} 
                     ⚙️ Log {statsDomain === 'AGRICULTURAL' ? 'Agri-Crimes' : statsDomain === 'ACCIDENTS' ? 'Accident' : statsDomain === 'FIRES' ? 'Fire' : 'Disruptive'} Stats
                   </h3>
                 </div>
@@ -838,6 +842,8 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
 
                   <form onSubmit={handleFormSubmit} className="space-y-5">
                     {operation === 'update' && (formData.sn || formData.id) && <div className="bg-slate-800 dark:bg-slate-950 text-white text-xs font-bold px-3 py-2 rounded">Currently Editing Record ID: {formData.id || formData.sn}</div>}
+                    
+                    {/* BASE SETTINGS (Region, Station, Date) */}
                     <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg border border-gray-200 dark:border-slate-700 space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
                         <div>
@@ -859,6 +865,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                       </div>
                     </div> 
                     
+                    {/* ACCIDENTS FORM */}
                     {statsDomain === 'ACCIDENTS' ? (
                         <div className="bg-red-50 dark:bg-slate-800 p-4 rounded-lg border border-red-200 dark:border-slate-700">
                           <h4 className="text-sm font-bold text-red-900 dark:text-red-300 border-b border-red-200 dark:border-slate-700 pb-2 mb-4 flex items-center">📊 Traffic & Accidents Aggregates</h4>
@@ -902,6 +909,8 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                             <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm ring-1 ring-purple-500/20"><label className="block text-[10px] font-extrabold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-1">Victims (Count)</label><input type="number" name="victims" min="0" value={formData.victims} onChange={handleInputChange} className="w-full text-lg font-black text-purple-600 dark:text-purple-400 border-b-2 border-transparent focus:border-purple-500 outline-none p-1 bg-transparent" /></div>
                           </div>
                         </div>
+
+                    // FIRES FORM
                     ) : statsDomain === 'FIRES' ? (
                         <div className="bg-amber-50 dark:bg-slate-800 p-4 rounded-lg border border-amber-200 dark:border-slate-700">
                           <h4 className="text-sm font-bold text-amber-900 dark:text-amber-300 border-b border-amber-200 dark:border-slate-700 pb-2 mb-4 flex items-center">🔥 Fire & Rescue Aggregates</h4>
@@ -945,51 +954,117 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                             <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm ring-1 ring-amber-500/20"><label className="block text-[10px] font-extrabold text-amber-600 uppercase mb-1">Victims</label><input type="number" name="victims" min="0" value={formData.victims || 0} onChange={handleInputChange} className="w-full text-lg font-black text-amber-700 outline-none p-1 bg-transparent" /></div>
                           </div>
                         </div>
+
+                    // 🟢 AGRICULTURAL SUSPECTS FORM
+                    ) : statsDomain === 'AGRICULTURAL' ? (
+                        <div className="bg-emerald-50 dark:bg-slate-800 p-4 rounded-lg border border-emerald-200 dark:border-slate-700 space-y-4">
+                          <h4 className="text-sm font-bold text-emerald-900 dark:text-emerald-300 border-b border-emerald-200 dark:border-slate-700 pb-2 mb-2 flex items-center">
+                            📊 Agric Crimes Suspects & Lockup Entry
+                          </h4>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Suspects Arrested</label><input type="number" name="arrested" min="0" value={formData.arrested || 0} onChange={handleInputChange} className="w-full text-base font-bold text-emerald-700 dark:text-emerald-400 outline-none p-1 bg-transparent" /></div>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Given Bond</label><input type="number" name="given_bond" min="0" value={formData.given_bond || 0} onChange={handleInputChange} className="w-full text-base font-bold text-green-700 dark:text-green-400 outline-none p-1 bg-transparent" /></div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Cautioned</label><input type="number" name="cautioned" min="0" value={formData.cautioned || 0} onChange={handleInputChange} className="w-full text-base font-bold text-blue-600 dark:text-blue-400 outline-none p-1 bg-transparent" /></div>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Pending Court (Prev Day)</label><input type="number" name="pending_court_prev_ops" min="0" value={formData.pending_court_prev_ops || 0} onChange={handleInputChange} className="w-full text-base font-bold text-yellow-600 dark:text-yellow-400 outline-none p-1 bg-transparent" /></div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Pending Court (Today's OPS)</label><input type="number" name="pending_court_today_ops" min="0" value={formData.pending_court_today_ops || 0} onChange={handleInputChange} className="w-full text-base font-bold text-yellow-600 dark:text-yellow-400 outline-none p-1 bg-transparent" /></div>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Taken to Court (Prev Lockup)</label><input type="number" name="taken_to_court_prev_lockup" min="0" value={formData.taken_to_court_prev_lockup || 0} onChange={handleInputChange} className="w-full text-base font-bold text-red-600 dark:text-red-400 outline-none p-1 bg-transparent" /></div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Taken to Court (Today's OPS)</label><input type="number" name="taken_to_court_today_ops" min="0" value={formData.taken_to_court_today_ops || 0} onChange={handleInputChange} className="w-full text-base font-bold text-red-600 dark:text-red-400 outline-none p-1 bg-transparent" /></div>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Released by Court</label><input type="number" name="released" min="0" value={formData.released || 0} onChange={handleInputChange} className="w-full text-base font-bold text-green-600 dark:text-green-400 outline-none p-1 bg-transparent" /></div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Suspects Remanded</label><input type="number" name="remanded" min="0" value={formData.remanded || 0} onChange={handleInputChange} className="w-full text-base font-bold text-red-700 dark:text-red-400 outline-none p-1 bg-transparent" /></div>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Suspects Convicted</label><input type="number" name="convicted" min="0" value={formData.convicted || 0} onChange={handleInputChange} className="w-full text-base font-bold text-purple-600 dark:text-purple-400 outline-none p-1 bg-transparent" /></div>
+                          </div>
+                        </div>
+
+                    // DISRUPTIVE OPS FORM
                     ) : (
-                      <div className="bg-blue-50 dark:bg-slate-800 p-4 rounded-lg border border-blue-200 dark:border-slate-700 space-y-4">
-                        <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300 border-b border-blue-200 dark:border-slate-700 pb-2 mb-2 flex items-center">📊 Disruptive Operations Form (REVISED DIV TEMPLATE)</h4>
-                        
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Suspects Arrested</label><input type="number" name="arrested" min="0" value={formData.arrested || 0} onChange={handleInputChange} className="w-full text-base font-bold text-blue-700 dark:text-blue-400 outline-none p-1 bg-transparent" /></div>
-                          <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Given Bond</label><input type="number" name="given_bond" min="0" value={formData.given_bond || 0} onChange={handleInputChange} className="w-full text-base font-bold text-green-700 dark:text-green-400 outline-none p-1 bg-transparent" /></div>
-                        </div>
+                        <div className="bg-blue-50 dark:bg-slate-800 p-4 rounded-lg border border-blue-200 dark:border-slate-700 space-y-4">
+                          <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300 border-b border-blue-200 dark:border-slate-700 pb-2 mb-2 flex items-center">📊 Disruptive Operations Form (REVISED DIV TEMPLATE)</h4>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Suspects Arrested</label><input type="number" name="arrested" min="0" value={formData.arrested || 0} onChange={handleInputChange} className="w-full text-base font-bold text-blue-700 dark:text-blue-400 outline-none p-1 bg-transparent" /></div>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Given Bond</label><input type="number" name="given_bond" min="0" value={formData.given_bond || 0} onChange={handleInputChange} className="w-full text-base font-bold text-green-700 dark:text-green-400 outline-none p-1 bg-transparent" /></div>
+                          </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Cautioned</label><input type="number" name="cautioned" min="0" value={formData.cautioned || 0} onChange={handleInputChange} className="w-full text-base font-bold text-blue-600 dark:text-blue-400 outline-none p-1 bg-transparent" /></div>
-                          <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Pending Court (Prev Day)</label><input type="number" name="pending_court_prev" min="0" value={formData.pending_court_prev || 0} onChange={handleInputChange} className="w-full text-base font-bold text-yellow-600 dark:text-yellow-400 outline-none p-1 bg-transparent" /></div>
-                        </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Cautioned</label><input type="number" name="cautioned" min="0" value={formData.cautioned || 0} onChange={handleInputChange} className="w-full text-base font-bold text-blue-600 dark:text-blue-400 outline-none p-1 bg-transparent" /></div>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Pending Court (Prev Day)</label><input type="number" name="pending_court_prev_ops" min="0" value={formData.pending_court_prev_ops || 0} onChange={handleInputChange} className="w-full text-base font-bold text-yellow-600 dark:text-yellow-400 outline-none p-1 bg-transparent" /></div>
+                          </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Pending Court (Today's OPS)</label><input type="number" name="pending_court_today" min="0" value={formData.pending_court_today || 0} onChange={handleInputChange} className="w-full text-base font-bold text-yellow-600 dark:text-yellow-400 outline-none p-1 bg-transparent" /></div>
-                          <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Taken to Court (Prev Lockup)</label><input type="number" name="taken_to_court_prev" min="0" value={formData.taken_to_court_prev || 0} onChange={handleInputChange} className="w-full text-base font-bold text-red-600 dark:text-red-400 outline-none p-1 bg-transparent" /></div>
-                        </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Pending Court (Today's OPS)</label><input type="number" name="pending_court_today_ops" min="0" value={formData.pending_court_today_ops || 0} onChange={handleInputChange} className="w-full text-base font-bold text-yellow-600 dark:text-yellow-400 outline-none p-1 bg-transparent" /></div>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Taken to Court (Prev Lockup)</label><input type="number" name="taken_to_court_prev_lockup" min="0" value={formData.taken_to_court_prev_lockup || 0} onChange={handleInputChange} className="w-full text-base font-bold text-red-600 dark:text-red-400 outline-none p-1 bg-transparent" /></div>
+                          </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Taken to Court (Today's OPS)</label><input type="number" name="taken_to_court_today" min="0" value={formData.taken_to_court_today || 0} onChange={handleInputChange} className="w-full text-base font-bold text-red-600 dark:text-red-400 outline-none p-1 bg-transparent" /></div>
-                          <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Released by Court</label><input type="number" name="released" min="0" value={formData.released || 0} onChange={handleInputChange} className="w-full text-base font-bold text-green-600 dark:text-green-400 outline-none p-1 bg-transparent" /></div>
-                        </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Taken to Court (Today's OPS)</label><input type="number" name="taken_to_court_today_ops" min="0" value={formData.taken_to_court_today_ops || 0} onChange={handleInputChange} className="w-full text-base font-bold text-red-600 dark:text-red-400 outline-none p-1 bg-transparent" /></div>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Released by Court</label><input type="number" name="released" min="0" value={formData.released || 0} onChange={handleInputChange} className="w-full text-base font-bold text-green-600 dark:text-green-400 outline-none p-1 bg-transparent" /></div>
+                          </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Suspects Remanded</label><input type="number" name="remanded" min="0" value={formData.remanded || 0} onChange={handleInputChange} className="w-full text-base font-bold text-red-700 dark:text-red-400 outline-none p-1 bg-transparent" /></div>
-                          <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Suspects Convicted</label><input type="number" name="convicted" min="0" value={formData.convicted || 0} onChange={handleInputChange} className="w-full text-base font-bold text-purple-600 dark:text-purple-400 outline-none p-1 bg-transparent" /></div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Suspects Remanded</label><input type="number" name="remanded" min="0" value={formData.remanded || 0} onChange={handleInputChange} className="w-full text-base font-bold text-red-700 dark:text-red-400 outline-none p-1 bg-transparent" /></div>
+                            <div className="bg-white dark:bg-slate-900 p-2 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[10px] font-bold text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-1">Suspects Convicted</label><input type="number" name="convicted" min="0" value={formData.convicted || 0} onChange={handleInputChange} className="w-full text-base font-bold text-purple-600 dark:text-purple-400 outline-none p-1 bg-transparent" /></div>
+                          </div>
                         </div>
-                      </div>
-                  )}
+                    )}
                     
                     <button type="submit" className="w-full bg-blue-700 hover:bg-blue-800 transition-colors text-white mt-4 py-4 font-bold rounded-lg shadow text-lg flex justify-center items-center cursor-pointer">
-                      {operation === 'new' ? '💾 Submit Data Entry' : '💾 Save Updated Figures'}
+                      {operation === 'new' ? '💾 Submit Suspects Entry' : '💾 Save Updated Figures'}
                     </button>
                   </form>
                 </div>
               </div>
-            </div>
-          ) : (
-            // 🟢 Regional Summation Table View (REVISED REG TEMPLATE)
-            <div className="lg:col-span-12 space-y-4">
-              <div className="bg-[#3a3225] p-4 rounded-xl text-white shadow">
-                <h3 className="text-sm font-black uppercase tracking-wider">📊 Regional Master Summation Table ({filterRegion}) - REVISED REG TEMPLATE</h3>
-                <p className="text-xs text-amber-200 mt-1">Automated regional rollup combining all subordinate station entries into standardized command categories.</p>
-              </div>
+
+              {/* 🟢 AGRICULTURAL PRODUCE RECOVERY FORM (Stacked below Suspects Form) */}
+              {statsDomain === 'AGRICULTURAL' && operation === 'new' && (
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-emerald-200 dark:border-slate-800 overflow-hidden mt-6 animate-in slide-in-from-top-4">
+                  <div className="bg-emerald-700 dark:bg-emerald-900 px-4 py-3 text-white font-extrabold text-xs uppercase tracking-wider flex items-center">
+                    🌱 Log Produce & Recoveries (Links to Table)
+                  </div>
+                  <form onSubmit={handleAgricFormSubmit} className="p-5 space-y-4 dark:bg-slate-900">
+                    <div className="bg-emerald-50 dark:bg-slate-800/80 p-3 rounded-lg border border-emerald-200 dark:border-slate-700 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
+                      Syncing to: <span className="font-black uppercase text-emerald-600 dark:text-emerald-400">{formData.station} ({formData.region})</span> on {formData.date}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Item (e.g. CATTLE) *</label>
+                      <input type="text" name="agric_crime_report" value={agricFormData.agric_crime_report} onChange={handleAgricInputChange} required placeholder="e.g. CATTLE" className="w-full text-sm border border-slate-300 dark:border-slate-700 p-2 rounded-md uppercase font-bold text-red-700 dark:text-red-400 bg-white dark:bg-slate-950 outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Stolen Qty *</label>
+                        <input type="text" name="number_count_label" value={agricFormData.number_count_label} onChange={handleAgricInputChange} required placeholder="e.g. 5 HEADS" className="w-full text-sm border border-slate-300 dark:border-slate-700 p-2 rounded-md font-black text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-950 outline-none focus:ring-2 focus:ring-emerald-500 uppercase" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Recovery Qty *</label>
+                        <input type="text" name="recoveries_label" value={agricFormData.recoveries_label} onChange={handleAgricInputChange} required placeholder="e.g. 2 HEADS" className="w-full text-sm border border-slate-300 dark:border-slate-700 p-2 rounded-md font-black text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-950 outline-none focus:ring-2 focus:ring-emerald-500 uppercase" />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Action / Recovery Note *</label>
+                      <input type="text" name="recovery_report" value={agricFormData.recovery_report} onChange={handleAgricInputChange} required placeholder="e.g. CATTLE RECOVERED" className="w-full text-sm border border-slate-300 dark:border-slate-700 p-2 rounded-md uppercase font-bold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-950 outline-none focus:ring-2 focus:ring-emerald-500" />
+                    </div>
+                    
+                    <button type="submit" className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-black py-4 rounded-lg text-lg shadow-md cursor-pointer transition-colors flex items-center justify-center mt-2">
+                      <Save className="w-5 h-5 mr-2" /> Save Produce Entry
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           )}
           
@@ -1083,7 +1158,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
               </div>
             </div>
 
-            <ExpandableTableCard title={`Weekly Metrics Breakdown Ledger (${statsDomain === 'AGRICULTURAL' ? 'Agricultural Crimes' : statsDomain === 'ACCIDENTS' ? 'Accidents' : statsDomain === 'FIRES' ? 'Fires & Rescue' : viewMode === 'REGIONAL' ? 'Regional Summation Table' : 'Disruptive OPS'})`} onToggle={(expanded) => { if (setSidebarOpen) setSidebarOpen(!expanded); }}>
+            <ExpandableTableCard title={`Weekly Metrics Breakdown Ledger (${statsDomain === 'AGRICULTURAL' ? 'Agricultural Crimes' : statsDomain === 'ACCIDENTS' ? 'Accidents' : statsDomain === 'FIRES' ? 'Fires & Rescue' : viewMode === 'REGIONAL' ? 'Regional Summation Table (REVISED REG TEMPLATE)' : 'Disruptive OPS (REVISED DIV TEMPLATE)'})`} onToggle={(expanded) => { if (setSidebarOpen) setSidebarOpen(!expanded); }}>
               <div className="overflow-x-auto w-full dark:bg-slate-900">
                 
                 {statsDomain === 'ACCIDENTS' ? (
@@ -1191,116 +1266,120 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                       {currentDomainStats.length === 0 && <tr><td colSpan="11" className="text-center py-6 text-gray-500 dark:text-slate-400 font-medium">No fire statistics logged for this jurisdiction.</td></tr>}
                     </tbody>
                   </table>
-                ) : statsDomain === 'DISRUPTIVE' && viewMode === 'REGIONAL' ? (
+                ) : viewMode === 'REGIONAL' ? (
                   // 🟢 REVISED REG TEMPLATE (Summation Table View)
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800 border border-slate-300 dark:border-slate-800">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800 border border-slate-300 dark:border-slate-800 text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-950 sticky top-0">
                       <tr>
-                        <th rowSpan="2" className="px-3 py-3 text-left text-xs font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider align-middle border-r border-slate-300 dark:border-slate-800">S/N</th>
-                        <th rowSpan="2" className="px-3 py-3 text-left text-xs font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider align-middle border-r border-slate-300 dark:border-slate-800">Division</th>
-                        <th rowSpan="2" className="px-2 py-3 text-center text-xs font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider align-middle border-r border-slate-300 dark:border-slate-800">Suspects<br/>arrested</th>
-                        <th colSpan="3" className="px-3 py-2 text-center text-xs font-extrabold text-white bg-orange-600 uppercase tracking-wider border-r border-slate-300">ACTION TAKEN</th>
-                        <th colSpan="3" className="px-3 py-2 text-center text-xs font-extrabold text-white bg-red-600 uppercase tracking-wider">STATUS OF THOSE TAKEN TO COURT</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">S/n</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Division</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Suspects arrested</th>
+                        
+                        <th colSpan="3" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase bg-orange-400 dark:bg-orange-600 text-white border-r border-slate-300 dark:border-slate-700 border-b">ACTION TAKEN</th>
+                        <th colSpan="3" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase bg-red-600 dark:bg-red-800 text-white border-b border-slate-300 dark:border-slate-700">STATUS OF THOSE TAKEN TO COURT</th>
                       </tr>
                       <tr>
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-green-900 bg-green-100 border-r border-slate-300 uppercase">Given Bond</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-blue-900 bg-blue-100 border-r border-slate-300 uppercase">Cautioned</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-red-900 bg-red-200 border-r border-slate-300 uppercase">Taken to Court</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-red-900 bg-red-100 border-r border-slate-300 uppercase">Released by court</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-red-900 bg-red-100 border-r border-slate-300 uppercase">Suspects remanded</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-red-900 bg-red-100 uppercase">Suspects convicted</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-green-200 dark:bg-green-900/40 text-green-900 dark:text-green-300 border-r border-slate-300 dark:border-slate-700 border-b">Given Bond</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-blue-200 dark:bg-blue-900/40 text-blue-900 dark:text-blue-300 border-r border-slate-300 dark:border-slate-700 border-b">Cautioned</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-r border-slate-300 dark:border-slate-700 border-b">Taken to Court</th>
+                        
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-r border-slate-300 dark:border-slate-700 border-b">Released by court</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-r border-slate-300 dark:border-slate-700 border-b">Suspects remanded</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-b border-slate-300 dark:border-slate-700">Suspects convicted</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
                       {regionalSummationData.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-blue-50 transition-colors">
-                          <td className="px-3 py-3 text-xs font-bold border-r border-slate-200">{idx + 1}</td>
-                          <td className="px-3 py-3 text-xs font-medium text-blue-700 border-r border-slate-200">{row.station}</td>
-                          <td className="px-2 py-3 text-xs text-center font-bold border-r border-slate-200">{row.arrested}</td>
-                          <td className="px-2 py-3 text-xs text-center font-bold text-green-700 border-r border-slate-200">{row.given_bond}</td>
-                          <td className="px-2 py-3 text-xs text-center font-bold text-blue-700 border-r border-slate-200">{row.cautioned}</td>
-                          <td className="px-2 py-3 text-xs text-center font-bold text-red-700 border-r border-slate-200">{row.taken_to_court}</td>
-                          <td className="px-2 py-3 text-xs text-center font-bold text-red-700 border-r border-slate-200">{row.released}</td>
-                          <td className="px-2 py-3 text-xs text-center font-bold text-red-700 border-r border-slate-200">{row.remanded}</td>
-                          <td className="px-2 py-3 text-xs text-center font-bold text-purple-700">{row.convicted}</td>
+                        <tr key={idx} className="hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors">
+                          <td className="px-2 py-2 text-center font-bold border-r border-slate-200 dark:border-slate-800">{idx + 1}</td>
+                          <td className="px-2 py-2 text-center font-bold border-r border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">{row.station}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold">{row.arrested}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">{row.given_bond}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">{row.cautioned}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-red-600 dark:text-red-400">{row.taken_to_court}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">{row.released}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800">{row.remanded}</td>
+                          <td className="px-2 py-2 text-center border-slate-200 dark:border-slate-800">{row.convicted}</td>
                         </tr>
                       ))}
                       {regionalSummationData.length > 0 && (
-                        <tr className="bg-slate-200 dark:bg-slate-800 font-bold border-t-2 border-slate-400">
-                          <td colSpan="2" className="px-3 py-3 text-right text-xs uppercase border-r border-slate-300">TOTAL</td>
-                          <td className="px-2 py-3 text-center text-xs text-blue-800 border-r border-slate-300">{regionalSummationData.reduce((s, r) => s + r.arrested, 0)}</td>
-                          <td className="px-2 py-3 text-center text-xs text-green-800 border-r border-slate-300">{regionalSummationData.reduce((s, r) => s + r.given_bond, 0)}</td>
-                          <td className="px-2 py-3 text-center text-xs text-blue-800 border-r border-slate-300">{regionalSummationData.reduce((s, r) => s + r.cautioned, 0)}</td>
-                          <td className="px-2 py-3 text-center text-xs text-red-800 border-r border-slate-300">{regionalSummationData.reduce((s, r) => s + r.taken_to_court, 0)}</td>
-                          <td className="px-2 py-3 text-center text-xs text-red-800 border-r border-slate-300">{regionalSummationData.reduce((s, r) => s + r.released, 0)}</td>
-                          <td className="px-2 py-3 text-center text-xs text-red-800 border-r border-slate-300">{regionalSummationData.reduce((s, r) => s + r.remanded, 0)}</td>
-                          <td className="px-2 py-3 text-center text-xs text-purple-800">{regionalSummationData.reduce((s, r) => s + r.convicted, 0)}</td>
+                        <tr className="bg-slate-200 dark:bg-slate-800 font-bold border-t-2 border-slate-400 dark:border-slate-600">
+                          <td colSpan="2" className="px-2 py-2 text-right text-xs uppercase border-r border-slate-300 dark:border-slate-700">TOTAL</td>
+                          <td className="px-2 py-2 text-center text-xs text-blue-800 dark:text-blue-400 border-r border-slate-300 dark:border-slate-700">{regionalSummationData.reduce((s, r) => s + r.arrested, 0)}</td>
+                          <td className="px-2 py-2 text-center text-xs text-green-800 dark:text-green-400 border-r border-slate-300 dark:border-slate-700">{regionalSummationData.reduce((s, r) => s + r.given_bond, 0)}</td>
+                          <td className="px-2 py-2 text-center text-xs text-blue-800 dark:text-blue-400 border-r border-slate-300 dark:border-slate-700">{regionalSummationData.reduce((s, r) => s + r.cautioned, 0)}</td>
+                          <td className="px-2 py-2 text-center text-xs text-red-800 dark:text-red-400 border-r border-slate-300 dark:border-slate-700">{regionalSummationData.reduce((s, r) => s + r.taken_to_court, 0)}</td>
+                          <td className="px-2 py-2 text-center text-xs text-red-800 dark:text-red-400 border-r border-slate-300 dark:border-slate-700">{regionalSummationData.reduce((s, r) => s + r.released, 0)}</td>
+                          <td className="px-2 py-2 text-center text-xs text-red-800 dark:text-red-400 border-r border-slate-300 dark:border-slate-700">{regionalSummationData.reduce((s, r) => s + r.remanded, 0)}</td>
+                          <td className="px-2 py-2 text-center text-xs text-purple-800 dark:text-purple-400">{regionalSummationData.reduce((s, r) => s + r.convicted, 0)}</td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 ) : (
-                  // 🟢 REVISED DIV TEMPLATE (Daily Breakdown Ledger View)
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800 border border-slate-300 dark:border-slate-800">
+                  // 🟢 REVISED DIV TEMPLATE (Station Form & Daily Breakdown Ledger View)
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800 border border-slate-300 dark:border-slate-800 text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-950 sticky top-0">
                       <tr>
-                        <th rowSpan="2" className="px-3 py-3 text-left text-xs font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider align-middle border-r border-slate-300 dark:border-slate-800">S/N</th>
-                        <th rowSpan="2" className="px-3 py-3 text-left text-xs font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider align-middle border-r border-slate-300 dark:border-slate-800">Date</th>
-                        <th rowSpan="2" className="px-3 py-3 text-left text-xs font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider align-middle border-r border-slate-300 dark:border-slate-800">Division</th>
-                        <th rowSpan="2" className="px-2 py-3 text-center text-xs font-black text-gray-700 dark:text-slate-300 uppercase tracking-wider align-middle border-r border-slate-300 dark:border-slate-800">Suspects<br/>arrested</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">S/n</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Division</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Day & Date</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Suspects arrested</th>
                         
-                        {/* Category Group 1: Action Taken */}
-                        <th colSpan="3" className="px-3 py-2 text-center text-xs font-extrabold text-white bg-orange-600 dark:bg-orange-800 uppercase tracking-wider border-r border-slate-300 dark:border-slate-800">
-                          ACTION TAKEN
-                        </th>
-                        
-                        {/* Category Group 2: Status of Those Taken to Court */}
-                        <th colSpan="3" className="px-3 py-2 text-center text-xs font-extrabold text-white bg-red-600 dark:bg-red-900 uppercase tracking-wider">
-                          STATUS OF THOSE TAKEN TO COURT
-                        </th>
+                        <th colSpan="4" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase border-r border-slate-300 dark:border-slate-700 border-b">STATUS OF SUSPECTS ARRESTED</th>
+                        <th colSpan="5" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase border-b border-slate-300 dark:border-slate-700">STATUS OF THOSE TAKEN TO COURT</th>
                       </tr>
                       <tr>
-                        {/* Action Taken Sub-columns */}
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-green-900 bg-green-100 dark:bg-slate-900 dark:text-green-300 border-r border-slate-300 dark:border-slate-800 uppercase">Given Bond</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-blue-900 bg-blue-100 dark:bg-slate-900 dark:text-blue-300 border-r border-slate-300 dark:border-slate-800 uppercase">Cautioned</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-red-900 bg-red-200 dark:bg-slate-900 dark:text-red-300 border-r border-slate-300 dark:border-slate-800 uppercase">Taken to Court</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b bg-green-50 dark:bg-green-900/10">Given Bond</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b bg-blue-50 dark:bg-blue-900/10">Cautioned</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Pending Court from previous day's OPS</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Pending court from Today's OPS</th>
                         
-                        {/* Court Status Sub-columns */}
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-red-900 bg-red-100 dark:bg-slate-900 dark:text-red-300 border-r border-slate-300 dark:border-slate-800 uppercase">Released by court</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-red-900 bg-red-100 dark:bg-slate-900 dark:text-red-300 border-r border-slate-300 dark:border-slate-800 uppercase">Suspects remanded</th>
-                        <th className="px-2 py-2 text-center text-[10px] font-extrabold text-red-900 bg-red-100 dark:bg-slate-900 dark:text-red-300 uppercase">Suspects convicted</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Taken to court from previous day's lockup</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Taken to Court from today's OPS</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Released by court</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Suspects remanded</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-b border-slate-300 dark:border-slate-700">Suspects convicted</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
                       {currentDomainStats.map((stat) => (
                         <tr key={stat.id || stat.sn} className="even:bg-slate-50 dark:even:bg-slate-800/40 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => { if(operation === 'update') populateUpdateForm(stat); }}>
-                          <td className="px-3 py-3 whitespace-nowrap text-xs font-bold text-gray-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800">{stat.id || stat.sn}</td>
-                          <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800">{stat.date}</td>
-                          <td className="px-3 py-3 whitespace-nowrap text-xs font-medium text-blue-700 dark:text-blue-400 border-r border-slate-200 dark:border-slate-800">{stat.station}</td>
-                          <td className="px-2 py-3 whitespace-nowrap text-xs text-center font-bold text-gray-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">{stat.arrested}</td>
+                          <td className="px-2 py-2 text-center font-bold border-r border-slate-200 dark:border-slate-800">{stat.id || stat.sn}</td>
+                          <td className="px-2 py-2 text-center font-bold border-r border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">{stat.station}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 whitespace-nowrap">{stat.date}</td>
+                          <td className="px-2 py-2 text-center font-bold border-r border-slate-200 dark:border-slate-800">{stat.arrested}</td>
                           
-                          <td className="px-2 py-3 whitespace-nowrap text-xs text-center font-bold text-green-700 dark:text-green-400 border-r border-slate-200 dark:border-slate-800">{stat.given_bond}</td>
-                          <td className="px-2 py-3 whitespace-nowrap text-xs text-center font-bold text-blue-700 dark:text-blue-400 border-r border-slate-200 dark:border-slate-800">{stat.cautioned}</td>
-                          <td className="px-2 py-3 whitespace-nowrap text-xs text-center font-bold text-red-700 dark:text-red-400 border-r border-slate-200 dark:border-slate-800">{stat.taken_to_court}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-green-700 dark:text-green-500 font-bold">{stat.given_bond}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-blue-700 dark:text-blue-500 font-bold">{stat.cautioned}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-yellow-600 dark:text-yellow-500">{stat.pending_court_prev_ops}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-yellow-600 dark:text-yellow-500">{stat.pending_court_today_ops}</td>
                           
-                          <td className="px-2 py-3 whitespace-nowrap text-xs text-center font-bold text-red-700 dark:text-red-400 border-r border-slate-200 dark:border-slate-800">{stat.released}</td>
-                          <td className="px-2 py-3 whitespace-nowrap text-xs text-center font-bold text-red-700 dark:text-red-400 border-r border-slate-200 dark:border-slate-800">{stat.remanded}</td>
-                          <td className="px-2 py-3 whitespace-nowrap text-xs text-center font-bold text-purple-700 dark:text-purple-400">{stat.convicted}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-red-600 dark:text-red-500">{stat.taken_to_court_prev_lockup}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 font-bold text-red-600 dark:text-red-500">{stat.taken_to_court_today_ops}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-green-700 dark:text-green-500 font-bold">{stat.released}</td>
+                          <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 text-red-700 dark:text-red-500 font-bold">{stat.remanded}</td>
+                          <td className="px-2 py-2 text-center border-slate-200 dark:border-slate-800 text-purple-700 dark:text-purple-400 font-bold">{stat.convicted}</td>
                         </tr>
                       ))}
                       {currentDomainStats.length > 0 && (
-                        <tr className="bg-slate-200 dark:bg-slate-800 font-bold text-gray-900 dark:text-slate-100 border-t-2 border-slate-400 dark:border-slate-700">
-                          <td colSpan="3" className="px-3 py-3 text-right text-xs uppercase tracking-wider border-r border-slate-300 dark:border-slate-800">TOTAL</td>
-                          <td className="px-2 py-3 text-center text-xs text-blue-800 dark:text-blue-300 border-r border-slate-300 dark:border-slate-800">{totals.arrested}</td>
-                          <td className="px-2 py-3 text-center text-xs text-green-800 dark:text-green-300 border-r border-slate-300 dark:border-slate-800">{totals.given_bond}</td>
-                          <td className="px-2 py-3 text-center text-xs text-blue-800 dark:text-blue-300 border-r border-slate-300 dark:border-slate-800">{totals.cautioned}</td>
-                          <td className="px-2 py-3 text-center text-xs text-red-800 dark:text-red-300 border-r border-slate-300 dark:border-slate-800">{totals.taken_to_court}</td>
-                          <td className="px-2 py-3 text-center text-xs text-red-800 dark:text-red-300 border-r border-slate-300 dark:border-slate-800">{totals.released}</td>
-                          <td className="px-2 py-3 text-center text-xs text-red-800 dark:text-red-300 border-r border-slate-300 dark:border-slate-800">{totals.remanded}</td>
-                          <td className="px-2 py-3 text-center text-xs text-purple-800 dark:text-purple-300">{totals.convicted}</td>
+                        <tr className="bg-slate-200 dark:bg-slate-800 font-bold border-t-2 border-slate-400 dark:border-slate-600">
+                          <td colSpan="3" className="px-2 py-2 text-right text-xs uppercase border-r border-slate-300 dark:border-slate-700">TOTAL</td>
+                          <td className="px-2 py-2 text-center text-xs text-blue-800 dark:text-blue-400 border-r border-slate-300 dark:border-slate-700">{totals.arrested}</td>
+                          
+                          <td className="px-2 py-2 text-center text-xs text-green-800 dark:text-green-400 border-r border-slate-300 dark:border-slate-700">{totals.given_bond}</td>
+                          <td className="px-2 py-2 text-center text-xs text-blue-800 dark:text-blue-400 border-r border-slate-300 dark:border-slate-700">{totals.cautioned}</td>
+                          <td className="px-2 py-2 text-center text-xs border-r border-slate-300 dark:border-slate-700 text-yellow-800 dark:text-yellow-400">{currentDomainStats.reduce((s, r) => s + (parseInt(r.pending_court_prev_ops) || 0), 0)}</td>
+                          <td className="px-2 py-2 text-center text-xs border-r border-slate-300 dark:border-slate-700 text-yellow-800 dark:text-yellow-400">{currentDomainStats.reduce((s, r) => s + (parseInt(r.pending_court_today_ops) || 0), 0)}</td>
+                          
+                          <td className="px-2 py-2 text-center text-xs border-r border-slate-300 dark:border-slate-700 text-red-800 dark:text-red-400">{currentDomainStats.reduce((s, r) => s + (parseInt(r.taken_to_court_prev_lockup) || 0), 0)}</td>
+                          <td className="px-2 py-2 text-center text-xs border-r border-slate-300 dark:border-slate-700 text-red-800 dark:text-red-400">{currentDomainStats.reduce((s, r) => s + (parseInt(r.taken_to_court_today_ops) || 0), 0)}</td>
+                          <td className="px-2 py-2 text-center text-xs text-green-800 dark:text-green-400 border-r border-slate-300 dark:border-slate-700">{totals.released}</td>
+                          <td className="px-2 py-2 text-center text-xs text-red-800 dark:text-red-400 border-r border-slate-300 dark:border-slate-700">{totals.remanded}</td>
+                          <td className="px-2 py-2 text-center text-xs text-purple-800 dark:text-purple-400">{totals.convicted}</td>
                         </tr>
                       )}
-                      {currentDomainStats.length === 0 && <tr><td colSpan="10" className="text-center py-6 text-gray-500 dark:text-slate-400 font-medium">No statistics logged for this jurisdiction.</td></tr>}
+                      {currentDomainStats.length === 0 && <tr><td colSpan="13" className="text-center py-6 text-gray-500 dark:text-slate-400 font-medium">No statistics logged for this jurisdiction.</td></tr>}
                     </tbody>
                   </table>
                 )}
@@ -1309,51 +1388,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
 
             {statsDomain === 'AGRICULTURAL' && (
               <div className="mt-8 space-y-6 animate-in fade-in duration-200">
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-emerald-200 dark:border-slate-800 overflow-hidden">
-                  <div className="bg-emerald-700 dark:bg-emerald-900 px-4 py-3 text-white font-extrabold text-xs uppercase tracking-wider flex items-center">
-                    🌱 Log Station Agricultural Crime & Produce Entry
-                  </div>
-                  <form onSubmit={handleAgricFormSubmit} className="p-5 grid grid-cols-1 sm:grid-cols-6 gap-4 dark:bg-slate-900">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Region *</label>
-                      <select name="region" value={agricFormData.region} onChange={handleAgricInputChange} disabled={!canViewGlobalLevel} className="w-full text-xs border dark:border-slate-700 p-2 rounded bg-white dark:bg-slate-800 dark:text-slate-100 font-bold outline-none focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-500">
-                        {canViewGlobalLevel ? Object.keys(REGIONAL_HIERARCHY).map(reg => (
-                          <option key={reg} value={reg}>{reg}</option>
-                        )) : <option value={userRegClean}>{userRegClean}</option>}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Station / Division *</label>
-                      <select name="station" value={agricFormData.station} onChange={handleAgricInputChange} disabled={!(canViewGlobalLevel || isRegionalCommand)} className="w-full text-xs border dark:border-slate-700 p-2 rounded bg-white dark:bg-slate-800 dark:text-slate-100 font-bold outline-none focus:border-emerald-500 disabled:bg-gray-100 disabled:text-gray-500">
-                        {(canViewGlobalLevel || isRegionalCommand) ? (REGIONAL_HIERARCHY[agricFormData.region] || [currentUser.station]).map(stn => (
-                          <option key={stn} value={stn}>{stn}</option>
-                        )) : <option value={cleanStr(currentUser.station)}>{cleanStr(currentUser.station)}</option>}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Item (e.g. CATTLE) *</label>
-                      <input type="text" name="agric_crime_report" value={agricFormData.agric_crime_report} onChange={handleAgricInputChange} required placeholder="e.g. CATTLE" className="w-full text-xs border dark:border-slate-700 p-2 rounded uppercase font-bold text-red-700 dark:text-red-400 bg-white dark:bg-slate-800 outline-none focus:border-emerald-500" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Stolen Qty & Unit *</label>
-                      <input type="text" name="number_count_label" value={agricFormData.number_count_label} onChange={handleAgricInputChange} required placeholder="e.g. 5 HEADS" className="w-full text-xs border dark:border-slate-700 p-2 rounded font-black text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 outline-none focus:border-emerald-500 uppercase" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Action / Recovery *</label>
-                      <input type="text" name="recovery_report" value={agricFormData.recovery_report} onChange={handleAgricInputChange} required placeholder="e.g. CATTLE RECOVERED" className="w-full text-xs border dark:border-slate-700 p-2 rounded uppercase font-bold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-800 outline-none focus:border-emerald-500" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">Recovery Qty *</label>
-                      <input type="text" name="recoveries_label" value={agricFormData.recoveries_label} onChange={handleAgricInputChange} required placeholder="e.g. 2 HEADS" className="w-full text-xs border dark:border-slate-700 p-2 rounded font-black text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-800 outline-none focus:border-emerald-500 uppercase" />
-                    </div>
-                    <div className="sm:col-span-6 flex justify-end pt-2">
-                      <button type="submit" className="bg-emerald-700 hover:bg-emerald-800 text-white font-black py-2.5 px-6 rounded-lg text-xs uppercase shadow cursor-pointer transition flex items-center">
-                        <Save className="w-4 h-4 mr-1.5" /> Save Entry to Ledger
-                      </button>
-                    </div>
-                  </form>
-                </div>
-
                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-300 dark:border-slate-800 overflow-hidden">
                   <div className="bg-slate-900 dark:bg-slate-950 px-4 py-3 text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-between">
                     <span>📋 Regional Agricultural & Produce Theft Command Ledger</span>
@@ -1410,35 +1444,28 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
 
                                     <td className="p-0 align-top border-r border-slate-300 dark:border-slate-800">
                                       {records.map((r, i) => {
-                                        const parsed = parseAgricStatus(r);
                                         return (
                                           <div key={i} className={`px-3 py-2.5 font-black text-slate-900 dark:text-slate-100 text-center ${i !== records.length - 1 ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}>
-                                            {parsed.numLabel}
+                                            {r.number_count_label}
                                           </div>
                                         )
                                       })}
                                     </td>
 
                                     <td className="p-0 align-top border-r border-slate-300 dark:border-slate-800">
-                                      {records.map((r, i) => {
-                                        const parsed = parseAgricStatus(r);
-                                        return (
-                                          <div key={i} className={`px-3 py-2.5 font-bold text-emerald-700 dark:text-emerald-400 uppercase ${i !== records.length - 1 ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}>
-                                            {parsed.recReport}
-                                          </div>
-                                        )
-                                      })}
+                                      {records.map((r, i) => (
+                                        <div key={i} className={`px-3 py-2.5 font-bold text-emerald-700 dark:text-emerald-400 uppercase ${i !== records.length - 1 ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}>
+                                          {r.recovery_report}
+                                        </div>
+                                      ))}
                                     </td>
 
                                     <td className="p-0 align-top">
-                                      {records.map((r, i) => {
-                                        const parsed = parseAgricStatus(r);
-                                        return (
-                                          <div key={i} className={`px-3 py-2.5 font-black text-emerald-600 dark:text-emerald-400 text-center ${i !== records.length - 1 ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}>
-                                            {parsed.recLabel}
-                                          </div>
-                                        )
-                                      })}
+                                      {records.map((r, i) => (
+                                        <div key={i} className={`px-3 py-2.5 font-black text-emerald-600 dark:text-emerald-400 text-center ${i !== records.length - 1 ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}>
+                                          {r.recoveries_label}
+                                        </div>
+                                      ))}
                                     </td>
                                   </tr>
                                 )

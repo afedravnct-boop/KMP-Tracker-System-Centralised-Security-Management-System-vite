@@ -470,7 +470,10 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       }
       return {
           sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
-          date: getTodayString(), arrested: 0, given_bond: 0, cautioned: 0, pending_court: 0, taken_to_court: 0, released: 0, remanded: 0, convicted: 0
+          date: getTodayString(), arrested: 0, given_bond: 0, cautioned: 0, 
+          pending_court_prev: 0, pending_court_today: 0, 
+          taken_to_court_prev: 0, taken_to_court_today: 0, 
+          released: 0, remanded: 0, convicted: 0
       };
   };
 
@@ -650,6 +653,10 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
           if (newStat.nature_of_fire === 'OTHER') {
               newStat.nature_of_fire = formData.custom_nature_of_fire;
           }
+      } else if (statsDomain === 'DISRUPTIVE') {
+          // 🟢 Combines the split frontend fields into the standard DB columns to prevent crashes
+          newStat.pending_court = (parseInt(formData.pending_court_prev) || 0) + (parseInt(formData.pending_court_today) || 0);
+          newStat.taken_to_court = (parseInt(formData.taken_to_court_prev) || 0) + (parseInt(formData.taken_to_court_today) || 0);
       }
       
       try {
@@ -703,6 +710,10 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
           if (updatedRecord.nature_of_fire === 'OTHER') {
               updatedRecord.nature_of_fire = formData.custom_nature_of_fire;
           }
+      } else if (statsDomain === 'DISRUPTIVE') {
+          // 🟢 Combines the split frontend fields into the standard DB columns to prevent crashes
+          updatedRecord.pending_court = (parseInt(formData.pending_court_prev) || 0) + (parseInt(formData.pending_court_today) || 0);
+          updatedRecord.taken_to_court = (parseInt(formData.taken_to_court_prev) || 0) + (parseInt(formData.taken_to_court_today) || 0);
       }
 
       try {

@@ -1488,11 +1488,15 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
       )}
 
       {activeTab === 'logs' && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 overflow-hidden w-full">
-          <div className="bg-slate-900 dark:bg-slate-950 px-4 py-2.5 text-white font-semibold text-xs uppercase">System Audit & Authentication Logs</div>
-          <div className="w-full overflow-x-auto custom-scrollbar">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200 dark:border-slate-800 overflow-hidden w-full flex flex-col">
+          <div className="bg-slate-900 dark:bg-slate-950 px-4 py-2.5 text-white font-semibold text-xs uppercase shrink-0">
+            System Audit & Authentication Logs
+          </div>
+          {/* 🟢 Added max-h-[65vh] and overflow-auto to strictly contain the vertical scroll */}
+          <div className="w-full overflow-auto max-h-[65vh] custom-scrollbar">
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-xs">
-              <thead className="bg-slate-900 dark:bg-slate-950 text-blue-100 uppercase font-black text-[11px] whitespace-nowrap">
+              {/* 🟢 Added sticky top-0, z-20, and shadow-md so the header stays pinned while scrolling */}
+              <thead className="bg-slate-900 dark:bg-slate-950 text-blue-100 uppercase font-black text-[11px] whitespace-nowrap sticky top-0 z-20 shadow-md">
                 <tr>
                   <th className="px-4 py-3.5 text-left w-32">Timestamp</th>
                   <th className="px-4 py-3.5 text-left w-48">User</th>

@@ -214,18 +214,24 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       if (!canViewGlobalLevel && filterRegion && filterRegion !== 'ALL REGIONS') params.append('region', filterRegion);
       if (filterStation && filterStation !== 'ALL STATIONS') params.append('station', filterStation);
 
-      if (statsDomain === 'DISRUPTIVE') {
-          const res = await authFetch(`/api/v1/stats?${params.toString()}`);
-          if (res.ok) setDisruptiveStats(await res.json());
-      } else if (statsDomain === 'AGRICULTURAL') {
-          const res = await authFetch(`/api/v1/agric-stats?${params.toString()}`);
-          if (res.ok) setAgricStats(await res.json());
-      } else if (statsDomain === 'ACCIDENTS') {
-          const res = await authFetch(`/api/v1/accidents?${params.toString()}`);
-          if (res.ok) setAccidentStats(await res.json());
-      } else if (statsDomain === 'FIRES') {
-          const res = await authFetch(`/api/v1/fires?${params.toString()}`);
-          if (res.ok) setFireStats(await res.json());
+      const qs = params.toString();
+      
+      let targetEndpoint = '';
+      if (statsDomain === 'DISRUPTIVE') targetEndpoint = '/api/v1/stats';
+      else if (statsDomain === 'AGRICULTURAL') targetEndpoint = '/api/v1/agric-stats';
+      else if (statsDomain === 'ACCIDENTS') targetEndpoint = '/api/v1/accidents';
+      else if (statsDomain === 'FIRES') targetEndpoint = '/api/v1/fires';
+
+      // 🟢 FIX 404: Prevent dangling '?' in the URL if there are no query parameters
+      const finalUrl = qs ? `${targetEndpoint}?${qs}` : targetEndpoint;
+      
+      const res = await authFetch(finalUrl);
+      if (res.ok) {
+          const data = await res.json();
+          if (statsDomain === 'DISRUPTIVE') setDisruptiveStats(data);
+          else if (statsDomain === 'AGRICULTURAL') setAgricStats(data);
+          else if (statsDomain === 'ACCIDENTS') setAccidentStats(data);
+          else if (statsDomain === 'FIRES') setFireStats(data);
       }
     } catch (err) {
       console.error(`Failed to load ${statsDomain} ledger:`, err);
@@ -239,7 +245,11 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       if (!canViewGlobalLevel && filterRegion && filterRegion !== 'ALL REGIONS') params.append('region', filterRegion);
       if (filterStation && filterStation !== 'ALL STATIONS') params.append('station', filterStation);
 
-      const res = await authFetch(`/api/v1/agric-summary?${params.toString()}`);
+      const qs = params.toString();
+      // 🟢 FIX 404: Prevent dangling '?'
+      const finalUrl = qs ? `/api/v1/agric-summary?${qs}` : '/api/v1/agric-summary';
+
+      const res = await authFetch(finalUrl);
       if (res.ok) {
         setAgricSummaryRecords(await res.json());
       }
@@ -338,7 +348,15 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       if (start) params.append('start_date', start);
       if (end) params.append('end_date', end);
 
-      const response = await authFetch(`${targetEndpoint}?${params.toString()}`);
+      const qs = params.toString();
+      const finalUrl = qs ? `${targetEndpoint}?${qs}` : targetEndpoint;
+
+      // 🟢 FIX 405: Switched to POST method for secure exports instead of defaulting to GET
+      const response = await authFetch(finalUrl, { 
+          method: "POST",
+          headers: { "Content-Type": "application/json" }
+      });
+      
       if (!response.ok) throw new Error("Secure export failed on server.");
       
       const blob = await response.blob();
@@ -366,113 +384,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     } catch (err) {
       console.error("Export error:", err);
       setNotification("❌ Failed to generate secure export archive.");
-    }
-  };
-
-  const groupedAgricData = useMemo(() => {
-    const groups = {};
-    Object.keys(REGIONAL_HIERARCHY).forEach(reg => {
-      groups[reg] = { stations: {} };
-    });
-
-    agricSummaryRecords.forEach(record => {
-      let reg = (record.region || 'KMP NORTH').toUpperCase();
-      const stn = (record.station || 'UNKNOWN').toUpperCase();
-      
-      if (!groups[reg]) groups[reg] = { stations: {} };
-      if (!groups[reg].stations[stn]) groups[reg].stations[stn] = [];
-      
-      groups[reg].stations[stn].push(record);
-    });
-    return groups;
-  }, [agricSummaryRecords]);
-
-  // Initializing Main Forms
-  const getInitialFormData = () => {
-      if (statsDomain === 'ACCIDENTS') {
-          return {
-              sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
-              date: getTodayString(), nature_of_accident: '', custom_nature_of_accident: '', minor: 0, serious: 0, fatal: 0, victims: 0
-          };
-      }
-      if (statsDomain === 'FIRES') {
-          return {
-              sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
-              date: getTodayString(), nature_of_fire: '', custom_nature_of_fire: '', minor_outbreaks: 0, major_disasters: 0, fatal_fires: 0, victims: 0
-          };
-      }
-      return {
-          sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '',
-          date: getTodayString(), arrested: 0, given_bond: 0, cautioned: 0, 
-          pending_court_prev_ops: 0, pending_court_today_ops: 0, 
-          taken_to_court_prev_lockup: 0, taken_to_court_today_ops: 0, 
-          released: 0, remanded: 0, convicted: 0
-      };
-  };
-
-  const [formData, setFormData] = useState(getInitialFormData());
-
-  // 🟢 The Agric Produce Form state now relies completely on the main formData for Date, Region, and Station
-  const [agricFormData, setAgricFormData] = useState({
-    agric_crime_report: '',
-    number_count_label: '',
-    recovery_report: '',
-    recoveries_label: '',
-    status: 'UNDER INVESTIGATION',
-  });
-
-  const handleAgricInputChange = (e) => {
-    const { name, value } = e.target;
-    setAgricFormData({ ...agricFormData, [name]: value.toUpperCase() });
-  };
-
-  const handleAgricFormSubmit = async (e) => {
-    e.preventDefault();
-    if (!canEditRecords) return setNotification("Security Restriction: You do not have clearance to modify analytical records.");
-
-    try {
-      const activeRegion = (canViewGlobalLevel && filterRegion && filterRegion !== 'ALL REGIONS') ? filterRegion : formData.region;
-      const activeStation = (canViewGlobalLevel && filterStation && filterStation !== 'ALL STATIONS') ? filterStation : formData.station;
-
-      const payload = {
-        region: activeRegion,
-        station: activeStation,
-        date: formData.date, // Automatically inherits from the main top form
-        agric_crime_report: agricFormData.agric_crime_report,
-        number_count: parseInt(agricFormData.number_count_label) || 0,
-        recoveries: parseInt(agricFormData.recoveries_label) || 0,
-        status: JSON.stringify({
-          numLabel: agricFormData.number_count_label,
-          recReport: agricFormData.recovery_report,
-          recLabel: agricFormData.recoveries_label,
-          baseStatus: agricFormData.status
-        })
-      };
-
-      const response = await authFetch('/api/v1/agric-summary', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || "Failed to save agricultural entry.");
-      }
-
-      setNotification(`✅ Agricultural produce & recoveries successfully logged for ${activeStation}!`);
-      fetchAgricSummaries();
-      setAgricFormData({
-        ...agricFormData,
-        agric_crime_report: '',
-        number_count_label: '',
-        recovery_report: '',
-        recoveries_label: '',
-        status: 'UNDER INVESTIGATION',
-      });
-      setTimeout(() => setNotification(null), 5000);
-    } catch (err) {
-      setNotification(`❌ Error: ${err.message}`);
     }
   };
   

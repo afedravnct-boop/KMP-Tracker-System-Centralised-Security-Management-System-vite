@@ -121,27 +121,7 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
 };
 
 const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, setSidebarOpen, isReadOnlyObserver }) => {
-  const [operation, setOperation] = useState('new');
-  const [notification, setNotification] = useState(null);
-
-  const [statsDomain, setStatsDomain] = useState('DISRUPTIVE');
-  const [viewMode, setViewMode] = useState('STATION');
-  
-  const [disruptiveStats, setDisruptiveStats] = useState([]);
-  const [agricStats, setAgricStats] = useState([]);
-  const [accidentStats, setAccidentStats] = useState([]);
-  const [fireStats, setFireStats] = useState([]);
-  const [agricSummaryRecords, setAgricSummaryRecords] = useState([]);
-
-  const [expandedAgricRegions, setExpandedAgricRegions] = useState({
-    "KMP NORTH": true, "KMP SOUTH": false, "KMP EAST": false,
-    "KMP HEADQUARTERS": false, "POLICE HEADQUARTERS": false
-  });
-
-  const toggleAgricRegion = (region) => {
-    setExpandedAgricRegions(prev => ({ ...prev, [region]: !prev[region] }));
-  };
-
+  // 1. Auth & Hierarchical Initialization
   const userRoleClean = cleanStr(currentUser?.role);
   const userPosClean = cleanStr(currentUser?.position);
   const userRegClean = cleanStr(currentUser?.region);
@@ -154,19 +134,51 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
   const isKmpSpecialist = userRoleClean === 'ASSISTANT_SYSTEM_MANAGER' && ['KMP HEADQUARTERS', 'POLICE HEADQUARTERS'].includes(userRegClean) && userPosClean.includes('KMP');
 
   const canViewGlobalLevel = propCanViewGlobal || isGlobalTier || isKmpSystemManager || isKmpSpecialist;
-  
   const isRegionalCommand = ['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN', 'ASSISTANT_REGIONAL_ADMIN'].includes(userRoleClean) && !canViewGlobalLevel;
-  
   const isCommandOrHR = isGlobalTier || isKmpSystemManager || isRegionalCommand || userPosClean.includes('HR');
   const canEditRecords = (isCommandOrHR || currentUser?.permissions?.upload_hr === true || currentUser?.permissions?.log_crime === true) && !isReadOnlyObserver;
 
+  // 2. Base Component States
+  const [operation, setOperation] = useState('new');
+  const [notification, setNotification] = useState(null);
+  const [statsDomain, setStatsDomain] = useState('DISRUPTIVE');
+  const [viewMode, setViewMode] = useState('STATION');
+  const [disruptiveStats, setDisruptiveStats] = useState([]);
+  const [agricStats, setAgricStats] = useState([]);
+  const [accidentStats, setAccidentStats] = useState([]);
+  const [fireStats, setFireStats] = useState([]);
+  const [agricSummaryRecords, setAgricSummaryRecords] = useState([]);
+  const [expandedAgricRegions, setExpandedAgricRegions] = useState({
+    "KMP NORTH": true, "KMP SOUTH": false, "KMP EAST": false,
+    "KMP HEADQUARTERS": false, "POLICE HEADQUARTERS": false
+  });
   const [filterRegion, setFilterRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);
   const [filterStation, setFilterStation] = useState((canViewGlobalLevel || isRegionalCommand) ? 'ALL STATIONS' : cleanStr(currentUser?.station));
-
   const [updateSearch, setUpdateSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('ALL TIME');
+  const isFilterInitialized = useRef(false);
 
   const getTodayString = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }).split(',')[0].replace(/\//g, '-');
+
+  // 3. Structured Data Initialization (Must be declared before state hooks use it)
+  const getInitialFormData = useCallback(() => {
+      if (statsDomain === 'ACCIDENTS') {
+          return { sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '', date: getTodayString(), nature_of_accident: '', custom_nature_of_accident: '', minor: 0, serious: 0, fatal: 0, victims: 0 };
+      }
+      if (statsDomain === 'FIRES') {
+          return { sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '', date: getTodayString(), nature_of_fire: '', custom_nature_of_fire: '', minor_outbreaks: 0, major_disasters: 0, fatal_fires: 0, victims: 0 };
+      }
+      return { sn: null, id: null, region: userRegClean, station: currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '', date: getTodayString(), arrested: 0, given_bond: 0, cautioned: 0, pending_court_prev_ops: 0, pending_court_today_ops: 0, taken_to_court_prev_lockup: 0, taken_to_court_today_ops: 0, released: 0, remanded: 0, convicted: 0 };
+  }, [statsDomain, userRegClean, currentUser.station, currentUser.region]);
+
+  const [formData, setFormData] = useState(getInitialFormData());
+  const [agricFormData, setAgricFormData] = useState({
+    agric_crime_report: '',
+    number_count_label: '',
+    recovery_report: '',
+    recoveries_label: '',
+    status: 'UNDER INVESTIGATION',
+  });
 
   const getDateRangeParams = (filterOption) => {
     if (filterOption === 'ALL TIME') return { start: null, end: null };
@@ -190,7 +202,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     return { start: format(start), end: format(end) };
   };
 
-  const isFilterInitialized = useRef(false);
   useEffect(() => {
     if (!isFilterInitialized.current && currentUser?.station) {
       if (canViewGlobalLevel) {
@@ -207,6 +218,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     }
   }, [canViewGlobalLevel, isRegionalCommand, userRegClean, currentUser?.station]);
 
+  // 🟢 FIXED: Explicitly formats query strings to strictly prevent 404 dangling question marks
   const fetchDomainStats = useCallback(async () => {
     if (!hasValidSession()) return;
     try {
@@ -215,17 +227,15 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       if (filterStation && filterStation !== 'ALL STATIONS') params.append('station', filterStation);
 
       const qs = params.toString();
-      
       let targetEndpoint = '';
       if (statsDomain === 'DISRUPTIVE') targetEndpoint = '/api/v1/stats';
       else if (statsDomain === 'AGRICULTURAL') targetEndpoint = '/api/v1/agric-stats';
       else if (statsDomain === 'ACCIDENTS') targetEndpoint = '/api/v1/accidents';
       else if (statsDomain === 'FIRES') targetEndpoint = '/api/v1/fires';
 
-      // 🟢 FIX 404: Prevent dangling '?' in the URL if there are no query parameters
       const finalUrl = qs ? `${targetEndpoint}?${qs}` : targetEndpoint;
-      
       const res = await authFetch(finalUrl);
+      
       if (res.ok) {
           const data = await res.json();
           if (statsDomain === 'DISRUPTIVE') setDisruptiveStats(data);
@@ -238,6 +248,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     }
   }, [statsDomain, filterRegion, filterStation, canViewGlobalLevel]);
 
+  // 🟢 FIXED: Prevents 404 dangling question marks on Agric fetch
   const fetchAgricSummaries = useCallback(async () => {
     if (!hasValidSession() || statsDomain !== 'AGRICULTURAL') return;
     try {
@@ -246,7 +257,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       if (filterStation && filterStation !== 'ALL STATIONS') params.append('station', filterStation);
 
       const qs = params.toString();
-      // 🟢 FIX 404: Prevent dangling '?'
       const finalUrl = qs ? `/api/v1/agric-summary?${qs}` : '/api/v1/agric-summary';
 
       const res = await authFetch(finalUrl);
@@ -282,7 +292,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       });
   }, [statsDomain, disruptiveStats, agricStats, accidentStats, fireStats, dateFilter]);
 
-  // 🟢 Automated Regional Rollup Summation for Top-Tier Users
   const regionalSummationData = useMemo(() => {
     if (statsDomain !== 'DISRUPTIVE') return [];
     
@@ -294,13 +303,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     stationsList.forEach(stn => {
       stationMap[stn] = {
         station: stn,
-        arrested: 0,
-        given_bond: 0,
-        cautioned: 0,
-        taken_to_court: 0,
-        released: 0,
-        remanded: 0,
-        convicted: 0
+        arrested: 0, given_bond: 0, cautioned: 0, taken_to_court: 0, released: 0, remanded: 0, convicted: 0
       };
     });
 
@@ -310,8 +313,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       if (!matchedKey) {
         matchedKey = stnName;
         stationMap[matchedKey] = {
-          station: matchedKey,
-          arrested: 0, given_bond: 0, cautioned: 0, taken_to_court: 0, released: 0, remanded: 0, convicted: 0
+          station: matchedKey, arrested: 0, given_bond: 0, cautioned: 0, taken_to_court: 0, released: 0, remanded: 0, convicted: 0
         };
       }
       stationMap[matchedKey].arrested += (parseInt(stat.arrested) || 0);
@@ -326,6 +328,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     return Object.values(stationMap).filter(s => s.arrested > 0 || s.given_bond > 0 || s.cautioned > 0 || s.taken_to_court > 0 || s.released > 0 || s.remanded > 0 || s.convicted > 0 || stationsList.includes(s.station));
   }, [currentDomainStats, filterRegion, statsDomain]);
 
+  // 🟢 FIXED 405 Method Not Allowed error by exclusively using POST
   const handleExportDomainStats = async () => {
     if (!currentDomainStats.length) {
       alert("No records available to export for the selected filters.");
@@ -351,7 +354,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       const qs = params.toString();
       const finalUrl = qs ? `${targetEndpoint}?${qs}` : targetEndpoint;
 
-      // 🟢 FIX 405: Switched to POST method for secure exports instead of defaulting to GET
       const response = await authFetch(finalUrl, { 
           method: "POST",
           headers: { "Content-Type": "application/json" }
@@ -386,105 +388,38 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       setNotification("❌ Failed to generate secure export archive.");
     }
   };
-  
-  useEffect(() => {
-      setFormData(getInitialFormData());
-      setOperation('new');
-      setUpdateSearch('');
-  }, [statsDomain]);
 
-  const handleToggleDomain = (domain) => {
-    setStatsDomain(domain);
-  };
-
-  const complianceWarning = useMemo(() => {
-    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Nairobi" }));
-    const dayOfWeek = now.getDay(); 
-
-    const isWarningPeriod = dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0;
-    
-    if (!isWarningPeriod) return null;
-
-    const startOfWeek = new Date(now);
-    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    startOfWeek.setDate(now.getDate() + diffToMonday);
-    
-    const yyyy = startOfWeek.getFullYear();
-    const mm = String(startOfWeek.getMonth() + 1).padStart(2, '0');
-    const dd = String(startOfWeek.getDate()).padStart(2, '0');
-    const mondayDateStr = `${yyyy}-${mm}-${dd}`;
-
-    const targetStation = filterStation !== 'ALL STATIONS' ? filterStation : cleanStr(currentUser?.station);
-    
-    if (targetStation === 'ALL STATIONS') return null;
-
-    const hasSubmitted = currentDomainStats.some(s => {
-      return isStationEquivalent(s.station, targetStation) && s.date >= mondayDateStr;
+  const groupedAgricData = useMemo(() => {
+    const groups = {};
+    Object.keys(REGIONAL_HIERARCHY).forEach(reg => {
+      groups[reg] = { stations: {} };
     });
 
-    if (!hasSubmitted) {
-      return `COMMAND COMPLIANCE WARNING: No ${statsDomain.toLowerCase()} statistics have been logged for ${targetStation} this week. Mandatory submission is required before Sunday 23:59Hrs.`;
-    }
-
-    return null;
-  }, [currentDomainStats, currentUser?.station, filterStation, statsDomain]);
-
-  const availableUpdateStats = useMemo(() => {
-    return currentDomainStats.filter(s => {
-      const statRegion = cleanStr(s.region);
-      const statStation = cleanStr(s.station);
+    agricSummaryRecords.forEach(record => {
+      let reg = (record.region || 'KMP NORTH').toUpperCase();
+      const stn = (record.station || 'UNKNOWN').toUpperCase();
       
-      if (!canViewGlobalLevel) {
-         const belongsToRegion = statRegion === userRegClean || 
-                                 (REGIONAL_HIERARCHY[userRegClean] && REGIONAL_HIERARCHY[userRegClean].some(st => isStationEquivalent(st, statStation)));
-         if (!belongsToRegion) return false;
-      }
-
-      if (updateSearch) {
-        const query = updateSearch.toLowerCase();
-        const idStr = String(s.id || s.sn || '').toLowerCase();
-        const stationStr = String(s.station || '').toLowerCase();
-        const dateStr = String(s.date || '').toLowerCase();
-        return idStr.includes(query) || stationStr.includes(query) || dateStr.includes(query);
-      }
-      return true;
+      if (!groups[reg]) groups[reg] = { stations: {} };
+      if (!groups[reg].stations[stn]) groups[reg].stations[stn] = [];
+      
+      groups[reg].stations[stn].push(record);
     });
-  }, [currentDomainStats, updateSearch, canViewGlobalLevel, userRegClean]);
+    return groups;
+  }, [agricSummaryRecords]);
 
-  const totals = useMemo(() => {
-    if (statsDomain === 'ACCIDENTS') {
-        return currentDomainStats.reduce((acc, curr) => {
-            acc.minor += (parseInt(curr.minor) || 0);
-            acc.serious += (parseInt(curr.serious) || 0);
-            acc.fatal += (parseInt(curr.fatal) || 0);
-            acc.victims += (parseInt(curr.victims) || 0);
-            acc.total += (parseInt(curr.total) || 0);
-            return acc;
-        }, { minor: 0, serious: 0, fatal: 0, victims: 0, total: 0 });
-    }
-    if (statsDomain === 'FIRES') {
-        return currentDomainStats.reduce((acc, curr) => {
-            acc.minor_outbreaks += (parseInt(curr.minor_outbreaks) || 0);
-            acc.major_disasters += (parseInt(curr.major_disasters) || 0);
-            acc.fatal_fires += (parseInt(curr.fatal_fires) || 0);
-            acc.victims += (parseInt(curr.victims) || 0);
-            acc.total += (parseInt(curr.total) || 0);
-            return acc;
-        }, { minor_outbreaks: 0, major_disasters: 0, fatal_fires: 0, victims: 0, total: 0 });
-    }
-    return currentDomainStats.reduce((acc, curr) => {
-      acc.arrested += (parseInt(curr.arrested) || 0); acc.given_bond += (parseInt(curr.given_bond) || 0);
-      acc.cautioned += (parseInt(curr.cautioned) || 0); acc.pending_court += (parseInt(curr.pending_court) || 0);
-      acc.taken_to_court += (parseInt(curr.taken_to_court) || 0); acc.released += (parseInt(curr.released) || 0);
-      acc.remanded += (parseInt(curr.remanded) || 0); acc.convicted += (parseInt(curr.convicted) || 0);
-      return acc;
-    }, { arrested: 0, given_bond: 0, cautioned: 0, pending_court: 0, taken_to_court: 0, released: 0, remanded: 0, convicted: 0 });
-  }, [currentDomainStats, statsDomain]);
+  const toggleAgricRegion = (region) => {
+    setExpandedAgricRegions(prev => ({ ...prev, [region]: !prev[region] }));
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type } = e.target;
     if (name === 'region') setFormData({ ...formData, region: value, station: REGIONAL_HIERARCHY[value][0] });
     else setFormData({ ...formData, [name]: type === 'number' ? parseInt(value) || 0 : value.toUpperCase() });
+  };
+
+  const handleAgricInputChange = (e) => {
+    const { name, value } = e.target;
+    setAgricFormData({ ...agricFormData, [name]: value.toUpperCase() });
   };
 
   const handleOperationToggle = (op) => {
@@ -655,6 +590,125 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       }
     }
   };
+
+  const handleAgricFormSubmit = async (e) => {
+    e.preventDefault();
+    if (!canEditRecords) return setNotification("Security Restriction: You do not have clearance to modify analytical records.");
+
+    try {
+      const activeRegion = (canViewGlobalLevel && filterRegion && filterRegion !== 'ALL REGIONS') ? filterRegion : formData.region;
+      const activeStation = (canViewGlobalLevel && filterStation && filterStation !== 'ALL STATIONS') ? filterStation : formData.station;
+
+      const payload = {
+        region: activeRegion,
+        station: activeStation,
+        date: formData.date,
+        agric_crime_report: agricFormData.agric_crime_report,
+        number_count: parseInt(agricFormData.number_count_label) || 0,
+        recoveries: parseInt(agricFormData.recoveries_label) || 0,
+        status: JSON.stringify({
+          numLabel: agricFormData.number_count_label,
+          recReport: agricFormData.recovery_report,
+          recLabel: agricFormData.recoveries_label,
+          baseStatus: agricFormData.status
+        })
+      };
+
+      const response = await authFetch('/api/v1/agric-summary', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to save agricultural entry.");
+      }
+
+      setNotification(`✅ Agricultural produce & recoveries successfully logged for ${activeStation}!`);
+      fetchAgricSummaries();
+      setAgricFormData({
+        agric_crime_report: '',
+        number_count_label: '',
+        recovery_report: '',
+        recoveries_label: '',
+        status: 'UNDER INVESTIGATION',
+      });
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err) {
+      setNotification(`❌ Error: ${err.message}`);
+    }
+  };
+
+  useEffect(() => {
+      setFormData(getInitialFormData());
+      setOperation('new');
+      setUpdateSearch('');
+  }, [statsDomain, getInitialFormData]);
+
+  const handleToggleDomain = (domain) => {
+    setStatsDomain(domain);
+  };
+
+  const complianceWarning = useMemo(() => {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Nairobi" }));
+    const dayOfWeek = now.getDay(); 
+
+    const isWarningPeriod = dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0;
+    if (!isWarningPeriod) return null;
+
+    const startOfWeek = new Date(now);
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    startOfWeek.setDate(now.getDate() + diffToMonday);
+    
+    const yyyy = startOfWeek.getFullYear();
+    const mm = String(startOfWeek.getMonth() + 1).padStart(2, '0');
+    const dd = String(startOfWeek.getDate()).padStart(2, '0');
+    const mondayDateStr = `${yyyy}-${mm}-${dd}`;
+
+    const targetStation = filterStation !== 'ALL STATIONS' ? filterStation : cleanStr(currentUser?.station);
+    if (targetStation === 'ALL STATIONS') return null;
+
+    const hasSubmitted = currentDomainStats.some(s => {
+      return isStationEquivalent(s.station, targetStation) && s.date >= mondayDateStr;
+    });
+
+    if (!hasSubmitted) {
+      return `COMMAND COMPLIANCE WARNING: No ${statsDomain.toLowerCase()} statistics have been logged for ${targetStation} this week. Mandatory submission is required before Sunday 23:59Hrs.`;
+    }
+
+    return null;
+  }, [currentDomainStats, currentUser?.station, filterStation, statsDomain]);
+
+  const totals = useMemo(() => {
+    if (statsDomain === 'ACCIDENTS') {
+        return currentDomainStats.reduce((acc, curr) => {
+            acc.minor += (parseInt(curr.minor) || 0);
+            acc.serious += (parseInt(curr.serious) || 0);
+            acc.fatal += (parseInt(curr.fatal) || 0);
+            acc.victims += (parseInt(curr.victims) || 0);
+            acc.total += (parseInt(curr.total) || 0);
+            return acc;
+        }, { minor: 0, serious: 0, fatal: 0, victims: 0, total: 0 });
+    }
+    if (statsDomain === 'FIRES') {
+        return currentDomainStats.reduce((acc, curr) => {
+            acc.minor_outbreaks += (parseInt(curr.minor_outbreaks) || 0);
+            acc.major_disasters += (parseInt(curr.major_disasters) || 0);
+            acc.fatal_fires += (parseInt(curr.fatal_fires) || 0);
+            acc.victims += (parseInt(curr.victims) || 0);
+            acc.total += (parseInt(curr.total) || 0);
+            return acc;
+        }, { minor_outbreaks: 0, major_disasters: 0, fatal_fires: 0, victims: 0, total: 0 });
+    }
+    return currentDomainStats.reduce((acc, curr) => {
+      acc.arrested += (parseInt(curr.arrested) || 0); acc.given_bond += (parseInt(curr.given_bond) || 0);
+      acc.cautioned += (parseInt(curr.cautioned) || 0); acc.pending_court += (parseInt(curr.pending_court) || 0);
+      acc.taken_to_court += (parseInt(curr.taken_to_court) || 0); acc.released += (parseInt(curr.released) || 0);
+      acc.remanded += (parseInt(curr.remanded) || 0); acc.convicted += (parseInt(curr.convicted) || 0);
+      return acc;
+    }, { arrested: 0, given_bond: 0, cautioned: 0, pending_court: 0, taken_to_court: 0, released: 0, remanded: 0, convicted: 0 });
+  }, [currentDomainStats, statsDomain]);
 
   const getDomainTitle = () => {
       if (statsDomain === 'AGRICULTURAL') return '🌱 Agricultural Crimes Statistics';
@@ -1184,23 +1238,19 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                       <tr>
                         <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle w-8">S/n</th>
                         <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Division</th>
-                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle whitespace-normal leading-tight w-16">Day &<br/>Date</th>
                         <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle whitespace-normal leading-tight w-16">Suspects<br/>arrested</th>
                         
-                        <th colSpan="4" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase border-r border-slate-300 dark:border-slate-700 border-b">STATUS OF SUSPECTS ARRESTED</th>
-                        <th colSpan="5" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase border-b border-slate-300 dark:border-slate-700">STATUS OF THOSE TAKEN TO COURT</th>
+                        <th colSpan="3" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase bg-orange-400 dark:bg-orange-600 text-white border-r border-slate-300 dark:border-slate-700 border-b">ACTION TAKEN</th>
+                        <th colSpan="3" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase bg-red-600 dark:bg-red-800 text-white border-b border-slate-300 dark:border-slate-700">STATUS OF THOSE TAKEN TO COURT</th>
                       </tr>
                       <tr>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b bg-green-50 dark:bg-green-900/10 whitespace-normal leading-tight w-16">Given<br/>Bond</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b bg-blue-50 dark:bg-blue-900/10 whitespace-normal leading-tight w-16">Cautioned</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Pending Court<br/>from prev<br/>day's OPS</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Pending court<br/>from Today's<br/>OPS</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-green-200 dark:bg-green-900/40 text-green-900 dark:text-green-300 border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Given<br/>Bond</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-blue-200 dark:bg-blue-900/40 text-blue-900 dark:text-blue-300 border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Cautioned</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Taken to<br/>Court</th>
                         
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Taken to court<br/>from prev<br/>day's lockup</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Taken to Court<br/>from today's<br/>OPS</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Released<br/>by court</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Suspects<br/>remanded</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-b border-slate-300 dark:border-slate-700 whitespace-normal leading-tight w-16">Suspects<br/>convicted</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Released<br/>by court</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Suspects<br/>remanded</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-b border-slate-300 dark:border-slate-700 whitespace-normal leading-tight w-16">Suspects<br/>convicted</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
@@ -1236,25 +1286,25 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800 border border-slate-300 dark:border-slate-800 text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-950 sticky top-0">
                       <tr>
-                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">S/n</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle w-8">S/n</th>
                         <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Division</th>
-                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Day & Date</th>
-                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Suspects arrested</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle whitespace-normal leading-tight w-16">Day &<br/>Date</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle whitespace-normal leading-tight w-16">Suspects<br/>arrested</th>
                         
                         <th colSpan="4" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase border-r border-slate-300 dark:border-slate-700 border-b">STATUS OF SUSPECTS ARRESTED</th>
                         <th colSpan="5" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase border-b border-slate-300 dark:border-slate-700">STATUS OF THOSE TAKEN TO COURT</th>
                       </tr>
                       <tr>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b bg-green-50 dark:bg-green-900/10">Given Bond</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b bg-blue-50 dark:bg-blue-900/10">Cautioned</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Pending Court from previous day's OPS</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Pending court from Today's OPS</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b bg-green-50 dark:bg-green-900/10 whitespace-normal leading-tight w-16">Given<br/>Bond</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b bg-blue-50 dark:bg-blue-900/10 whitespace-normal leading-tight w-16">Cautioned</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Pending Court<br/>from prev<br/>day's OPS</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Pending court<br/>from Today's<br/>OPS</th>
                         
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Taken to court from previous day's lockup</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Taken to Court from today's OPS</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Released by court</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b">Suspects remanded</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-b border-slate-300 dark:border-slate-700">Suspects convicted</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Taken to court<br/>from prev<br/>day's lockup</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Taken to Court<br/>from today's<br/>OPS</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Released<br/>by court</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Suspects<br/>remanded</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-b border-slate-300 dark:border-slate-700 whitespace-normal leading-tight w-16">Suspects<br/>convicted</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">

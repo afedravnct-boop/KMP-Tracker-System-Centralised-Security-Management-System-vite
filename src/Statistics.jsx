@@ -375,8 +375,11 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     setNotification("⏳ Generating AES-256 secure encrypted spreadsheet archive. Please wait...");
     
     try {
-      // 🟢 Exclusively target the master analytics export endpoint
-      const targetEndpoint = '/api/v1/analytics/export';
+      // 🟢 RESTORED: Pointing back to the individual domain routes, NOT the Master Analytics route!
+      let targetEndpoint = '/api/v1/stats/export';
+      if (statsDomain === 'AGRICULTURAL') targetEndpoint = '/api/v1/agric-stats/export';
+      if (statsDomain === 'ACCIDENTS') targetEndpoint = '/api/v1/accidents/export';
+      if (statsDomain === 'FIRES') targetEndpoint = '/api/v1/fires/export';
 
       const params = new URLSearchParams();
       if (!canViewGlobalLevel && filterRegion && filterRegion !== 'ALL REGIONS') params.append('region', filterRegion);
@@ -389,9 +392,10 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       const qs = params.toString();
       const finalUrl = qs ? `${targetEndpoint}?${qs}` : targetEndpoint;
 
-      // 🟢 FIXED: Explicitly use GET to match @router.get("/export") in backend
-      const response = await authFetch(finalUrl, {
-        method: 'GET'
+      // 🟢 FIX: Using POST because your domain-specific backend routes reject GET with a 405
+      const response = await authFetch(finalUrl, { 
+          method: "POST",
+          headers: { "Content-Type": "application/json" }
       });
       
       if (!response.ok) throw new Error("Secure export failed on server.");
@@ -400,12 +404,12 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       const url = URL.createObjectURL(blob);
       
       const disposition = response.headers.get('Content-Disposition');
-      let filename = `KMP_SECURE_EXPORT.zip`;
+      let filename = `KMP_${statsDomain}_SECURE_EXPORT.zip`;
       if (disposition && disposition.indexOf('filename=') !== -1) {
           filename = disposition.split('filename=')[1].replace(/["']/g, '');
       } else {
           const timestamp = new Date().toISOString().split('T')[0];
-          filename = `SECURE_ANALYTICS_REPORT_${timestamp}.zip`;
+          filename = `KMP_${statsDomain}_SECURE_EXPORT_${timestamp}.zip`;
       }
 
       const link = document.createElement('a');

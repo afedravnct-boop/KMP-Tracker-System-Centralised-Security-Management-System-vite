@@ -907,7 +907,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     if (!hasValidSession()) return;
     setLoadingUsers(true);
     try {
-      const res = await authFetch("/api/v1/users");
+      const res = await authFetch("/api/v1/users"); // 🟢 Reverted to correct root URL
       if (res && res.ok) {
         const data = await res.json();
         setAllSystemUsers(Array.isArray(data) ? data.filter(u => u.fnum !== 'A/2408' && (isSuperAdmin || u.role !== 'SUPER_ADMIN')) : []);
@@ -923,7 +923,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     if (!hasValidSession()) return;
     setLoadingRequests(true);
     try {
-      const res = await authFetch("/api/v1/admin/requests");
+      const res = await authFetch("/api/v1/requests"); // 🟢 Reverted to correct root URL
       if (res && res.ok) {
         const data = await res.json();
         setModRequests(Array.isArray(data) ? data : []);
@@ -939,7 +939,7 @@ const AdminApprovals = ({ currentUser, canViewGlobal = false, setCurrentPage, in
     if (!hasValidSession()) return;
     setLoadingLogs(true);
     try {
-      const res = await authFetch("/api/v1/admin/audit-logs"); 
+      const res = await authFetch("/api/v1/audit-logs"); // 🟢 Reverted to correct root URL
       if (res && res.ok) {
         const data = await res.json();
         setAuditLogs(Array.isArray(data) ? data : []);

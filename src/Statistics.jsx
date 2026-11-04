@@ -1271,21 +1271,25 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800 border border-slate-300 dark:border-slate-800 text-xs">
                     <thead className="bg-slate-100 dark:bg-slate-950 sticky top-0">
                       <tr>
-                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">S/n</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle w-8">S/n</th>
                         <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Division</th>
-                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle">Suspects arrested</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle whitespace-normal leading-tight w-16">Day &<br/>Date</th>
+                        <th rowSpan="2" className="px-2 py-2 text-center text-[10px] font-black uppercase border-r border-slate-300 dark:border-slate-700 border-b align-middle whitespace-normal leading-tight w-16">Suspects<br/>arrested</th>
                         
-                        <th colSpan="3" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase bg-orange-400 dark:bg-orange-600 text-white border-r border-slate-300 dark:border-slate-700 border-b">ACTION TAKEN</th>
-                        <th colSpan="3" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase bg-red-600 dark:bg-red-800 text-white border-b border-slate-300 dark:border-slate-700">STATUS OF THOSE TAKEN TO COURT</th>
+                        <th colSpan="4" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase border-r border-slate-300 dark:border-slate-700 border-b">STATUS OF SUSPECTS ARRESTED</th>
+                        <th colSpan="5" className="px-2 py-2 text-center text-[10px] font-extrabold uppercase border-b border-slate-300 dark:border-slate-700">STATUS OF THOSE TAKEN TO COURT</th>
                       </tr>
                       <tr>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-green-200 dark:bg-green-900/40 text-green-900 dark:text-green-300 border-r border-slate-300 dark:border-slate-700 border-b">Given Bond</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-blue-200 dark:bg-blue-900/40 text-blue-900 dark:text-blue-300 border-r border-slate-300 dark:border-slate-700 border-b">Cautioned</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-r border-slate-300 dark:border-slate-700 border-b">Taken to Court</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b bg-green-50 dark:bg-green-900/10 whitespace-normal leading-tight w-16">Given<br/>Bond</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b bg-blue-50 dark:bg-blue-900/10 whitespace-normal leading-tight w-16">Cautioned</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Pending Court<br/>from prev<br/>day's OPS</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Pending court<br/>from Today's<br/>OPS</th>
                         
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-r border-slate-300 dark:border-slate-700 border-b">Released by court</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-r border-slate-300 dark:border-slate-700 border-b">Suspects remanded</th>
-                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase bg-red-600 dark:bg-red-800 text-white border-b border-slate-300 dark:border-slate-700">Suspects convicted</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Taken to court<br/>from prev<br/>day's lockup</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-24">Taken to Court<br/>from today's<br/>OPS</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Released<br/>by court</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-r border-slate-300 dark:border-slate-700 border-b whitespace-normal leading-tight w-16">Suspects<br/>remanded</th>
+                        <th className="px-2 py-2 text-center text-[9px] font-bold uppercase border-b border-slate-300 dark:border-slate-700 whitespace-normal leading-tight w-16">Suspects<br/>convicted</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">

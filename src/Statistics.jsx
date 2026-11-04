@@ -1,6 +1,6 @@
 // src/components/Statistics.jsx
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { BarChart3, PlusCircle, Edit, AlertTriangle, CheckCircle, Sprout, Save, HardDrive, X, Car, Flame } from 'lucide-react';
+import { BarChart3, PlusCircle, Edit, AlertTriangle, CheckCircle, Sprout, Save, HardDrive, X, Car, Flame, Info } from 'lucide-react';
 import { authFetch, hasValidSession } from './api';
 
 const REGIONAL_HIERARCHY = {
@@ -120,8 +120,25 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
   );
 };
 
+const AccountabilityGuide = () => (
+  <div className="bg-slate-100 dark:bg-slate-800/80 p-4 rounded-lg border border-slate-300 dark:border-slate-700 text-[10px] text-slate-700 dark:text-slate-300 space-y-2.5 mt-5 leading-relaxed font-medium shadow-inner">
+    <h5 className="font-black uppercase text-blue-900 dark:text-blue-400 flex items-center mb-1">
+      <Info className="w-3.5 h-3.5 mr-1.5" /> Accountability Logic & Guide
+    </h5>
+    <ul className="space-y-2 pl-1">
+      <li className="flex items-start"><span className="mr-1.5 text-blue-500">•</span> <span>The summation in accountability of suspects arrested from disruptive operations is majorly determined by three components namely; <strong>those given bond, cautioned and taken to court.</strong></span></li>
+      <li className="flex items-start"><span className="mr-1.5 text-blue-500">•</span> <span>Pending court the previous day, and pending court today are purely for tracking the numbers (pending action), and labelled as not given bond, not cautioned and not taken to court. It is necessary only for distribution of suspects in correspondance with the original total arrested, those given bond and the ones taken to court, but has no impact on the statistics.</span></li>
+      <li className="flex items-start"><span className="mr-1.5 text-blue-500">•</span> <span>Precisely, a station tracks suspects who are pending action in police custody using those two columns.</span></li>
+      <li className="flex items-start"><span className="mr-1.5 text-blue-500">•</span> <span>In summary, the actual summation by action taken is done using the columns of given bond, cautioned and taken to court.</span></li>
+      <li className="flex items-start"><span className="mr-1.5 text-blue-500">•</span> <span>The number of convicted suspects may be inconsistent with the actual number of suspects taken to court, as a result of deferred court actions, some of which happen without police involvement e.g. the granting of bail to a suspect who was remanded 6 months ago, in addition to the variations in remand periods.</span></li>
+    </ul>
+    <div className="font-black text-slate-900 dark:text-slate-100 uppercase border-t border-slate-300 dark:border-slate-600 pt-2.5 mt-3 text-[9px] tracking-wide bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+      NOTE: WHEN A PREVIOUS WEEK'S PENDING COURT IS FORWARDED TO CURRENT WEEK, ANY EXCESSES IN FINAL TOTAL SHOULD EQUATE TO THE FORWARDED NUMBER, THAT MISSED COURT/ACTION THAT PAST WEEK.
+    </div>
+  </div>
+);
+
 const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, setSidebarOpen, isReadOnlyObserver }) => {
-  // 1. Auth & Hierarchical Initialization
   const userRoleClean = cleanStr(currentUser?.role);
   const userPosClean = cleanStr(currentUser?.position);
   const userRegClean = cleanStr(currentUser?.region);
@@ -138,7 +155,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
   const isCommandOrHR = isGlobalTier || isKmpSystemManager || isRegionalCommand || userPosClean.includes('HR');
   const canEditRecords = (isCommandOrHR || currentUser?.permissions?.upload_hr === true || currentUser?.permissions?.log_crime === true) && !isReadOnlyObserver;
 
-  // 2. Base Component States
   const [operation, setOperation] = useState('new');
   const [notification, setNotification] = useState(null);
   const [statsDomain, setStatsDomain] = useState('DISRUPTIVE');
@@ -162,7 +178,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
 
   const getTodayString = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }).split(',')[0].replace(/\//g, '-');
 
-  // 3. Structured Data Initialization 
   const getInitialFormData = useCallback(() => {
       const targetRegion = (canViewGlobalLevel && filterRegion !== 'ALL REGIONS') ? filterRegion : userRegClean;
       const targetStation = (canViewGlobalLevel || isRegionalCommand) && filterStation !== 'ALL STATIONS' ? filterStation : currentUser.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '';
@@ -185,7 +200,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     status: 'UNDER INVESTIGATION',
   });
 
-  // 🟢 SYNCHRONIZE GLOBAL DROPDOWNS TO FORM 
   const handleGlobalFilterRegionChange = (newRegion) => {
     const cleanRegion = cleanStr(newRegion);
     setFilterRegion(cleanRegion);
@@ -294,7 +308,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     fetchAgricSummaries();
   }, [fetchDomainStats, fetchAgricSummaries]);
 
-  // 🟢 STRICT JURISDICTIONAL FILTERING RESTORED
   const currentDomainStats = useMemo(() => {
       let raw = [];
       if (statsDomain === 'DISRUPTIVE') raw = disruptiveStats;
@@ -311,19 +324,13 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
           const itemRegion = cleanStr(item.region);
           const itemStation = cleanStr(item.station);
 
-          // 1. Check Date Range
           if (start && end && (itemDateStr < start || itemDateStr > end)) return false;
-
-          // 2. Strict Jurisdictional Overrides
           if (canViewGlobalLevel && activeReg === 'ALL REGIONS' && activeStat === 'ALL STATIONS') return true;
 
-          // 3. Strict Regional Scope
           const belongsToRegion = activeReg === 'ALL REGIONS' || itemRegion === activeReg || 
                                   (REGIONAL_HIERARCHY[activeReg] && REGIONAL_HIERARCHY[activeReg].some(s => isStationEquivalent(s, itemStation)));
           
           if (!belongsToRegion) return false;
-
-          // 4. Strict Station Scope
           if (activeStat && activeStat !== 'ALL STATIONS' && !isStationEquivalent(itemStation, activeStat)) return false;
 
           return true;
@@ -357,7 +364,8 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       stationMap[matchedKey].arrested += (parseInt(stat.arrested) || 0);
       stationMap[matchedKey].given_bond += (parseInt(stat.given_bond) || 0);
       stationMap[matchedKey].cautioned += (parseInt(stat.cautioned) || 0);
-      stationMap[matchedKey].taken_to_court += (parseInt(stat.taken_to_court) || 0);
+      // 🟢 EXPLICITLY SUMMING BOTH TAKEN TO COURT COLUMNS FOR THE REGIONAL VIEW
+      stationMap[matchedKey].taken_to_court += (parseInt(stat.taken_to_court_prev_lockup) || 0) + (parseInt(stat.taken_to_court_today_ops) || 0);
       stationMap[matchedKey].released += (parseInt(stat.released) || 0);
       stationMap[matchedKey].remanded += (parseInt(stat.remanded) || 0);
       stationMap[matchedKey].convicted += (parseInt(stat.convicted) || 0);
@@ -375,7 +383,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     setNotification("⏳ Generating AES-256 secure encrypted spreadsheet archive. Please wait...");
     
     try {
-      // 🟢 RESTORED: Pointing back to the individual domain routes, NOT the Master Analytics route!
       let targetEndpoint = '/api/v1/stats/export';
       if (statsDomain === 'AGRICULTURAL') targetEndpoint = '/api/v1/agric-stats/export';
       if (statsDomain === 'ACCIDENTS') targetEndpoint = '/api/v1/accidents/export';
@@ -392,7 +399,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       const qs = params.toString();
       const finalUrl = qs ? `${targetEndpoint}?${qs}` : targetEndpoint;
 
-      // 🟢 FIX: Using POST because your domain-specific backend routes reject GET with a 405
       const response = await authFetch(finalUrl, { 
           method: "POST",
           headers: { "Content-Type": "application/json" }
@@ -434,7 +440,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       groups[reg] = { stations: {} };
     });
 
-    // 🟢 Strict filtering applied to Agric summary tables using cleanStr
     const activeReg = cleanStr(filterRegion);
     const activeStat = cleanStr(filterStation);
 
@@ -507,6 +512,28 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
   const handleFormSubmit = async (e) => {  
     e.preventDefault();
     if (!canEditRecords) return setNotification("Security Restriction: You do not have clearance to modify analytical records.");
+
+    // 🟢 MASS BALANCE MATHEMATICAL VALIDATOR TO PREVENT FORGERY
+    if (statsDomain === 'DISRUPTIVE' || statsDomain === 'AGRICULTURAL') {
+        const arrested = parseInt(formData.arrested) || 0;
+        const bond = parseInt(formData.given_bond) || 0;
+        const cautioned = parseInt(formData.cautioned) || 0;
+        const pending_prev = parseInt(formData.pending_court_prev_ops) || 0;
+        const pending_today = parseInt(formData.pending_court_today_ops) || 0;
+        const taken_prev = parseInt(formData.taken_to_court_prev_lockup) || 0;
+        const taken_today = parseInt(formData.taken_to_court_today_ops) || 0;
+
+        const totalIn = arrested + pending_prev;
+        const totalOut = bond + cautioned + taken_today + taken_prev + pending_today;
+
+        if (totalIn !== totalOut) {
+            return setNotification(`❌ INCONSISTENT DATA: Suspects distribution does not balance. Arrested (${arrested}) + Pending Prev (${pending_prev}) MUST EQUAL Bond (${bond}) + Cautioned (${cautioned}) + Taken Today (${taken_today}) + Taken Prev (${taken_prev}) + Pending Today (${pending_today}).`);
+        }
+        
+        if (taken_prev > pending_prev) {
+            return setNotification(`❌ INCONSISTENT DATA: Taken to Court from Previous Lockup (${taken_prev}) cannot exceed the number Pending Court from Previous Day (${pending_prev}).`);
+        }
+    }
     
     let targetEndpoint = '/api/v1/stats';
     if (statsDomain === 'AGRICULTURAL') targetEndpoint = '/api/v1/agric-stats';
@@ -752,8 +779,10 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
     }
     return currentDomainStats.reduce((acc, curr) => {
       acc.arrested += (parseInt(curr.arrested) || 0); acc.given_bond += (parseInt(curr.given_bond) || 0);
-      acc.cautioned += (parseInt(curr.cautioned) || 0); acc.pending_court += (parseInt(curr.pending_court) || 0);
-      acc.taken_to_court += (parseInt(curr.taken_to_court) || 0); acc.released += (parseInt(curr.released) || 0);
+      acc.cautioned += (parseInt(curr.cautioned) || 0); 
+      // 🟢 OMITTING PENDING COURT FROM TOTALS TO PREVENT INFLATION
+      acc.taken_to_court += (parseInt(curr.taken_to_court_prev_lockup) || 0) + (parseInt(curr.taken_to_court_today_ops) || 0);
+      acc.released += (parseInt(curr.released) || 0);
       acc.remanded += (parseInt(curr.remanded) || 0); acc.convicted += (parseInt(curr.convicted) || 0);
       return acc;
     }, { arrested: 0, given_bond: 0, cautioned: 0, pending_court: 0, taken_to_court: 0, released: 0, remanded: 0, convicted: 0 });
@@ -822,7 +851,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                     <button type="button" onClick={() => handleOperationToggle('new')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${operation === 'new' ? 'bg-white dark:bg-slate-700 shadow text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'}`}><PlusCircle className="w-3.5 h-3.5 inline mr-1" /> Register New</button>
                     <button type="button" onClick={() => handleOperationToggle('update')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${operation === 'update' ? 'bg-white dark:bg-slate-700 shadow text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'}`}><Edit className="w-3.5 h-3.5 inline mr-1" /> Update Existing</button>
                   </div>
-                  {notification && <div className={`border px-3 py-2 rounded-lg flex items-center mb-3 ${notification.includes('Error') || notification.includes('❌') ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900 text-red-800 dark:text-red-300' : 'bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-900 text-green-800 dark:text-green-300'}`}>{notification.includes('Error') || notification.includes('❌') ? <AlertTriangle className="w-4 h-4 mr-2 text-red-500 shrink-0" /> : <CheckCircle className="w-4 h-4 mr-2 text-green-500 shrink-0" />}<span className="text-xs font-bold">{notification}</span></div>}
+                  {notification && <div className={`border px-3 py-2 rounded-lg flex items-start mb-3 ${notification.includes('Error') || notification.includes('❌') ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900 text-red-800 dark:text-red-300' : 'bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-900 text-green-800 dark:text-green-300'}`}>{notification.includes('Error') || notification.includes('❌') ? <AlertTriangle className="w-4 h-4 mr-2 mt-0.5 text-red-500 shrink-0" /> : <CheckCircle className="w-4 h-4 mr-2 mt-0.5 text-green-500 shrink-0" />}<span className="text-xs font-bold leading-snug">{notification}</span></div>}
                   
                   {operation === 'update' && (
                     <div className="bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-lg p-3">
@@ -971,72 +1000,79 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
 
                     // 🟢 AGRICULTURAL SUSPECTS FORM
                     ) : statsDomain === 'AGRICULTURAL' ? (
-                        <div className="bg-emerald-50 dark:bg-slate-800 p-3 rounded-lg border border-emerald-200 dark:border-slate-700 space-y-3">
-                          <h4 className="text-xs font-black text-emerald-900 dark:text-emerald-300 border-b border-emerald-200 dark:border-slate-700 pb-1.5 mb-2 flex items-center">
-                            📊 Agric Crimes Suspects & Lockup Entry
-                          </h4>
-                          
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Arrested</label><input type="number" name="arrested" min="0" value={formData.arrested || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-emerald-700 dark:text-emerald-400 outline-none p-0.5 bg-transparent" /></div>
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Given Bond</label><input type="number" name="given_bond" min="0" value={formData.given_bond || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-green-700 dark:text-green-400 outline-none p-0.5 bg-transparent" /></div>
-                          </div>
+                        <>
+                          <div className="bg-emerald-50 dark:bg-slate-800 p-3 rounded-lg border border-emerald-200 dark:border-slate-700 space-y-3">
+                            <h4 className="text-xs font-black text-emerald-900 dark:text-emerald-300 border-b border-emerald-200 dark:border-slate-700 pb-1.5 mb-2 flex items-center">
+                              📊 Agric Crimes Suspects & Lockup Entry
+                            </h4>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Arrested</label><input type="number" name="arrested" min="0" value={formData.arrested || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-emerald-700 dark:text-emerald-400 outline-none p-0.5 bg-transparent" /></div>
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Given Bond</label><input type="number" name="given_bond" min="0" value={formData.given_bond || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-green-700 dark:text-green-400 outline-none p-0.5 bg-transparent" /></div>
+                            </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Cautioned</label><input type="number" name="cautioned" min="0" value={formData.cautioned || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-blue-600 dark:text-blue-400 outline-none p-0.5 bg-transparent" /></div>
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Pending Court (Prev Day)</label><input type="number" name="pending_court_prev_ops" min="0" value={formData.pending_court_prev_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-yellow-600 dark:text-yellow-400 outline-none p-0.5 bg-transparent" /></div>
-                          </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Cautioned</label><input type="number" name="cautioned" min="0" value={formData.cautioned || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-blue-600 dark:text-blue-400 outline-none p-0.5 bg-transparent" /></div>
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Pending Court (Prev Day)</label><input type="number" name="pending_court_prev_ops" min="0" value={formData.pending_court_prev_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-yellow-600 dark:text-yellow-400 outline-none p-0.5 bg-transparent" /></div>
+                            </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Pending Court (Today's OPS)</label><input type="number" name="pending_court_today_ops" min="0" value={formData.pending_court_today_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-yellow-600 dark:text-yellow-400 outline-none p-0.5 bg-transparent" /></div>
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Taken to Court (Prev Lockup)</label><input type="number" name="taken_to_court_prev_lockup" min="0" value={formData.taken_to_court_prev_lockup || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-600 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
-                          </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Pending Court (Today's OPS)</label><input type="number" name="pending_court_today_ops" min="0" value={formData.pending_court_today_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-yellow-600 dark:text-yellow-400 outline-none p-0.5 bg-transparent" /></div>
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Taken to Court (Prev Lockup)</label><input type="number" name="taken_to_court_prev_lockup" min="0" value={formData.taken_to_court_prev_lockup || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-600 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
+                            </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Taken to Court (Today's OPS)</label><input type="number" name="taken_to_court_today_ops" min="0" value={formData.taken_to_court_today_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-600 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Released by Court</label><input type="number" name="released" min="0" value={formData.released || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-green-600 dark:text-green-400 outline-none p-0.5 bg-transparent" /></div>
-                          </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Taken to Court (Today's OPS)</label><input type="number" name="taken_to_court_today_ops" min="0" value={formData.taken_to_court_today_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-600 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Released by Court</label><input type="number" name="released" min="0" value={formData.released || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-green-600 dark:text-green-400 outline-none p-0.5 bg-transparent" /></div>
+                            </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Remanded</label><input type="number" name="remanded" min="0" value={formData.remanded || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-700 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Convicted</label><input type="number" name="convicted" min="0" value={formData.convicted || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-purple-600 dark:text-purple-400 outline-none p-0.5 bg-transparent" /></div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Remanded</label><input type="number" name="remanded" min="0" value={formData.remanded || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-700 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Convicted</label><input type="number" name="convicted" min="0" value={formData.convicted || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-purple-600 dark:text-purple-400 outline-none p-0.5 bg-transparent" /></div>
+                            </div>
                           </div>
-                        </div>
+                        </>
 
                     // DISRUPTIVE OPS FORM
                     ) : (
-                        <div className="bg-blue-50 dark:bg-slate-800 p-3 rounded-lg border border-blue-200 dark:border-slate-700 space-y-3">
-                          <h4 className="text-xs font-black text-blue-900 dark:text-blue-300 border-b border-blue-200 dark:border-slate-700 pb-1.5 mb-2 flex items-center">📊 Disruptive Operations Form (REVISED DIV TEMPLATE)</h4>
-                          
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Arrested</label><input type="number" name="arrested" min="0" value={formData.arrested || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-blue-700 dark:text-blue-400 outline-none p-0.5 bg-transparent" /></div>
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Given Bond</label><input type="number" name="given_bond" min="0" value={formData.given_bond || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-green-700 dark:text-green-400 outline-none p-0.5 bg-transparent" /></div>
-                          </div>
+                        <>
+                          <div className="bg-blue-50 dark:bg-slate-800 p-3 rounded-lg border border-blue-200 dark:border-slate-700 space-y-3">
+                            <h4 className="text-xs font-black text-blue-900 dark:text-blue-300 border-b border-blue-200 dark:border-slate-700 pb-1.5 mb-2 flex items-center">📊 Disruptive Operations Form (REVISED DIV TEMPLATE)</h4>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Arrested</label><input type="number" name="arrested" min="0" value={formData.arrested || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-blue-700 dark:text-blue-400 outline-none p-0.5 bg-transparent" /></div>
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Given Bond</label><input type="number" name="given_bond" min="0" value={formData.given_bond || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-green-700 dark:text-green-400 outline-none p-0.5 bg-transparent" /></div>
+                            </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Cautioned</label><input type="number" name="cautioned" min="0" value={formData.cautioned || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-blue-600 dark:text-blue-400 outline-none p-0.5 bg-transparent" /></div>
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Pending Court (Prev Day)</label><input type="number" name="pending_court_prev_ops" min="0" value={formData.pending_court_prev_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-yellow-600 dark:text-yellow-400 outline-none p-0.5 bg-transparent" /></div>
-                          </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Cautioned</label><input type="number" name="cautioned" min="0" value={formData.cautioned || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-blue-600 dark:text-blue-400 outline-none p-0.5 bg-transparent" /></div>
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Pending Court (Prev Day)</label><input type="number" name="pending_court_prev_ops" min="0" value={formData.pending_court_prev_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-yellow-600 dark:text-yellow-400 outline-none p-0.5 bg-transparent" /></div>
+                            </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Pending Court (Today's OPS)</label><input type="number" name="pending_court_today_ops" min="0" value={formData.pending_court_today_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-yellow-600 dark:text-yellow-400 outline-none p-0.5 bg-transparent" /></div>
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Taken to Court (Prev Lockup)</label><input type="number" name="taken_to_court_prev_lockup" min="0" value={formData.taken_to_court_prev_lockup || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-600 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
-                          </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Pending Court (Today's OPS)</label><input type="number" name="pending_court_today_ops" min="0" value={formData.pending_court_today_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-yellow-600 dark:text-yellow-400 outline-none p-0.5 bg-transparent" /></div>
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Taken to Court (Prev Lockup)</label><input type="number" name="taken_to_court_prev_lockup" min="0" value={formData.taken_to_court_prev_lockup || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-600 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
+                            </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Taken to Court (Today's OPS)</label><input type="number" name="taken_to_court_today_ops" min="0" value={formData.taken_to_court_today_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-600 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Released by Court</label><input type="number" name="released" min="0" value={formData.released || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-green-600 dark:text-green-400 outline-none p-0.5 bg-transparent" /></div>
-                          </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Taken to Court (Today's OPS)</label><input type="number" name="taken_to_court_today_ops" min="0" value={formData.taken_to_court_today_ops || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-600 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Released by Court</label><input type="number" name="released" min="0" value={formData.released || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-green-600 dark:text-green-400 outline-none p-0.5 bg-transparent" /></div>
+                            </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Remanded</label><input type="number" name="remanded" min="0" value={formData.remanded || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-700 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
-                            <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Convicted</label><input type="number" name="convicted" min="0" value={formData.convicted || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-purple-600 dark:text-purple-400 outline-none p-0.5 bg-transparent" /></div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Remanded</label><input type="number" name="remanded" min="0" value={formData.remanded || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-red-700 dark:text-red-400 outline-none p-0.5 bg-transparent" /></div>
+                              <div className="bg-white dark:bg-slate-900 p-1.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm"><label className="block text-[9px] font-black text-gray-600 dark:text-slate-400 uppercase tracking-wider mb-0.5">Suspects Convicted</label><input type="number" name="convicted" min="0" value={formData.convicted || 0} onChange={handleInputChange} className="w-full text-[13px] font-black text-purple-600 dark:text-purple-400 outline-none p-0.5 bg-transparent" /></div>
+                            </div>
                           </div>
-                        </div>
+                        </>
                     )}
                     
                     <button type="submit" className="w-full bg-blue-700 hover:bg-blue-800 transition-colors text-white mt-3 py-2.5 font-black rounded-lg shadow text-[13px] flex justify-center items-center cursor-pointer">
                       {operation === 'new' ? '💾 Submit Suspects Entry' : '💾 Save Updated Figures'}
                     </button>
+
+                    {/* 🟢 ACCOUNTABILITY LOGIC GUIDE ADDED TO FORMS */}
+                    {(statsDomain === 'DISRUPTIVE' || statsDomain === 'AGRICULTURAL') && <AccountabilityGuide />}
                   </form>
                 </div>
               </div>
@@ -1198,9 +1234,9 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
-                      {currentDomainStats.map((stat) => (
+                      {currentDomainStats.map((stat, idx) => (
                         <tr key={stat.id || stat.sn} className="even:bg-slate-50 dark:even:bg-slate-800/40 hover:bg-red-50 dark:hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => { if(operation === 'update') populateUpdateForm(stat); }}>
-                          <td className="px-2 py-2 text-center font-bold text-gray-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800">{stat.id || stat.sn}</td>
+                          <td className="px-2 py-2 text-center font-bold text-gray-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800">{idx + 1}</td>
                           <td className="px-2 py-2 text-center whitespace-nowrap text-gray-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800">{stat.date}</td>
                           <td className="px-2 py-2 text-center font-bold text-red-800 dark:text-red-400 border-r border-slate-200 dark:border-slate-800">{stat.station}</td>
                           
@@ -1251,9 +1287,9 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
-                      {currentDomainStats.map((stat) => (
+                      {currentDomainStats.map((stat, idx) => (
                         <tr key={stat.id || stat.sn} className="even:bg-slate-50 dark:even:bg-slate-800/40 hover:bg-amber-50 dark:hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => { if(operation === 'update') populateUpdateForm(stat); }}>
-                          <td className="px-2 py-2 text-center font-bold text-gray-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800">{stat.id || stat.sn}</td>
+                          <td className="px-2 py-2 text-center font-bold text-gray-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800">{idx + 1}</td>
                           <td className="px-2 py-2 text-center whitespace-nowrap text-gray-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800">{stat.date}</td>
                           <td className="px-2 py-2 text-center font-bold text-amber-800 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800">{stat.station}</td>
                           <td className="px-2 py-2 text-center font-bold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">{stat.nature_of_fire}</td>
@@ -1357,9 +1393,9 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-800">
-                      {currentDomainStats.map((stat) => (
+                      {currentDomainStats.map((stat, idx) => (
                         <tr key={stat.id || stat.sn} className="even:bg-slate-50 dark:even:bg-slate-800/40 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => { if(operation === 'update') populateUpdateForm(stat); }}>
-                          <td className="px-2 py-2 text-center font-bold border-r border-slate-200 dark:border-slate-800">{stat.id || stat.sn}</td>
+                          <td className="px-2 py-2 text-center font-bold border-r border-slate-200 dark:border-slate-800">{idx + 1}</td>
                           <td className="px-2 py-2 text-center font-bold border-r border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">{stat.station}</td>
                           <td className="px-2 py-2 text-center border-r border-slate-200 dark:border-slate-800 whitespace-nowrap">{stat.date}</td>
                           <td className="px-2 py-2 text-center font-bold border-r border-slate-200 dark:border-slate-800">{stat.arrested}</td>
@@ -1383,8 +1419,10 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                           
                           <td className="px-2 py-2 text-center text-[13px] text-green-800 dark:text-green-400 border-r border-slate-300 dark:border-slate-700">{totals.given_bond}</td>
                           <td className="px-2 py-2 text-center text-[13px] text-blue-800 dark:text-blue-400 border-r border-slate-300 dark:border-slate-700">{totals.cautioned}</td>
-                          <td className="px-2 py-2 text-center text-[13px] border-r border-slate-300 dark:border-slate-700 text-yellow-800 dark:text-yellow-400">{currentDomainStats.reduce((s, r) => s + (parseInt(r.pending_court_prev_ops) || 0), 0)}</td>
-                          <td className="px-2 py-2 text-center text-[13px] border-r border-slate-300 dark:border-slate-700 text-yellow-800 dark:text-yellow-400">{currentDomainStats.reduce((s, r) => s + (parseInt(r.pending_court_today_ops) || 0), 0)}</td>
+                          
+                          {/* 🟢 BLANKED OUT TO PREVENT MATHEMATICAL INFLATION OF PENDING SUSPECTS */}
+                          <td className="px-2 py-2 text-center text-[13px] border-r border-slate-300 dark:border-slate-700 text-slate-400">-</td>
+                          <td className="px-2 py-2 text-center text-[13px] border-r border-slate-300 dark:border-slate-700 text-slate-400">-</td>
                           
                           <td className="px-2 py-2 text-center text-[13px] border-r border-slate-300 dark:border-slate-700 text-red-800 dark:text-red-400">{currentDomainStats.reduce((s, r) => s + (parseInt(r.taken_to_court_prev_lockup) || 0), 0)}</td>
                           <td className="px-2 py-2 text-center text-[13px] border-r border-slate-300 dark:border-slate-700 text-red-800 dark:text-red-400">{currentDomainStats.reduce((s, r) => s + (parseInt(r.taken_to_court_today_ops) || 0), 0)}</td>

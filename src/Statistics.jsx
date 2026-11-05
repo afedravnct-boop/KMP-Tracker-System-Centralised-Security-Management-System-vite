@@ -120,6 +120,7 @@ const ExpandableTableCard = ({ title, children, onToggle }) => {
   );
 };
 
+// 🟢 ACCOUNTABILITY LOGIC GUIDE
 const AccountabilityGuide = () => (
   <div className="bg-slate-100 dark:bg-slate-800/80 p-4 rounded-lg border border-slate-300 dark:border-slate-700 text-[10px] text-slate-700 dark:text-slate-300 space-y-2.5 mt-5 leading-relaxed font-medium shadow-inner">
     <h5 className="font-black uppercase text-blue-900 dark:text-blue-400 flex items-center mb-1">
@@ -364,7 +365,6 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
       stationMap[matchedKey].arrested += (parseInt(stat.arrested) || 0);
       stationMap[matchedKey].given_bond += (parseInt(stat.given_bond) || 0);
       stationMap[matchedKey].cautioned += (parseInt(stat.cautioned) || 0);
-      // 🟢 EXPLICITLY SUMMING BOTH TAKEN TO COURT COLUMNS FOR THE REGIONAL VIEW
       stationMap[matchedKey].taken_to_court += (parseInt(stat.taken_to_court_prev_lockup) || 0) + (parseInt(stat.taken_to_court_today_ops) || 0);
       stationMap[matchedKey].released += (parseInt(stat.released) || 0);
       stationMap[matchedKey].remanded += (parseInt(stat.remanded) || 0);
@@ -861,7 +861,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                         {availableUpdateStats.length === 0 ? (
                           <div className="p-2 text-[10px] text-gray-500 dark:text-slate-400 text-center font-bold">No records found matching your search.</div>
                         ) : (
-                          availableUpdateStats.map(s => {
+                          availableUpdateStats.map((s, idx) => {
                             const recordKey = s.id !== undefined && s.id !== null ? s.id : s.sn;
                             const isSelected = formData.sn === recordKey || formData.id === recordKey;
 
@@ -874,7 +874,7 @@ const Statistics = ({ currentUser, canViewGlobal: propCanViewGlobal = false, set
                                 }} 
                                 className={`p-2 text-[10px] border-b dark:border-slate-800 cursor-pointer transition-colors ${isSelected ? 'bg-blue-700 text-white font-black' : 'hover:bg-blue-100 dark:hover:bg-slate-800 text-gray-800 dark:text-slate-200 font-bold'}`}
                               >
-                                <span className={isSelected ? 'text-blue-200' : 'text-gray-400'}>ID: {recordKey}</span> | <span className={isSelected ? 'text-white' : 'text-blue-700 dark:text-blue-400'}>{s.date}</span> | {s.station}
+                                <span className={isSelected ? 'text-blue-200' : 'text-gray-400'}>S/N: {idx + 1}</span> | <span className={isSelected ? 'text-white' : 'text-blue-700 dark:text-blue-400'}>{s.date}</span> | {s.station}
                               </div>
                             );
                           })

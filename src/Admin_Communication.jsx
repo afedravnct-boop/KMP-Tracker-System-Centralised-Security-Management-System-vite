@@ -125,6 +125,8 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
     (currentUser?.position || '').toUpperCase().includes('RPC') ||
     (currentUser?.position || '').toUpperCase().includes('COMMANDER');
 
+  const [unreadInboxCount, setUnreadInboxCount] = useState(0);
+
   const [activeTab, setActiveTab] = useState(
     initialTab ? initialTab.toLowerCase() : (canBroadcast ? 'dispatch' : 'inbox')
   ); 
@@ -169,15 +171,26 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
 
   const [expandedMsgs, setExpandedMsgs] = useState({});
 
-  // Helper to check if a threaded message or any of its unread replies are unread
-  const isUnreadCheck = (msg) => {
-    if (!msg.acknowledged && msg.sender_fnum !== currentUser?.fnum) return true;
-    if (msg.replies && msg.replies.some(r => !r.acknowledged && r.sender_fnum !== currentUser?.fnum)) return true;
-    return false;
-  };
-
-  // 🟢 NEW: Calculate Unread Messages Directly From State (Fixes 404 Ping Error)
-  const unreadInboxCount = inboxMessages.filter(msg => isUnreadCheck(msg)).length;
+  useEffect(() => {
+    const fetchUnreadInboxCount = async () => {
+      try {
+        const token = sessionStorage.getItem('kmp_authToken');
+        const res = await fetch(`${API_URL}/api/v1/communications/ping-unread`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadInboxCount(data.unread_count || 0);
+        }
+      } catch (e) {
+        console.error("Failed to fetch inbox unread count:", e);
+      }
+    };
+    
+    fetchUnreadInboxCount();
+    const interval = setInterval(fetchUnreadInboxCount, 30000); 
+    return () => clearInterval(interval);
+  }, [inboxMessages]);
 
   useEffect(() => {
     fetchRecipientsList();
@@ -586,6 +599,13 @@ const Admin_Communication = ({ currentUser, users, setCurrentPage, onAcknowledge
         console.error("Automatic thread read-detection error:", err);
       }
     }
+  };
+
+  // Helper to check if a threaded message or any of its unread replies are unread
+  const isUnreadCheck = (msg) => {
+    if (!msg.acknowledged && msg.sender_fnum !== currentUser?.fnum) return true;
+    if (msg.replies && msg.replies.some(r => !r.acknowledged && r.sender_fnum !== currentUser?.fnum)) return true;
+    return false;
   };
 
   const handleMarkAllAsRead = async () => {

@@ -200,8 +200,9 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   const [filterRegion, setFilterRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);
   const [filterStation, setFilterStation] = useState((canViewGlobalLevel || isRegionalCommand) ? 'ALL STATIONS' : normalizeStationName(currentUser?.station));
 
+  // 🟢 Fixed Initialization to respect Regional and Station command limits immediately
   const [targetRegion, setTargetRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);
-  const [targetStation, setTargetStation] = useState('ALL STATIONS');
+  const [targetStation, setTargetStation] = useState((canViewGlobalLevel || isRegionalCommand) ? 'ALL STATIONS' : normalizeStationName(currentUser?.station));
 
   const [searchTerm, setSearchTerm] = useState('');
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
@@ -265,36 +266,48 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
     };
   }, [Nominal_Rolls, filterRegion]);
 
-  // 🟢 NEW: Dynamically update available stations when a region is selected in the modal
-  const [modalStations, setModalStations] = useState({ major: [], other: [], posts: [] });
+  // 🟢 Robust Modal Stations Calculator (Tied purely to targetRegion)
+  const modalStations = useMemo(() => {
+    const majors = new Set();
+    const stations = new Set();
+    const posts = new Set();
+    const rawRolls = Array.isArray(Nominal_Rolls) ? Nominal_Rolls : [];
 
-  useEffect(() => {
-    if (targetRegion === 'ALL REGIONS') {
-      setModalStations({
-        major: majorStations,
-        other: policeStations,
-        posts: policePosts
-      });
-    } else if (REGIONAL_HIERARCHY[targetRegion]) {
-      const validStationsForRegion = REGIONAL_HIERARCHY[targetRegion];
-      
-      const filteredMajor = majorStations.filter(s => validStationsForRegion.includes(s));
-      const filteredOther = policeStations.filter(s => validStationsForRegion.includes(s));
-      
-      const filteredPostsSet = new Set();
-      (Nominal_Rolls || []).forEach(record => {
-          if (record.region === targetRegion && record.station && policePosts.includes(record.station)) {
-              filteredPostsSet.add(record.station);
-          }
-      });
+    if (!targetRegion || targetRegion === 'ALL REGIONS') {
+        Object.values(REGIONAL_HIERARCHY).forEach(arr => arr.forEach(s => majors.add(normalizeStationName(s))));
+        rawRolls.forEach(n => {
+            const stn = cleanStr(n.station);
+            const normName = normalizeStationName(stn);
+            const cat = classifyStation(stn);
+            if (cat === 'MAJOR') majors.add(normName);
+            else if (cat === 'STATION') stations.add(normName);
+            else if (cat === 'POST') posts.add(normName);
+        });
+    } else {
+        if (REGIONAL_HIERARCHY[targetRegion]) {
+            REGIONAL_HIERARCHY[targetRegion].forEach(s => majors.add(normalizeStationName(s)));
+        }
 
-      setModalStations({
-        major: filteredMajor,
-        other: filteredOther,
-        posts: Array.from(filteredPostsSet).sort()
-      });
+        rawRolls.forEach(n => {
+            const stn = cleanStr(n.station);
+            const reg = getOfficialRegionForStation(stn, n.region);
+            
+            if (reg === targetRegion) {
+                const normName = normalizeStationName(stn);
+                const cat = classifyStation(stn);
+                if (cat === 'MAJOR') majors.add(normName);
+                else if (cat === 'STATION') stations.add(normName);
+                else if (cat === 'POST') posts.add(normName);
+            }
+        });
     }
-  }, [targetRegion, majorStations, policeStations, policePosts, Nominal_Rolls]);
+
+    return { 
+        major: Array.from(majors).sort(), 
+        other: Array.from(stations).sort(), 
+        posts: Array.from(posts).sort() 
+    };
+  }, [Nominal_Rolls, targetRegion]);
 
 
   const populateUpdateForm = (data) => {
@@ -1224,7 +1237,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                             </p>
                           </div>
                         </div>
-                          
+                         
                         <div className="space-y-2.5 bg-white p-2.5 rounded-md border border-amber-100">
                           <div>
                             <label className="block text-[10px] font-bold text-slate-700 mb-0.5">Re-integration Authority / Reason *</label>
@@ -1292,7 +1305,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                       </span>
                   )}
               </div>
-                  
+                 
               {bulkSelectMode && selectedOfficers.length > 0 && (
                   <div className="flex flex-col sm:flex-row items-center gap-2 animate-in fade-in slide-in-from-left-4 bg-white p-2.5 rounded-lg shadow-xs border border-red-200">
                       <select

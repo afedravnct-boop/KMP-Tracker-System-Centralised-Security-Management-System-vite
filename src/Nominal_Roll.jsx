@@ -192,17 +192,20 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
 
   const canViewGlobalLevel = propCanViewGlobal !== undefined ? propCanViewGlobal : (isGlobalTier || hasMasterOverride);
   const isRegionalCommand = ['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN', 'ASSISTANT_REGIONAL_ADMIN'].includes(userRoleClean) && !canViewGlobalLevel;
+  
+  // 🟢 NEW: Allow Major Station users (like Jinja Road commanders) to filter their region's posts
+  const isMajorStationUser = classifyStation(currentUser?.station) === 'MAJOR';
+  const canFilterStations = canViewGlobalLevel || isRegionalCommand || isMajorStationUser;
 
   const perms = currentUser?.permissions || {};
   const hasHrClearance = isTopCommand || hasMasterOverride || perms.view_nominal_roll === true || perms.acc_hr === true || perms.upload_hr === true;
   const canEditRecords = hasHrClearance && !isReadOnlyObserver;
   
   const [filterRegion, setFilterRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);
-  const [filterStation, setFilterStation] = useState((canViewGlobalLevel || isRegionalCommand) ? 'ALL STATIONS' : normalizeStationName(currentUser?.station));
+  const [filterStation, setFilterStation] = useState(canFilterStations ? 'ALL STATIONS' : normalizeStationName(currentUser?.station));
 
-  // 🟢 Fixed Initialization to respect Regional and Station command limits immediately
   const [targetRegion, setTargetRegion] = useState(canViewGlobalLevel ? 'ALL REGIONS' : userRegClean);
-  const [targetStation, setTargetStation] = useState((canViewGlobalLevel || isRegionalCommand) ? 'ALL STATIONS' : normalizeStationName(currentUser?.station));
+  const [targetStation, setTargetStation] = useState(canFilterStations ? 'ALL STATIONS' : normalizeStationName(currentUser?.station));
 
   const [searchTerm, setSearchTerm] = useState('');
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
@@ -958,10 +961,10 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                 <select 
                   value={targetStation} 
                   onChange={(e) => setTargetStation(e.target.value)}
-                  disabled={!(canViewGlobalLevel || isRegionalCommand)}
+                  disabled={!canFilterStations}
                   className="w-full text-xs border rounded p-2 bg-white font-bold text-slate-800 outline-none disabled:bg-gray-100 disabled:text-gray-500 cursor-pointer"
                 >
-                  {(canViewGlobalLevel || isRegionalCommand) ? (
+                  {canFilterStations ? (
                     <>
                       <option value="ALL STATIONS">ALL STATIONS / POSTS</option>
                       {modalStations.major.length > 0 && (
@@ -1175,7 +1178,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                       <h4 className="text-[10px] font-bold text-gray-500 uppercase border-b pb-0.5">2. Service & Placement</h4>
                       <div className="grid grid-cols-2 gap-2">
                         <div><label className="block text-[10px] font-bold text-gray-700 mb-0.5">REGION *</label><select name="region" value={formData.region} onChange={handleInputChange} disabled={!isGlobalTier} required className="w-full text-xs border-gray-300 rounded shadow-xs border py-1.5 px-2 bg-white text-slate-800 disabled:bg-gray-100 disabled:text-gray-500">{isGlobalTier ? Object.keys(REGIONAL_HIERARCHY).map(reg => <option key={reg} value={reg}>{reg}</option>) : <option value={userRegClean}>{userRegClean}</option>}</select></div>
-                        <div><label className="block text-[10px] font-bold text-gray-700 mb-0.5">DUTY STATION *</label><input type="text" name="station" value={formData.station} onChange={handleInputChange} disabled={!isGlobalTier && !isRegionalCommand} required className="w-full text-xs border-gray-300 rounded shadow-xs border py-1.5 px-2 bg-white text-slate-800 disabled:bg-gray-100 disabled:text-gray-500" /></div>
+                        <div><label className="block text-[10px] font-bold text-gray-700 mb-0.5">DUTY STATION *</label><input type="text" name="station" value={formData.station} onChange={handleInputChange} disabled={!canFilterStations} required className="w-full text-xs border-gray-300 rounded shadow-xs border py-1.5 px-2 bg-white text-slate-800 disabled:bg-gray-100 disabled:text-gray-500" /></div>
                         <div><label className="block text-[10px] font-bold text-gray-700 mb-0.5">POSITION *</label><input type="text" name="position" value={formData.position} onChange={handleInputChange} required className="w-full text-xs border-gray-300 rounded shadow-xs border py-1.5 px-2 bg-white text-slate-800" /></div>
                         <div><label className="block text-[10px] font-bold text-gray-700 mb-0.5">DISTRICT</label><input type="text" name="district" value={formData.district} onChange={handleInputChange} className="w-full text-xs border-gray-300 rounded shadow-xs border py-1.5 px-2 bg-white text-slate-800" /></div>
                         <div><label className="block text-[10px] font-bold text-gray-700 mb-0.5">SECTION</label><input type="text" name="section" value={formData.section} onChange={handleInputChange} className="w-full text-xs border-gray-300 rounded shadow-xs border py-1.5 px-2 bg-white text-slate-800" /></div>
@@ -1369,10 +1372,10 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
               <select 
                 value={filterStation} 
                 onChange={(e) => setFilterStation(e.target.value)} 
-                disabled={!(canViewGlobalLevel || isRegionalCommand)} 
+                disabled={!canFilterStations} 
                 className="border rounded-lg px-3 py-1.5 text-xs font-bold shadow-xs bg-white text-slate-800 border-slate-300 disabled:bg-gray-100 disabled:text-gray-500 w-full sm:w-auto outline-none focus:border-blue-500 cursor-pointer"
               >
-                {(canViewGlobalLevel || isRegionalCommand) ? (
+                {canFilterStations ? (
                   <>
                     <option value="ALL STATIONS">ALL STATIONS</option>
                     {majorStations.length > 0 && (

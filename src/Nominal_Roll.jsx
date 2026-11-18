@@ -825,17 +825,17 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                   <AlertTriangle className="w-4 h-4 mr-1.5 text-amber-600" /> Manpower Audit: Missing Information ({filteredAuditPreviewData.length} Flagged)
                 </h3>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setModalMode('audit'); setShowAuditPreviewModal(false); setShowModal(true); }}
-                    className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 text-xs font-bold rounded shadow transition flex items-center cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5 mr-1" /> Download Audit Report
-                  </button>
-                  <button onClick={() => setShowAuditPreviewModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                    <X size={16} />
-                  </button>
-                </div>
+  <button
+    type="button"
+    onClick={handleExecuteExportModal} 
+    className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 text-xs font-bold rounded shadow transition flex items-center cursor-pointer"
+  >
+    <Download className="w-3.5 h-3.5 mr-1" /> Download Audit Report
+  </button>
+  <button onClick={() => setShowAuditPreviewModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+    <X size={16} />
+  </button>
+</div>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-2 items-center">

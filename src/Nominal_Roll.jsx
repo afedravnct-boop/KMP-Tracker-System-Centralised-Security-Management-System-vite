@@ -193,7 +193,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
   const canViewGlobalLevel = propCanViewGlobal !== undefined ? propCanViewGlobal : (isGlobalTier || hasMasterOverride);
   const isRegionalCommand = ['RPC', 'DEPUTY_RPC', 'SYSTEM_MANAGER', 'ASSISTANT_SYSTEM_MANAGER', 'REGIONAL_ADMIN', 'ASSISTANT_REGIONAL_ADMIN'].includes(userRoleClean) && !canViewGlobalLevel;
   
-  // 🟢 NEW: Allow Major Station users (like Jinja Road commanders) to filter their region's posts
+  // 🟢 Allow Major Station users (like Jinja Road commanders) to filter their region's posts
   const isMajorStationUser = classifyStation(currentUser?.station) === 'MAJOR';
   const canFilterStations = canViewGlobalLevel || isRegionalCommand || isMajorStationUser;
 
@@ -581,6 +581,17 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
           if (!response.ok) throw new Error("Failed to update record.");
           setNominal_Rolls(currentRolls.map(n => (n.sn === formData.sn || n.fnum === formData.fnum) ? updatedRecord : n));
           setNotification(`Officer updated successfully!`);
+          
+          // 🟢 FIX: Reset form data and search bar after successful update
+          setFormData({
+            sn: null, fnum: '', rank: '', name: '', sex: 'MALE', position: '',
+            dob: '', doe: '', dopost: '', dopro: '', contact: '', educlevel: '',
+            ipps: '', tin: '', nin: '', homedist: '', tribe: '', accno: '', bankbranch: '',
+            station: currentUser?.station || REGIONAL_HIERARCHY[currentUser?.region]?.[0] || '', 
+            district: '', region: currentUser?.region, section: '', dir: '', status: 'ACTIVE'
+          });
+          setUpdateSearch('');
+
       } catch (err) { setNotification("Error: Could not update record."); }
     }
   };
@@ -825,17 +836,17 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                   <AlertTriangle className="w-4 h-4 mr-1.5 text-amber-600" /> Manpower Audit: Missing Information ({filteredAuditPreviewData.length} Flagged)
                 </h3>
                 <div className="flex items-center gap-2">
-  <button
-    type="button"
-    onClick={handleExecuteExportModal} 
-    className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 text-xs font-bold rounded shadow transition flex items-center cursor-pointer"
-  >
-    <Download className="w-3.5 h-3.5 mr-1" /> Download Audit Report
-  </button>
-  <button onClick={() => setShowAuditPreviewModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-    <X size={16} />
-  </button>
-</div>
+                  <button
+                    type="button"
+                    onClick={handleExecuteExportModal}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 text-xs font-bold rounded shadow transition flex items-center cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" /> Download Audit Report
+                  </button>
+                  <button onClick={() => setShowAuditPreviewModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-2 items-center">
@@ -996,14 +1007,23 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                 Cancel
               </button>
               {modalMode === 'audit' ? (
-                <button 
-                  type="button" 
-                  onClick={handleFetchAuditPreview}
-                  disabled={isLoadingAudit}
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-2 rounded text-xs font-bold shadow transition cursor-pointer flex items-center justify-center disabled:opacity-50"
-                >
-                  <Eye className="w-3.5 h-3.5 mr-1" /> {isLoadingAudit ? 'Loading...' : 'View Audit List'}
-                </button>
+                <div className="flex-1 flex gap-2">
+                  <button 
+                    type="button" 
+                    onClick={handleFetchAuditPreview}
+                    disabled={isLoadingAudit}
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-2 rounded text-xs font-bold shadow transition cursor-pointer flex items-center justify-center disabled:opacity-50"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1" /> {isLoadingAudit ? 'Loading...' : 'View Audit List'}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={handleExecuteExportModal} 
+                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white py-2 rounded text-xs font-bold shadow transition cursor-pointer flex items-center justify-center"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1" /> Download
+                  </button>
+                </div>
               ) : (
                 <div className="flex-1 flex gap-2">
                   <button 

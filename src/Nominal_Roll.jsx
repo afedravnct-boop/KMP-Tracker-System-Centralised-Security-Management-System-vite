@@ -1,5 +1,5 @@
 // src/components/Nominal_Roll.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Users, PlusCircle, Edit, AlertTriangle, CheckCircle, Upload, 
   BarChart3, PieChart, ArrowRight, Eye, Search, X, Download, Filter
@@ -264,6 +264,38 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
         policePosts: Array.from(posts).sort()
     };
   }, [Nominal_Rolls, filterRegion]);
+
+  // 🟢 NEW: Dynamically update available stations when a region is selected in the modal
+  const [modalStations, setModalStations] = useState({ major: [], other: [], posts: [] });
+
+  useEffect(() => {
+    if (targetRegion === 'ALL REGIONS') {
+      setModalStations({
+        major: majorStations,
+        other: policeStations,
+        posts: policePosts
+      });
+    } else if (REGIONAL_HIERARCHY[targetRegion]) {
+      const validStationsForRegion = REGIONAL_HIERARCHY[targetRegion];
+      
+      const filteredMajor = majorStations.filter(s => validStationsForRegion.includes(s));
+      const filteredOther = policeStations.filter(s => validStationsForRegion.includes(s));
+      
+      const filteredPostsSet = new Set();
+      (Nominal_Rolls || []).forEach(record => {
+          if (record.region === targetRegion && record.station && policePosts.includes(record.station)) {
+              filteredPostsSet.add(record.station);
+          }
+      });
+
+      setModalStations({
+        major: filteredMajor,
+        other: filteredOther,
+        posts: Array.from(filteredPostsSet).sort()
+      });
+    }
+  }, [targetRegion, majorStations, policeStations, policePosts, Nominal_Rolls]);
+
 
   const populateUpdateForm = (data) => {
     setFormData({
@@ -919,19 +951,19 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                   {(canViewGlobalLevel || isRegionalCommand) ? (
                     <>
                       <option value="ALL STATIONS">ALL STATIONS / POSTS</option>
-                      {majorStations.length > 0 && (
+                      {modalStations.major.length > 0 && (
                           <optgroup label="MAJOR STATIONS / CPS / DIVISIONS">
-                              {majorStations.map(stat => <option key={stat} value={stat}>{stat}</option>)}
+                              {modalStations.major.map(stat => <option key={stat} value={stat}>{stat}</option>)}
                           </optgroup>
                       )}
-                      {policeStations.length > 0 && (
+                      {modalStations.other.length > 0 && (
                           <optgroup label="OTHER POLICE STATIONS">
-                              {policeStations.map(stat => <option key={stat} value={stat}>{stat}</option>)}
+                              {modalStations.other.map(stat => <option key={stat} value={stat}>{stat}</option>)}
                           </optgroup>
                       )}
-                      {policePosts.length > 0 && (
+                      {modalStations.posts.length > 0 && (
                           <optgroup label="POLICE POSTS">
-                              {policePosts.map(post => <option key={post} value={post}>{post}</option>)}
+                              {modalStations.posts.map(post => <option key={post} value={post}>{post}</option>)}
                           </optgroup>
                       )}
                     </>
@@ -1192,7 +1224,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                             </p>
                           </div>
                         </div>
-                         
+                          
                         <div className="space-y-2.5 bg-white p-2.5 rounded-md border border-amber-100">
                           <div>
                             <label className="block text-[10px] font-bold text-slate-700 mb-0.5">Re-integration Authority / Reason *</label>
@@ -1260,7 +1292,7 @@ const Nominal_Roll = ({ currentUser, canViewGlobal: propCanViewGlobal, Nominal_R
                       </span>
                   )}
               </div>
-                 
+                  
               {bulkSelectMode && selectedOfficers.length > 0 && (
                   <div className="flex flex-col sm:flex-row items-center gap-2 animate-in fade-in slide-in-from-left-4 bg-white p-2.5 rounded-lg shadow-xs border border-red-200">
                       <select

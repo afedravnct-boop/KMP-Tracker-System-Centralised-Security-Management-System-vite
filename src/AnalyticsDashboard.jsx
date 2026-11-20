@@ -176,6 +176,254 @@ const buildManpowerBucket = (list) => {
   };
 };
 
+const ManpowerFeatureCard = ({
+  title,
+  icon,
+  data = [],
+  byRegion = {},
+  bucketKey,
+  scope = 'GENERAL',
+  colors = PIE_COLORS,
+  emptyText = 'No data available.',
+  defaultView = 'ALL',
+  height = 240
+}) => {
+  const [viewMode, setViewMode] = useState(defaultView);
+  const totalCount = data.reduce((sum, item) => sum + Number(item.value || 0), 0);
+
+  // Build ordered category columns from active data (or union across regions)
+  const categoryColumns = useMemo(() => {
+    const ordered = data.map((d) => d.name);
+    const seen = new Set(ordered);
+    Object.values(byRegion || {}).forEach((bucket) => {
+      (bucket?.[bucketKey] || []).forEach((item) => {
+        if (!seen.has(item.name)) {
+          seen.add(item.name);
+          ordered.push(item.name);
+        }
+      });
+    });
+    return ordered;
+  }, [data, byRegion, bucketKey]);
+
+  // Build regional table rows (all regions when GENERAL, or the single selected region)
+  const tableRows = useMemo(() => {
+    const regionEntries =
+      scope === 'GENERAL'
+        ? Object.entries(byRegion || {})
+        : byRegion?.[scope]
+        ? [[scope, byRegion[scope]]]
+        : [];
+
+    return regionEntries.map(([regionName, bucket], idx) => {
+      const counts = {};
+      (bucket?.[bucketKey] || []).forEach((item) => {
+        counts[item.name] = Number(item.value || 0);
+      });
+      const rowTotal = categoryColumns.reduce((sum, col) => sum + (counts[col] || 0), 0);
+      return { sn: idx + 1, region: regionName, counts, rowTotal };
+    });
+  }, [byRegion, bucketKey, scope, categoryColumns]);
+
+  // Bottom footer totals per category + overall Grand Total
+  const columnTotals = useMemo(() => {
+    const totals = {};
+    categoryColumns.forEach((col) => {
+      totals[col] = tableRows.reduce((sum, r) => sum + (r.counts[col] || 0), 0);
+    });
+    return totals;
+  }, [categoryColumns, tableRows]);
+
+  const grandTotal = useMemo(
+    () => tableRows.reduce((sum, r) => sum + r.rowTotal, 0),
+    [tableRows]
+  );
+
+  // Dynamic height for horizontal bar graph so every rank/category label fits cleanly
+  const barChartHeight = Math.max(height, data.length * 28 + 45);
+
+  const renderPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+    if (percent < 0.04) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    return (
+      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-[10px] font-bold">
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
+  const renderPie = () => (
+    <div style={{ height }} className="w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie data={data} cx="50%" cy="50%" labelLine={false} label={renderPieLabel} outerRadius={72} dataKey="value">
+            {data.map((entry, idx) => (
+              <Cell key={`pie-${idx}`} fill={colors[idx % colors.length]} />
+            ))}
+          </Pie>
+          <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
+          <Legend wrapperStyle={{ fontSize: '9px', fontWeight: 'bold' }} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+
+  // Horizontal Bar Graph: X-Axis = Number of Personnel, Y-Axis = Ranks / Categories
+  const renderBar = () => (
+    <div style={{ height: barChartHeight }} className="w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart layout="vertical" data={data} margin={{ top: 8, right: 24, left: 10, bottom: 18 }}>
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2d6c3" />
+          <XAxis
+            type="number"
+            allowDecimals={false}
+            tick={{ fontSize: 9, fontWeight: 'bold' }}
+            label={{ value: 'Number of Personnel', position: 'insideBottom', offset: -10, fontSize: 9, fontWeight: 'bold', fill: '#594d3c' }}
+          />
+          <YAxis
+            dataKey="name"
+            type="category"
+            width={110}
+            interval={0}
+            tick={{ fontSize: 9, fontWeight: 'bold', fill: '#3a3225' }}
+          />
+          <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
+          <Bar dataKey="value" name="Personnel" radius={[0, 4, 4, 0]} barSize={18}>
+            {data.map((entry, idx) => (
+              <Cell key={`bar-${idx}`} fill={colors[idx % colors.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+
+  // Regional Matrix Table: S/NO | REGION | [Category Columns...] | TOTAL + Bottom Grand Total Row
+  const renderTable = () => (
+    <div className="w-full overflow-x-auto max-h-[340px] overflow-y-auto custom-scrollbar border border-[#d3c2a8] rounded-lg">
+      <table className="min-w-full divide-y divide-[#e2d6c3] text-[10px]">
+        <thead className="sticky top-0 z-20">
+          <tr className="bg-gradient-to-b from-[#f4eee2] to-[#e6dfd1] text-[#3a3225] font-extrabold border-b-2 border-[#d3c2a8]">
+            <th className="px-2.5 py-2 text-center uppercase border-r border-[#d3c2a8] sticky left-0 bg-[#f4eee2] z-10 w-12">S/NO</th>
+            <th className="px-3 py-2 text-left uppercase border-r border-[#d3c2a8] sticky left-12 bg-[#f4eee2] z-10 min-w-[140px]">Region</th>
+            {categoryColumns.map((col) => (
+              <th key={col} className="px-2.5 py-2 text-center uppercase border-r border-[#d3c2a8] whitespace-nowrap">
+                {col}
+              </th>
+            ))}
+            <th className="px-3 py-2 text-center uppercase bg-[#3a3225] text-[#f4eee2] whitespace-nowrap">Total</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#e2d6c3] bg-[#fbf8f3]">
+          {tableRows.map((row) => (
+            <tr key={row.region} className="hover:bg-[#e9eedf]/40">
+              <td className="px-2.5 py-1.5 text-center font-bold text-[#594d3c] border-r border-[#e2d6c3] sticky left-0 bg-[#fbf8f3]">
+                {row.sn}
+              </td>
+              <td className="px-3 py-1.5 font-extrabold text-[#3a3225] uppercase border-r border-[#e2d6c3] sticky left-12 bg-[#fbf8f3] whitespace-nowrap">
+                {row.region}
+              </td>
+              {categoryColumns.map((col) => (
+                <td key={col} className="px-2.5 py-1.5 text-center font-semibold text-[#3a3225] border-r border-[#e2d6c3]">
+                  {row.counts[col] ? row.counts[col].toLocaleString() : '-'}
+                </td>
+              ))}
+              <td className="px-3 py-1.5 text-center font-black text-[#596E47] bg-[#e9eedf]/50">
+                {row.rowTotal.toLocaleString()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="sticky bottom-0 z-20">
+          <tr className="bg-[#3a3225] text-[#f4eee2] font-black border-t-2 border-[#534735]">
+            <td colSpan={2} className="px-3 py-2 text-left uppercase tracking-wide border-r border-[#534735] sticky left-0 bg-[#3a3225]">
+              Category Totals / Grand Total
+            </td>
+            {categoryColumns.map((col) => (
+              <td key={col} className="px-2.5 py-2 text-center border-r border-[#534735]">
+                {(columnTotals[col] || 0).toLocaleString()}
+              </td>
+            ))}
+            <td className="px-3 py-2 text-center bg-[#596E47] text-white text-[11px]">
+              {grandTotal.toLocaleString()}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between border-b border-[#e2d6c3] pb-1.5 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="text-[11px] font-black text-[#3a3225] uppercase flex items-center truncate">
+            {icon}
+            <span className="truncate">{title}</span>
+          </h3>
+          <span className="text-[9px] font-extrabold text-[#736450] bg-[#f4eee2] px-1.5 py-0.5 rounded shrink-0">
+            n = {totalCount.toLocaleString()}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-0.5 bg-[#f4eee2] p-0.5 rounded-md border border-[#e2d6c3] shrink-0">
+          {[
+            { id: 'ALL', label: 'All' },
+            { id: 'PIE', label: 'Pie' },
+            { id: 'BAR', label: 'Graph' },
+            { id: 'TABLE', label: 'Table' }
+          ].map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setViewMode(m.id)}
+              className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase transition cursor-pointer ${
+                viewMode === m.id
+                  ? 'bg-[#3a3225] text-[#f4eee2] shadow-xs'
+                  : 'text-[#594d3c] hover:bg-[#e9e1d2]'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {data.length === 0 ? (
+        <div style={{ height }} className="w-full flex items-center justify-center text-[10px] text-[#736450]">
+          {emptyText}
+        </div>
+      ) : viewMode === 'ALL' ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+            <div className="border border-[#e2d6c3] rounded-lg p-2 bg-[#fbf8f3]/50">
+              <div className="text-[9px] font-extrabold text-[#736450] uppercase mb-1">Pie Chart</div>
+              {renderPie()}
+            </div>
+            <div className="border border-[#e2d6c3] rounded-lg p-2 bg-[#fbf8f3]/50">
+              <div className="text-[9px] font-extrabold text-[#736450] uppercase mb-1">Horizontal Bar Graph (X: Personnel, Y: Category)</div>
+              {renderBar()}
+            </div>
+          </div>
+          <div>
+            <div className="text-[9px] font-extrabold text-[#736450] uppercase mb-1">Regional Breakdown Table</div>
+            {renderTable()}
+          </div>
+        </div>
+      ) : viewMode === 'PIE' ? (
+        renderPie()
+      ) : viewMode === 'BAR' ? (
+        renderBar()
+      ) : (
+        renderTable()
+      )}
+    </div>
+  );
+};
+
 const AnalyticsDashboard = ({ 
   nominalRolls = [], 
   nominal_rolls = [], 
@@ -254,7 +502,6 @@ const AnalyticsDashboard = ({
         const crimeData = crimeRes && crimeRes.ok ? await crimeRes.json() : [];
         const statsData = statsRes && statsRes.ok ? await statsRes.json() : [];
         const exhibitsData = exhibitsRes && exhibitsRes.ok ? await exhibitsRes.json() : [];
-        const accidentsData = accidentsRes && accidentsRes.ok ? await accidentsRes.json() : [];
         const intelData = intelRes && intelRes.ok ? await intelRes.json() : null;
 
         if (isMounted) {
@@ -1451,10 +1698,10 @@ const AnalyticsDashboard = ({
               <div>
                 <h3 className="text-[11px] font-black text-[#3a3225] uppercase flex items-center">
                   <MapPin className="w-3.5 h-3.5 mr-1.5 text-[#596E47]" />
-                  Manpower Pie Chart Summary Scope
+                  Manpower Analytics Summary Scope
                 </h3>
                 <p className="text-[10px] text-[#736450]">
-                  Select <strong>General KMP Summary</strong> for force-wide totals or pick a specific region to isolate its pie charts.
+                  Select <strong>General KMP Summary</strong> for force-wide totals or pick a specific region to isolate its charts, graphs, and tables.
                 </p>
               </div>
               <span className="text-[10px] font-black bg-[#3a3225] text-[#f4eee2] px-2.5 py-1 rounded-lg">
@@ -1486,172 +1733,79 @@ const AnalyticsDashboard = ({
                       : 'bg-[#fbf8f3] text-[#594d3c] border-[#e2d6c3] hover:bg-[#efece6]'
                   }`}
                 >
-                  {regKey} ({backendManpowerIntel.byRegion[regKey]?.total || 0})
+                  {regKey} ({effectiveManpowerIntel.byRegion[regKey]?.total || 0})
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 🟢 ROW 1: GENDER DISTRIBUTION & FORCE DEPLOYABILITY */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 flex flex-col items-center">
-              <h3 className="text-[11px] font-black text-[#3a3225] uppercase border-b border-[#e2d6c3] w-full pb-1.5 mb-2 flex items-center">
-                <Scale className="w-3.5 h-3.5 mr-1.5 text-[#A97142]" /> Gender Distribution Analysis
-              </h3>
-              <div className="h-[220px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={activeManpowerBucket.genderDistribution} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={75} dataKey="value">
-                      {activeManpowerBucket.genderDistribution.map((entry, index) => (
-                        <Cell key={`gender-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
-                    <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 flex flex-col items-center">
-              <h3 className="text-[11px] font-black text-[#3a3225] uppercase border-b border-[#e2d6c3] w-full pb-1.5 mb-2 flex items-center">
-                <PieChartIcon className="w-3.5 h-3.5 mr-1.5 text-[#596E47]" /> Force Deployability Index
-              </h3>
-              <div className="h-[220px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={activeManpowerBucket.deployability} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={75} dataKey="value">
-                      {activeManpowerBucket.deployability.map((entry, index) => (
-                        <Cell key={`deploy-${index}`} fill={PIE_STATUS_COLORS[index % PIE_STATUS_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
-                    <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* 🟢 ROW 2: RANK CENSUS & LENGTH OF SERVICE (DOE) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 flex flex-col items-center">
-              <h3 className="text-[11px] font-black text-[#3a3225] uppercase border-b border-[#e2d6c3] w-full pb-1.5 mb-2 flex items-center">
-                <Shield className="w-3.5 h-3.5 mr-1.5 text-blue-700" /> Rank Census Distribution
-              </h3>
-              <div className="h-[250px] w-full">
-                {activeManpowerBucket.rankDistribution.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={activeManpowerBucket.rankDistribution} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={80} dataKey="value">
-                        {activeManpowerBucket.rankDistribution.map((entry, index) => (
-                          <Cell key={`rank-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
-                      <Legend wrapperStyle={{ fontSize: '9px', fontWeight: 'bold' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] text-[#736450]">No rank census data available.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 flex flex-col items-center">
-              <h3 className="text-[11px] font-black text-[#3a3225] uppercase border-b border-[#e2d6c3] w-full pb-1.5 mb-2 flex items-center">
-                <Clock className="w-3.5 h-3.5 mr-1.5 text-[#596E47]" /> Length of Service (DOE)
-              </h3>
-              <div className="h-[250px] w-full">
-                {activeManpowerBucket.serviceLength.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={activeManpowerBucket.serviceLength} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={80} dataKey="value">
-                        {activeManpowerBucket.serviceLength.map((entry, index) => (
-                          <Cell key={`srv-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
-                      <Legend wrapperStyle={{ fontSize: '9px', fontWeight: 'bold' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] text-[#736450]">No length of service data available.</div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* 🟢 ROW 3: STATION DEPLOYMENT, RANK TENURE & AGE DEMOGRAPHICS */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 flex flex-col items-center">
-              <h3 className="text-[11px] font-black text-[#3a3225] uppercase border-b border-[#e2d6c3] w-full pb-1.5 mb-2 flex items-center">
-                <Calendar className="w-3.5 h-3.5 mr-1.5 text-amber-700" /> Length at Current Station (D.O. Post)
-              </h3>
-              <div className="h-[240px] w-full">
-                {activeManpowerBucket.deploymentLength.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={activeManpowerBucket.deploymentLength} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={75} dataKey="value">
-                        {activeManpowerBucket.deploymentLength.map((entry, index) => (
-                          <Cell key={`dep-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
-                      <Legend wrapperStyle={{ fontSize: '9px', fontWeight: 'bold' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] text-[#736450]">No deployment duration data available.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 flex flex-col items-center">
-              <h3 className="text-[11px] font-black text-[#3a3225] uppercase border-b border-[#e2d6c3] w-full pb-1.5 mb-2 flex items-center">
-                <Award className="w-3.5 h-3.5 mr-1.5 text-purple-700" /> Period on Current Rank (D.O. Pro)
-              </h3>
-              <div className="h-[240px] w-full">
-                {activeManpowerBucket.rankTenure.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={activeManpowerBucket.rankTenure} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={75} dataKey="value">
-                        {activeManpowerBucket.rankTenure.map((entry, index) => (
-                          <Cell key={`tenure-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
-                      <Legend wrapperStyle={{ fontSize: '9px', fontWeight: 'bold' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] text-[#736450]">No rank tenure data available.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-xs border border-[#e2d6c3] p-3 flex flex-col items-center">
-              <h3 className="text-[11px] font-black text-[#3a3225] uppercase border-b border-[#e2d6c3] w-full pb-1.5 mb-2 flex items-center">
-                <Users className="w-3.5 h-3.5 mr-1.5 text-teal-700" /> Age Demographics (DOB)
-              </h3>
-              <div className="h-[240px] w-full">
-                {activeManpowerBucket.ageDemographics.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={activeManpowerBucket.ageDemographics} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={75} dataKey="value">
-                        {activeManpowerBucket.ageDemographics.map((entry, index) => (
-                          <Cell key={`age-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} />
-                      <Legend wrapperStyle={{ fontSize: '9px', fontWeight: 'bold' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] text-[#736450]">No age demographic data available.</div>
-                )}
-              </div>
-            </div>
+          {/* 🟢 INDEPENDENT PER-FEATURE MANPOWER ANALYTICS CARDS (ALL / PIE / GRAPH / TABLE) */}
+          <div className="space-y-3">
+            <ManpowerFeatureCard
+              title="Gender Distribution Analysis"
+              icon={<Scale className="w-3.5 h-3.5 mr-1.5 text-[#A97142]" />}
+              data={activeManpowerBucket.genderDistribution}
+              byRegion={effectiveManpowerIntel.byRegion}
+              bucketKey="genderDistribution"
+              scope={manpowerSummaryScope}
+              colors={PIE_COLORS}
+              emptyText="No gender distribution data available."
+            />
+            <ManpowerFeatureCard
+              title="Force Deployability Index"
+              icon={<PieChartIcon className="w-3.5 h-3.5 mr-1.5 text-[#596E47]" />}
+              data={activeManpowerBucket.deployability}
+              byRegion={effectiveManpowerIntel.byRegion}
+              bucketKey="deployability"
+              scope={manpowerSummaryScope}
+              colors={PIE_STATUS_COLORS}
+              emptyText="No deployability data available."
+            />
+            <ManpowerFeatureCard
+              title="Rank Census Distribution"
+              icon={<Shield className="w-3.5 h-3.5 mr-1.5 text-blue-700" />}
+              data={activeManpowerBucket.rankDistribution}
+              byRegion={effectiveManpowerIntel.byRegion}
+              bucketKey="rankDistribution"
+              scope={manpowerSummaryScope}
+              emptyText="No rank census data available."
+            />
+            <ManpowerFeatureCard
+              title="Length of Service (DOE)"
+              icon={<Clock className="w-3.5 h-3.5 mr-1.5 text-[#596E47]" />}
+              data={activeManpowerBucket.serviceLength}
+              byRegion={effectiveManpowerIntel.byRegion}
+              bucketKey="serviceLength"
+              scope={manpowerSummaryScope}
+              emptyText="No length of service data available."
+            />
+            <ManpowerFeatureCard
+              title="Length at Current Station (D.O. Post)"
+              icon={<Calendar className="w-3.5 h-3.5 mr-1.5 text-amber-700" />}
+              data={activeManpowerBucket.deploymentLength}
+              byRegion={effectiveManpowerIntel.byRegion}
+              bucketKey="deploymentLength"
+              scope={manpowerSummaryScope}
+              emptyText="No deployment duration data available."
+            />
+            <ManpowerFeatureCard
+              title="Period on Current Rank (D.O. Pro)"
+              icon={<Award className="w-3.5 h-3.5 mr-1.5 text-purple-700" />}
+              data={activeManpowerBucket.rankTenure}
+              byRegion={effectiveManpowerIntel.byRegion}
+              bucketKey="rankTenure"
+              scope={manpowerSummaryScope}
+              emptyText="No rank tenure data available."
+            />
+            <ManpowerFeatureCard
+              title="Age Demographics (DOB)"
+              icon={<Users className="w-3.5 h-3.5 mr-1.5 text-teal-700" />}
+              data={activeManpowerBucket.ageDemographics}
+              byRegion={effectiveManpowerIntel.byRegion}
+              bucketKey="ageDemographics"
+              scope={manpowerSummaryScope}
+              emptyText="No age demographic data available."
+            />
           </div>
           
         </div>

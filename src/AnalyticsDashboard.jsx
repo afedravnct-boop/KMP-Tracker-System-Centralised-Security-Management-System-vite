@@ -116,7 +116,6 @@ const AnalyticsDashboard = ({
   const [fetchedCrime, setFetchedCrime] = useState([]);
   const [fetchedOps, setFetchedOps] = useState([]);
   const [fetchedExhibits, setFetchedExhibits] = useState([]); 
-  const [fetchedAccidents, setFetchedAccidents] = useState([]);
   const [fetchedSuccessStories, setFetchedSuccessStories] = useState([]);
   const [fetchedFireIncidents, setFetchedFireIncidents] = useState([]);
 
@@ -163,12 +162,11 @@ const AnalyticsDashboard = ({
       try {
         const intelParam = `?region=${encodeURIComponent(selectedRegion)}&station=${encodeURIComponent(selectedStation)}`;
 
-        const [rollRes, crimeRes, statsRes, exhibitsRes, accidentsRes, intelRes] = await Promise.all([
+        const [rollRes, crimeRes, statsRes, exhibitsRes, intelRes] = await Promise.all([
           authFetch('/api/v1/nominal-roll').catch(() => null),
           authFetch('/api/v1/reports').catch(() => null),
           authFetch('/api/v1/stats').catch(() => null),
           authFetch('/api/v1/exhibits').catch(() => null),
-          authFetch('/api/v1/accidents').catch(() => null),
           authFetch(`/api/v1/analytics/dashboard-intelligence${intelParam}`).catch(() => null)
         ]);
 
@@ -176,7 +174,6 @@ const AnalyticsDashboard = ({
         const crimeData = crimeRes && crimeRes.ok ? await crimeRes.json() : [];
         const statsData = statsRes && statsRes.ok ? await statsRes.json() : [];
         const exhibitsData = exhibitsRes && exhibitsRes.ok ? await exhibitsRes.json() : [];
-        const accidentsData = accidentsRes && accidentsRes.ok ? await accidentsRes.json() : [];
         const intelData = intelRes && intelRes.ok ? await intelRes.json() : null;
 
         if (isMounted) {

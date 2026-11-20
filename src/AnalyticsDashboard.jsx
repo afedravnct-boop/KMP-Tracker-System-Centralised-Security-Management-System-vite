@@ -97,6 +97,85 @@ const aggregateTimeSeries = (records, dateField, valueFields) => {
     };
 };
 
+const calcYearsFromDate = (rawVal) => {
+  if (!rawVal) return null;
+  const s = String(rawVal).trim();
+  if (!s || s === 'N/A' || s === '-' || s.toUpperCase() === 'NULL') return null;
+
+  let dt = new Date(s);
+  if (isNaN(dt.getTime())) {
+    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if (m) {
+      const year = m[3].length === 2 ? Number(`20${m[3]}`) : Number(m[3]);
+      dt = new Date(year, Number(m[2]) - 1, Number(m[1]));
+    }
+  }
+  if (isNaN(dt.getTime())) return null;
+  const diffYears = (Date.now() - dt.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+  return diffYears >= 0 && diffYears < 100 ? diffYears : null;
+};
+
+const toPieArray = (countMap, limit = 10) =>
+  Object.entries(countMap)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name, value]) => ({ name, value }));
+
+const buildManpowerBucket = (list) => {
+  const gender = { Male: 0, Female: 0 };
+  const deploy = { Active: 0, Inactive: 0 };
+  const ranks = {};
+  const service = {};
+  const stationLen = {};
+  const rankTen = {};
+  const ages = {};
+
+  list.forEach((o) => {
+    if (!o) return;
+    const sex = String(o.sex || 'M').toUpperCase();
+    if (sex.includes('F')) gender.Female += 1;
+    else gender.Male += 1;
+
+    const statusStr = String(o.status || o.deployment_status || o.remarks || 'ACTIVE').toUpperCase();
+    const isInactive = ['SICK', 'LEAVE', 'MATERN', 'MISSION', 'SUSPEND', 'AWOL', 'COURSE', 'UNDEPLOY'].some((x) =>
+      statusStr.includes(x)
+    );
+    if (isInactive) deploy.Inactive += 1;
+    else deploy.Active += 1;
+
+    const rk = String(o.rank || 'UNKNOWN').trim().toUpperCase();
+    ranks[rk] = (ranks[rk] || 0) + 1;
+
+    const srvY = calcYearsFromDate(o.doe || o.date_of_enlistment);
+    const srvB = srvY === null ? 'Unspecified' : srvY < 5 ? '0-5 Yrs' : srvY < 10 ? '5-10 Yrs' : srvY < 20 ? '10-20 Yrs' : '20+ Yrs';
+    service[srvB] = (service[srvB] || 0) + 1;
+
+    const depY = calcYearsFromDate(o.do_post || o.dopost || o.doPost);
+    const depB = depY === null ? 'Unspecified' : depY < 1 ? '< 1 Yr' : depY < 3 ? '1-3 Yrs' : depY < 5 ? '3-5 Yrs' : '5+ Yrs (Overdue)';
+    stationLen[depB] = (stationLen[depB] || 0) + 1;
+
+    const rnkY = calcYearsFromDate(o.do_pro || o.dopro || o.doPro);
+    const rnkB = rnkY === null ? 'Unspecified' : rnkY < 2 ? '< 2 Yrs' : rnkY < 5 ? '2-5 Yrs' : rnkY < 10 ? '5-10 Yrs' : '10+ Yrs';
+    rankTen[rnkB] = (rankTen[rnkB] || 0) + 1;
+
+    const ageY = calcYearsFromDate(o.dob || o.date_of_birth);
+    const ageB = ageY === null ? 'Unspecified' : ageY < 25 ? '18-24' : ageY < 35 ? '25-34' : ageY < 45 ? '35-44' : ageY < 55 ? '45-54' : '55+';
+    ages[ageB] = (ages[ageB] || 0) + 1;
+  });
+
+  return {
+    total: list.length,
+    genderDistribution: toPieArray(gender),
+    deployability: toPieArray(deploy),
+    rankDistribution: toPieArray(ranks, 12),
+    serviceLength: toPieArray(service),
+    deploymentLength: toPieArray(stationLen),
+    rankTenure: toPieArray(rankTen),
+    ageDemographics: toPieArray(ages)
+  };
+};
+
 const AnalyticsDashboard = ({ 
   nominalRolls = [], 
   nominal_rolls = [], 
@@ -468,27 +547,48 @@ const AnalyticsDashboard = ({
     };
   }, [resolvedNominalRolls, selectedRegion, selectedStation, canViewGlobalLevel, userRegClean]);
 
+  const localManpowerIntel = useMemo(() => {
+    const rolls = Array.isArray(resolvedNominalRolls) ? resolvedNominalRolls : [];
+    const byRegionMap = {};
+    rolls.forEach((o) => {
+      if (!o) return;
+      const reg = getOfficialRegionForStation(o.station, o.region);
+      if (!byRegionMap[reg]) byRegionMap[reg] = [];
+      byRegionMap[reg].push(o);
+    });
+    const byRegion = {};
+    Object.entries(byRegionMap).forEach(([reg, list]) => {
+      byRegion[reg] = buildManpowerBucket(list);
+    });
+    return { general: buildManpowerBucket(rolls), byRegion };
+  }, [resolvedNominalRolls]);
+
+  const effectiveManpowerIntel = useMemo(() => {
+    const hasBackend = backendManpowerIntel?.general?.rankDistribution?.length > 0;
+    return hasBackend ? backendManpowerIntel : localManpowerIntel;
+  }, [backendManpowerIntel, localManpowerIntel]);
+
   const activeManpowerBucket = useMemo(() => {
     const bucket =
       manpowerSummaryScope === 'GENERAL'
-        ? backendManpowerIntel?.general
-        : backendManpowerIntel?.byRegion?.[manpowerSummaryScope];
+        ? effectiveManpowerIntel?.general
+        : effectiveManpowerIntel?.byRegion?.[manpowerSummaryScope];
 
     return {
-      total: bucket?.total ?? (manpowerAnalysis.totalActive + manpowerAnalysis.totalInactive),
-      genderDistribution: bucket?.genderDistribution?.length ? bucket.genderDistribution : manpowerAnalysis.pieGenderData,
-      deployability: bucket?.deployability?.length ? bucket.deployability : manpowerAnalysis.pieDeployData,
+      total: bucket?.total ?? 0,
+      genderDistribution: bucket?.genderDistribution || [],
+      deployability: bucket?.deployability || [],
       rankDistribution: bucket?.rankDistribution || [],
       serviceLength: bucket?.serviceLength || [],
       deploymentLength: bucket?.deploymentLength || [],
       rankTenure: bucket?.rankTenure || [],
       ageDemographics: bucket?.ageDemographics || []
     };
-  }, [backendManpowerIntel, manpowerSummaryScope, manpowerAnalysis]);
+  }, [effectiveManpowerIntel, manpowerSummaryScope]);
 
   const manpowerRegionKeys = useMemo(
-    () => Object.keys(backendManpowerIntel?.byRegion || {}),
-    [backendManpowerIntel]
+    () => Object.keys(effectiveManpowerIntel?.byRegion || {}),
+    [effectiveManpowerIntel]
   );
 
   const exhibitGroupedData = useMemo(() => {

@@ -116,7 +116,8 @@ const AnalyticsDashboard = ({
   const [fetchedCrime, setFetchedCrime] = useState([]);
   const [fetchedOps, setFetchedOps] = useState([]);
   const [fetchedExhibits, setFetchedExhibits] = useState([]); 
-    const [fetchedSuccessStories, setFetchedSuccessStories] = useState([]);
+  const [fetchedAccidents, setFetchedAccidents] = useState([]);
+  const [fetchedSuccessStories, setFetchedSuccessStories] = useState([]);
   const [fetchedFireIncidents, setFetchedFireIncidents] = useState([]);
 
   const userRoleClean = stripHtmlTags(currentUser?.role || '').toUpperCase();
@@ -174,6 +175,7 @@ const AnalyticsDashboard = ({
         const crimeData = crimeRes && crimeRes.ok ? await crimeRes.json() : [];
         const statsData = statsRes && statsRes.ok ? await statsRes.json() : [];
         const exhibitsData = exhibitsRes && exhibitsRes.ok ? await exhibitsRes.json() : [];
+        const accidentsData = accidentsRes && accidentsRes.ok ? await accidentsRes.json() : [];
         const intelData = intelRes && intelRes.ok ? await intelRes.json() : null;
 
         if (isMounted) {

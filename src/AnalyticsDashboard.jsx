@@ -116,7 +116,7 @@ const AnalyticsDashboard = ({
   const [fetchedCrime, setFetchedCrime] = useState([]);
   const [fetchedOps, setFetchedOps] = useState([]);
   const [fetchedExhibits, setFetchedExhibits] = useState([]); 
-  const [fetchedSuccessStories, setFetchedSuccessStories] = useState([]);
+    const [fetchedSuccessStories, setFetchedSuccessStories] = useState([]);
   const [fetchedFireIncidents, setFetchedFireIncidents] = useState([]);
 
   const userRoleClean = stripHtmlTags(currentUser?.role || '').toUpperCase();

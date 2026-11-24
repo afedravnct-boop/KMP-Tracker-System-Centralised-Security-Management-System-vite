@@ -1272,16 +1272,23 @@ const DashboardLayout = ({
   const [isMotionExpanded, setIsMotionExpanded] = useState(false);
 
   const [realOnlineUsers, setRealOnlineUsers] = useState([]);
+  const backoffUntilRef = useRef(0);
 
   useEffect(() => {
     if (!hasValidSession()) return;
 
     const syncHeartbeat = async () => {
+      if (document.hidden || Date.now() < backoffUntilRef.current) return;
       try {
         const hb = await authFetch('/api/v1/users/heartbeat', { method: 'POST' });
 
         if (hb.status === 401) {
           window.dispatchEvent(new Event('auth-expired'));
+          return;
+        }
+
+        if (hb.status === 429 || hb.status === 503) {
+          backoffUntilRef.current = Date.now() + 60000;
           return;
         }
 
@@ -1293,6 +1300,10 @@ const DashboardLayout = ({
         }
 
         const response = await authFetch('/api/v1/users/online');
+        if (response.status === 429 || response.status === 503) {
+          backoffUntilRef.current = Date.now() + 60000;
+          return;
+        }
         if (response.ok) {
           setRealOnlineUsers(await response.json());
         }
